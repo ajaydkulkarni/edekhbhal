@@ -1,4 +1,4 @@
-# eDekhbhal v0.2.0
+# eDekhbhal v0.2.1
 
 This build completes the first end-to-end operational cycle:
 

@@ -7,10 +7,28 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum MembershipRole { ADMIN PROPERTY_MANAGER USER }
-enum Status { ACTIVE INACTIVE PENDING REVOKED }
-enum AuditResult { SUCCESS FAILURE }
-enum SubscriptionStatus { TRIALING ACTIVE PAST_DUE CANCELED INCOMPLETE }
+enum MembershipRole {
+  ADMIN
+  PROPERTY_MANAGER
+  USER
+}
+enum Status {
+  ACTIVE
+  INACTIVE
+  PENDING
+  REVOKED
+}
+enum AuditResult {
+  SUCCESS
+  FAILURE
+}
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  INCOMPLETE
+}
 enum ActionType {
   LOGIN
   LOGIN_FAILED
