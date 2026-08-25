@@ -1,0 +1,4 @@
+import { notFound } from 'next/navigation';
+import { prisma } from '@/lib/prisma';
+import { sha256 } from '@/lib/security';
+export default async function QrLanding({params}:{params:Promise<{token:string}>}){const {token}=await params;const qr=await prisma.qrCode.findFirst({where:{tokenHash:sha256(token),status:'ACTIVE'},include:{workArea:{include:{property:true}}}});if(!qr)notFound();return <main className="container"><div className="card"><p className="muted">eDekhbhal Work Area</p><h1>{qr.workArea.name}</h1><p>{qr.workArea.description??'No description provided.'}</p><p><strong>Location:</strong> {qr.workArea.locationIdentifier??'—'}</p><p><strong>Property:</strong> {qr.workArea.property.name}</p><p className="muted">The QR code is currently active and resolves to this Work Area.</p></div></main>}

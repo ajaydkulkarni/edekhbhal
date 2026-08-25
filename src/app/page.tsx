@@ -1,0 +1,2 @@
+import Link from "next/link";
+export default function Home(){return <main className="hero container"><div className="card"><h1>eDekhbhal</h1><p>Multi-tenant property, work-area and QR management.</p><div className="row" style={{justifyContent:"center",marginTop:24}}><Link className="button" href="/register">Register</Link><Link className="button secondary" href="/login">Login</Link></div></div></main>}

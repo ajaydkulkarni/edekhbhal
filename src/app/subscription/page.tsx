@@ -1,0 +1,5 @@
+import { redirect } from 'next/navigation';
+import { Nav } from '@/components/Nav';
+import { getSessionUser } from '@/lib/session';
+import { prisma } from '@/lib/prisma';
+export default async function SubscriptionPage(){const user=await getSessionUser();if(!user)redirect('/login');const m=await prisma.organizationMember.findFirst({where:{userId:user.id,status:'ACTIVE'}});if(!m)redirect('/onboarding');const sub=await prisma.subscription.findUnique({where:{organizationId:m.organizationId},include:{plan:true}});return <><Nav/><main className="container"><h1>Subscription</h1><div className="card" style={{maxWidth:650}}><h2>{sub?.plan.name??'No plan'}</h2><p>Status: <strong>{sub?.status??'—'}</strong></p><p>Users: {sub?.plan.maxUsers??'Unlimited'}</p><p>Properties: {sub?.plan.maxProperties??'Unlimited'}</p><p>Work Areas: {sub?.plan.maxWorkAreas??'Unlimited'}</p><p className="muted">Billing provider integration is intentionally isolated so Stripe (or another provider) can be added without changing tenant/business logic.</p></div></main></>}
