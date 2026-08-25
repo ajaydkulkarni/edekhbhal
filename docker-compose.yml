@@ -1,16 +1,13 @@
 services:
-  db:
-    image: postgres:16-alpine
-    container_name: edekhbhal-db
-    restart: unless-stopped
+  postgres:
+    image: postgres:16
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: edekhbhal
+      POSTGRES_PASSWORD: edekhbhal
       POSTGRES_DB: edekhbhal
     ports:
       - "5432:5432"
     volumes:
-      - edekhbhal_pgdata:/var/lib/postgresql/data
-
+      - edekhbhal_pg:/var/lib/postgresql/data
 volumes:
-  edekhbhal_pgdata:
+  edekhbhal_pg:

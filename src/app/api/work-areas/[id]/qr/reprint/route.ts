@@ -2,5 +2,17 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireMembership } from "@/lib/session";
 import { audit } from "@/lib/audit";
-import { sha256 } from "@/lib/security";
-export async function POST(req:Request,{params}:{params:Promise<{id:string}>}){try{const {id}=await params;const wa=await prisma.workArea.findUnique({where:{id},include:{property:true,qrCodes:{where:{status:'ACTIVE'},orderBy:{generatedAt:'desc'},take:1}}});if(!wa)return NextResponse.json({error:'Work area not found'},{status:404});const {user,membership}=await requireMembership(wa.property.organizationId);if(!['ADMIN','PROPERTY_MANAGER'].includes(membership.role))return NextResponse.json({error:'Permission denied'},{status:403});const qr=wa.qrCodes[0];if(!qr)return NextResponse.json({error:'No active QR code exists'},{status:404});const raw=(req.headers.get('x-qr-token-debug')??'');if(!raw||sha256(raw)!==qr.tokenHash)return NextResponse.json({error:'For the first development build, reprint requires the active raw token header. A proper persisted secure token retrieval mechanism should be added to the QR print service before production.'},{status:409});await audit({organizationId:wa.property.organizationId,userId:user.id,action:'QR_REPRINTED',entityType:'WorkArea',entityId:id,metadata:{tokenPreview:qr.tokenPreview}});return NextResponse.json({token:raw});}catch(e){return NextResponse.json({error:e instanceof Error?e.message:'Unable to reprint QR'},{status:400});}}
+import { renderQrDataUrl } from "@/lib/qr";
+
+export async function POST(_:Request,{params}:{params:Promise<{id:string}>}){
+  try{
+    const {id}=await params;
+    const wa=await prisma.workArea.findUnique({where:{id},include:{property:true,qrCodes:{where:{status:"ACTIVE"},orderBy:{generatedAt:"desc"},take:1}}});
+    if(!wa)return NextResponse.json({error:"Work area not found"},{status:404});
+    const {user,membership}=await requireMembership(wa.property.organizationId);
+    if(!["ADMIN","PROPERTY_MANAGER"].includes(membership.role))return NextResponse.json({error:"Permission denied"},{status:403});
+    const qr=wa.qrCodes[0]; if(!qr)return NextResponse.json({error:"No active QR code exists"},{status:404});
+    await audit({organizationId:wa.property.organizationId,userId:user.id,action:"QR_REPRINTED",entityType:"WorkArea",entityId:id,metadata:{qrId:qr.id,tokenPreview:qr.tokenPreview}});
+    return NextResponse.json({qr:{id:qr.id,dataUrl:await renderQrDataUrl(qr.id),tokenPreview:qr.tokenPreview}});
+  }catch(e){return NextResponse.json({error:e instanceof Error?e.message:"Unable to reprint QR"},{status:400})}
+}

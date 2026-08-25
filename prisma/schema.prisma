@@ -7,32 +7,10 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum MembershipRole {
-  ADMIN
-  PROPERTY_MANAGER
-  USER
-}
-
-enum Status {
-  ACTIVE
-  INACTIVE
-  PENDING
-  REVOKED
-}
-
-enum AuditResult {
-  SUCCESS
-  FAILURE
-}
-
-enum SubscriptionStatus {
-  TRIALING
-  ACTIVE
-  PAST_DUE
-  CANCELED
-  INCOMPLETE
-}
-
+enum MembershipRole { ADMIN PROPERTY_MANAGER USER }
+enum Status { ACTIVE INACTIVE PENDING REVOKED }
+enum AuditResult { SUCCESS FAILURE }
+enum SubscriptionStatus { TRIALING ACTIVE PAST_DUE CANCELED INCOMPLETE }
 enum ActionType {
   LOGIN
   LOGIN_FAILED
@@ -61,78 +39,78 @@ enum ActionType {
 }
 
 model User {
-  id             String              @id @default(cuid())
-  email          String              @unique
-  name           String?
-  emailVerified  DateTime?
-  active         Boolean             @default(true)
-  createdAt      DateTime            @default(now())
-  updatedAt      DateTime            @updatedAt
-  memberships    OrganizationMember[]
-  sessions       Session[]
-  auditEvents    AuditLog[]
-  magicTokens    MagicLinkToken[]
+  id            String @id @default(cuid())
+  email         String @unique
+  name          String?
+  emailVerified DateTime?
+  active        Boolean @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  memberships   OrganizationMember[]
+  sessions      Session[]
+  auditEvents   AuditLog[]
+  magicTokens   MagicLinkToken[]
 }
 
 model Session {
-  id         String   @id @default(cuid())
-  userId     String
-  tokenHash  String   @unique
-  expiresAt  DateTime
-  createdAt  DateTime @default(now())
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        String @id @default(cuid())
+  userId    String
+  tokenHash String @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@index([userId])
   @@index([expiresAt])
 }
 
 model MagicLinkToken {
-  id         String   @id @default(cuid())
-  userId     String
-  tokenHash  String   @unique
-  expiresAt  DateTime
-  usedAt     DateTime?
-  createdAt  DateTime @default(now())
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        String @id @default(cuid())
+  userId    String
+  tokenHash String @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@index([userId])
   @@index([expiresAt])
 }
 
 model Organization {
-  id               String               @id @default(cuid())
-  name             String
-  logoUrl          String?
-  addressLine1     String?
-  addressLine2     String?
-  addressLine3     String?
-  city             String?
-  state            String?
-  postalCode       String?
-  country          String?
-  timezone         String
-  createdAt        DateTime             @default(now())
-  updatedAt        DateTime             @updatedAt
-  memberships      OrganizationMember[]
-  properties       Property[]
-  subscription     Subscription?
-  auditLogs        AuditLog[]
+  id           String @id @default(cuid())
+  name         String
+  logoUrl      String?
+  addressLine1 String?
+  addressLine2 String?
+  addressLine3 String?
+  city         String?
+  state        String?
+  postalCode   String?
+  country      String?
+  timezone     String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  memberships  OrganizationMember[]
+  properties   Property[]
+  subscription Subscription?
+  auditLogs    AuditLog[]
 }
 
 model OrganizationMember {
-  id             String         @id @default(cuid())
+  id             String @id @default(cuid())
   organizationId String
   userId         String
   role           MembershipRole @default(USER)
-  status         Status         @default(ACTIVE)
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
-  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status         Status @default(ACTIVE)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@unique([organizationId, userId])
   @@index([userId])
 }
 
 model Property {
-  id             String       @id @default(cuid())
+  id             String @id @default(cuid())
   organizationId String
   name           String
   addressLine1   String?
@@ -143,85 +121,85 @@ model Property {
   postalCode     String?
   country        String?
   timezone       String?
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   workAreas      WorkArea[]
   @@index([organizationId])
 }
 
 model WorkArea {
-  id                  String        @id @default(cuid())
-  propertyId          String
-  name                String
-  description         String?
-  locationIdentifier  String?
-  status              Status        @default(ACTIVE)
-  createdAt           DateTime      @default(now())
-  updatedAt           DateTime      @updatedAt
-  property            Property      @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  qrCodes             QrCode[]
+  id                 String @id @default(cuid())
+  propertyId         String
+  name               String
+  description        String?
+  locationIdentifier String?
+  status             Status @default(ACTIVE)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  property           Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  qrCodes            QrCode[]
   @@index([propertyId])
 }
 
 model QrCode {
-  id            String     @id @default(cuid())
+  id            String @id @default(cuid())
   workAreaId    String
-  tokenHash     String     @unique
+  tokenHash     String @unique
   tokenPreview  String
-  status        Status     @default(ACTIVE)
-  generatedAt   DateTime   @default(now())
+  status        Status @default(ACTIVE)
+  generatedAt   DateTime @default(now())
   generatedById String
   revokedAt     DateTime?
   revokedById   String?
-  workArea      WorkArea   @relation(fields: [workAreaId], references: [id], onDelete: Cascade)
+  workArea      WorkArea @relation(fields: [workAreaId], references: [id], onDelete: Cascade)
   @@index([workAreaId, status])
 }
 
 model Plan {
-  id                 String         @id @default(cuid())
-  code               String         @unique
-  name               String
-  maxUsers           Int?
-  maxProperties      Int?
-  maxWorkAreas       Int?
-  monthlyPriceCents  Int
-  active             Boolean        @default(true)
-  subscriptions      Subscription[]
+  id                String @id @default(cuid())
+  code              String @unique
+  name              String
+  maxUsers          Int?
+  maxProperties     Int?
+  maxWorkAreas      Int?
+  monthlyPriceCents Int
+  active            Boolean @default(true)
+  subscriptions     Subscription[]
 }
 
 model Subscription {
-  id                   String             @id @default(cuid())
-  organizationId       String             @unique
-  planId               String
-  status               SubscriptionStatus @default(TRIALING)
-  currentPeriodStart   DateTime?
-  currentPeriodEnd     DateTime?
-  providerCustomerId   String?
+  id                     String @id @default(cuid())
+  organizationId         String @unique
+  planId                 String
+  status                 SubscriptionStatus @default(TRIALING)
+  currentPeriodStart     DateTime?
+  currentPeriodEnd       DateTime?
+  providerCustomerId     String?
   providerSubscriptionId String?
-  createdAt            DateTime           @default(now())
-  updatedAt            DateTime           @updatedAt
-  organization         Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  plan                 Plan               @relation(fields: [planId], references: [id])
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+  organization           Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  plan                   Plan @relation(fields: [planId], references: [id])
 }
 
 model AuditLog {
-  id              String      @id @default(cuid())
-  organizationId  String?
-  userId          String?
-  action          ActionType
-  result          AuditResult @default(SUCCESS)
-  entityType      String?
-  entityId        String?
-  oldValue        Json?
-  newValue        Json?
-  metadata        Json?
-  ipAddress       String?
-  userAgent       String?
-  requestId       String?
-  createdAt       DateTime    @default(now())
-  organization    Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
-  user            User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  id             String @id @default(cuid())
+  organizationId String?
+  userId         String?
+  action         ActionType
+  result         AuditResult @default(SUCCESS)
+  entityType     String?
+  entityId       String?
+  oldValue       Json?
+  newValue       Json?
+  metadata       Json?
+  ipAddress      String?
+  userAgent      String?
+  requestId      String?
+  createdAt      DateTime @default(now())
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  user           User? @relation(fields: [userId], references: [id], onDelete: SetNull)
   @@index([organizationId, createdAt])
   @@index([userId, createdAt])
   @@index([entityType, entityId, createdAt])

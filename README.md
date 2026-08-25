@@ -1,70 +1,27 @@
-# eDekhbhal
+# eDekhbhal v0.2.0
 
-A multi-tenant SaaS foundation for organization, property, work-area and QR management.
+This build completes the first end-to-end operational cycle:
 
-## Current foundation
+**Register → Authenticate → Create Organization → Create Property → Create Work Area → Generate QR → Reprint QR → Regenerate QR → Scan QR → Audit Trail**
 
-- Passwordless email authentication flow with development magic-link fallback.
-- Organization onboarding; authenticated creator becomes `ADMIN`.
-- Tenant membership model with `ADMIN`, `PROPERTY_MANAGER`, and `USER` roles.
-- Property and Work Area domain models.
-- Work Area QR lifecycle: generate on creation, regenerate to invalidate the previous code, and separate reprint concept.
-- Subscription/plan schema with starter/professional/enterprise seed plans.
-- Immutable-style append-only audit event table capturing user, action, timestamp, old/new values, result, and context.
-- Tenant-scoped audit screen.
-- Docker Compose PostgreSQL for local development.
+## Staging configuration
 
-## Stack
+Required Vercel environment variables:
 
-- Next.js App Router + TypeScript
-- Prisma ORM
-- PostgreSQL
-- QRCode generation
-- Zod validation
+- `DATABASE_URL` — Supabase pooled PostgreSQL connection string. For Supabase transaction pooler use `?pgbouncer=true&connection_limit=1`.
+- `APP_URL` — e.g. `https://edekhbhal-staging.vercel.app`
+- `AUTH_SECRET` — retained for future auth hardening.
 
-## Local setup
+## QR lifecycle
 
-1. Copy `.env.example` to `.env`.
-2. Start PostgreSQL:
+A QR code is represented by a `QrCode` database record. Its public QR URL uses the random Prisma/CUID record ID.
 
-```bash
-docker compose up -d db
-```
+- **Reprint** reconstructs exactly the current active QR from the existing QR record ID.
+- **Regenerate** revokes the current QR record and creates a brand-new QR record, so the old QR becomes invalid while the Work Area ID remains unchanged.
+- Scanning a revoked QR returns 404.
+- QR generation/reprint/regeneration are audited.
 
-3. Install dependencies:
+## Notes
 
-```bash
-npm install
-```
-
-4. Push the schema and seed plans:
-
-```bash
-npm run db:push
-npm run db:seed
-```
-
-5. Start the app:
-
-```bash
-npm run dev
-```
-
-Open `http://localhost:3000`.
-
-## Important development note
-
-The current registration flow exposes the generated magic link on the response page so the project can be tested without an email provider. Before production, connect a transactional email provider (such as Resend) and never return the magic link in an API response.
-
-The QR reprint endpoint is intentionally not treated as production-ready yet; the next implementation should add a secure server-side QR rendering/printing path without exposing persisted secrets.
-
-## Next build increments
-
-1. Production-grade email delivery and session hardening.
-2. Full user invitation and role/permission UI.
-3. Property and Work Area CRUD screens with QR print/regenerate actions.
-4. Secure QR rendering/download endpoint.
-5. Subscription provider integration and entitlement enforcement.
-6. Complete API authorization middleware and database row-level tenant safeguards.
-7. Mobile application consuming the same API.
-8. Expanded audit coverage for every business action.
+Email sending is still intentionally not connected; authentication uses the displayed development link.
+This is a staging build, not yet production hardened.

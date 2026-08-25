@@ -1,3 +1,15 @@
 "use client";
 import { useState } from "react";
-export default function Onboarding(){const [form,setForm]=useState({name:"",addressLine1:"",addressLine2:"",addressLine3:"",city:"",state:"",postalCode:"",country:"",timezone:Intl.DateTimeFormat().resolvedOptions().timeZone});const [error,setError]=useState("");return <main className="container"><div className="card" style={{maxWidth:760,margin:"30px auto"}}><h1>Create your organization</h1><p className="muted">Your authenticated account will become the organization Admin.</p><form onSubmit={async e=>{e.preventDefault();const r=await fetch('/api/organizations',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(form)});const j=await r.json();if(!r.ok)setError(j.error);else location.href='/dashboard';}}>{Object.entries(form).map(([k,v])=><div key={k}><label className="label">{k==='postalCode'?'Zip / Pin':k.replace(/([A-Z])/g,' $1')}</label><input className="input" value={v} onChange={e=>setForm({...form,[k]:e.target.value})} required={k==='name'}/></div>)}<div style={{marginTop:18}}><button className="button">Create Organization</button></div></form>{error&&<p className="error">{error}</p>}</div></main>}
+import { useRouter } from "next/navigation";
+export default function Onboarding(){
+  const router=useRouter(); const [error,setError]=useState(""); const [saving,setSaving]=useState(false);
+  async function submit(fd:FormData){setSaving(true);setError("");const timezone=Intl.DateTimeFormat().resolvedOptions().timeZone||"UTC";
+    const payload=Object.fromEntries(["name","logoUrl","addressLine1","addressLine2","addressLine3","city","state","postalCode","country"].map(k=>[k,String(fd.get(k)||"")]));
+    try{const r=await fetch("/api/organizations",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...payload,timezone})});const d=await r.json();if(!r.ok)throw new Error(d.error||"Unable to create organization");router.push("/dashboard");router.refresh()}catch(e){setError(e instanceof Error?e.message:"Unable to create organization")}finally{setSaving(false)}
+  }
+  return <main className="container"><div className="card"><h1>Create Organization</h1><form action={submit}><div className="formGrid">
+    <label>Organization Name<input name="name" required minLength={2}/></label><label>Organization Logo URL<input name="logoUrl"/></label>
+    <label>Address Line 1<input name="addressLine1"/></label><label>Address Line 2<input name="addressLine2"/></label><label>Address Line 3<input name="addressLine3"/></label>
+    <label>City<input name="city"/></label><label>State<input name="state"/></label><label>ZIP / PIN<input name="postalCode"/></label><label>Country<input name="country"/></label>
+  </div>{error&&<p className="error">{error}</p>}<button className="button" disabled={saving}>{saving?"Creating...":"Create Organization"}</button></form></div></main>
+}
