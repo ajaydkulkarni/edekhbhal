@@ -1,27 +1,21 @@
-# eDekhbhal v0.2.1
+# eDekhbhal v0.3.0
 
-This build completes the first end-to-end operational cycle:
+This release adds the management features requested after the QR-cycle validation.
 
-**Register → Authenticate → Create Organization → Create Property → Create Work Area → Generate QR → Reprint QR → Regenerate QR → Scan QR → Audit Trail**
+## Added
+- My Profile: logged-in user can maintain their display name.
+- Team / User Management: Admin can add users by email, assign ADMIN / PROPERTY_MANAGER / USER roles, change roles, and inactivate/reactivate memberships.
+- Organization Settings: Organization name is permanently read-only after creation. Admin can edit address/time zone and upload a logo.
+- Organization logo is displayed in the top-right navigation area.
+- Property creation prefills/inherits the current Organization address, while saving a separate Property copy.
+- Property view/edit/inactivate/reactivate.
+- Work Area view/edit/inactivate/reactivate.
+- Standalone Work Areas page with mandatory active Parent Property selector.
+- Parent Property is always visible in Work Area management screens.
+- New and changed management actions continue to be audit logged with old/new values.
 
-## Staging configuration
+## Required database upgrade
+Before testing v0.3.0 functionality, run `supabase-v0.3.0.sql` in the Supabase SQL Editor.
 
-Required Vercel environment variables:
-
-- `DATABASE_URL` — Supabase pooled PostgreSQL connection string. For Supabase transaction pooler use `?pgbouncer=true&connection_limit=1`.
-- `APP_URL` — e.g. `https://edekhbhal-staging.vercel.app`
-- `AUTH_SECRET` — retained for future auth hardening.
-
-## QR lifecycle
-
-A QR code is represented by a `QrCode` database record. Its public QR URL uses the random Prisma/CUID record ID.
-
-- **Reprint** reconstructs exactly the current active QR from the existing QR record ID.
-- **Regenerate** revokes the current QR record and creates a brand-new QR record, so the old QR becomes invalid while the Work Area ID remains unchanged.
-- Scanning a revoked QR returns 404.
-- QR generation/reprint/regeneration are audited.
-
-## Notes
-
-Email sending is still intentionally not connected; authentication uses the displayed development link.
-This is a staging build, not yet production hardened.
+## Logo storage note
+For this staging build, uploaded logos up to 1 MB are stored as a data URL in `Organization.logoUrl`. This gives you a working upload immediately without additional Supabase Storage setup. Before production, move organization logos to Supabase Storage or another object store.
