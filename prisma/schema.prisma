@@ -41,6 +41,12 @@ enum ActionType {
   USER_DEACTIVATED
   ROLE_CHANGED
   PROFILE_UPDATED
+  TASK_CREATED
+  TASK_UPDATED
+  TASK_INACTIVATED
+  TASK_REACTIVATED
+  TASK_ATTACHMENT_ADDED
+  TASK_ATTACHMENT_REMOVED
   PROPERTY_CREATED
   PROPERTY_UPDATED
   PROPERTY_DELETED
@@ -71,6 +77,8 @@ model User {
   sessions      Session[]
   auditEvents   AuditLog[]
   magicTokens   MagicLinkToken[]
+  tasksCreated  Task[] @relation("TaskCreatedBy")
+  attachmentsAdded TaskAttachment[] @relation("TaskAttachmentAddedBy")
 }
 
 model Session {
@@ -114,6 +122,7 @@ model Organization {
   properties   Property[]
   subscription Subscription?
   auditLogs    AuditLog[]
+  tasks        Task[]
 }
 
 model OrganizationMember {
@@ -176,6 +185,37 @@ model QrCode {
   revokedById   String?
   workArea      WorkArea @relation(fields: [workAreaId], references: [id], onDelete: Cascade)
   @@index([workAreaId, status])
+}
+
+
+model Task {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String   @db.VarChar(500)
+  descriptionHtml String  @db.Text
+  status         Status   @default(ACTIVE)
+  createdById    String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy      User @relation("TaskCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  attachments    TaskAttachment[]
+  @@index([organizationId, status])
+  @@index([organizationId, name])
+}
+
+model TaskAttachment {
+  id            String   @id @default(cuid())
+  taskId        String
+  fileName      String   @db.VarChar(255)
+  mimeType      String   @db.VarChar(150)
+  sizeBytes     Int
+  contentBase64 String   @db.Text
+  addedById     String
+  createdAt     DateTime @default(now())
+  task          Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  addedBy       User @relation("TaskAttachmentAddedBy", fields: [addedById], references: [id], onDelete: Restrict)
+  @@index([taskId, createdAt])
 }
 
 model Plan {

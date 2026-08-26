@@ -1,21 +1,25 @@
-# eDekhbhal v0.3.0
+# eDekhbhal v0.4.0 — Tasks
 
-This release adds the management features requested after the QR-cycle validation.
+This release introduces organization-level reusable Tasks. The future Schedule module can associate these task definitions with individual Work Areas.
 
-## Added
-- My Profile: logged-in user can maintain their display name.
-- Team / User Management: Admin can add users by email, assign ADMIN / PROPERTY_MANAGER / USER roles, change roles, and inactivate/reactivate memberships.
-- Organization Settings: Organization name is permanently read-only after creation. Admin can edit address/time zone and upload a logo.
-- Organization logo is displayed in the top-right navigation area.
-- Property creation prefills/inherits the current Organization address, while saving a separate Property copy.
-- Property view/edit/inactivate/reactivate.
-- Work Area view/edit/inactivate/reactivate.
-- Standalone Work Areas page with mandatory active Parent Property selector.
-- Parent Property is always visible in Work Area management screens.
-- New and changed management actions continue to be audit logged with old/new values.
+## Tasks
+- Tasks belong to the Organization, not a Property or Work Area.
+- ADMIN and PROPERTY_MANAGER can create, edit, inactivate/reactivate Tasks.
+- USER can view Tasks read-only.
+- Task Name accepts a complete sentence (up to 500 characters).
+- Task Description is rich text with bold, italics, underline, bullet/numbered lists and font sizes.
+- Multiple attachments can be added and removed.
+- Images show image thumbnails.
+- PDFs and text files use inline browser previews.
+- Other files show a file-type tile and can be opened/downloaded.
+- All Task and attachment changes are included in the Audit Trail.
+
+## Staging attachment storage
+For v0.4.0, attachments are stored in PostgreSQL as Base64 with a 2 MB-per-file limit. This keeps the staging deployment self-contained and avoids introducing another secret/service configuration during feature development.
+
+Before production, move attachment binaries to Supabase Storage (or equivalent object storage) and retain only metadata/storage keys in PostgreSQL.
 
 ## Required database upgrade
-Before testing v0.3.0 functionality, run `supabase-v0.3.0.sql` in the Supabase SQL Editor.
+Run `supabase-v0.4.0.sql` in Supabase SQL Editor **after** the v0.3.0 upgrade and before testing Tasks.
 
-## Logo storage note
-For this staging build, uploaded logos up to 1 MB are stored as a data URL in `Organization.logoUrl`. This gives you a working upload immediately without additional Supabase Storage setup. Before production, move organization logos to Supabase Storage or another object store.
+No existing Property, Work Area or QR data is changed by the upgrade.

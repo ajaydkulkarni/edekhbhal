@@ -9,3 +9,22 @@ label{display:block;font-size:13px;font-weight:600;color:#465267;margin:11px 0}i
 .breadcrumbs{font-size:13px;color:#687386;margin-bottom:18px}.breadcrumbs a{color:#334e78}
 @media(max-width:700px){.formGrid,.statGrid{grid-template-columns:1fr}.nav{padding:0 14px}.nav nav{gap:10px;font-size:12px}.table{font-size:13px}.container{padding:24px 14px}}
 select{border:1px solid #cfd6df;border-radius:7px;padding:10px;background:#fff;font:inherit}.orgBadge{display:flex;align-items:center;gap:8px;text-decoration:none;font-size:12px;min-width:0}.orgBadge img,.logoPlaceholder{width:32px;height:32px;border-radius:6px;object-fit:contain;background:#fff;color:#142033;display:flex;align-items:center;justify-content:center;font-weight:700;flex:0 0 auto}.profileLabel{max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.logoPreview{max-width:180px;max-height:100px;object-fit:contain;margin:8px 0 14px}.helpText{display:block;margin-top:5px;font-weight:400;color:#667085}.statusPill{display:inline-block;border-radius:999px;padding:5px 9px;font-size:12px;font-weight:700}.statusPill.active{background:#eaf8ee;color:#24703d}.statusPill.inactive{background:#f1f3f6;color:#667085}.responsiveRow input{flex:1}.responsiveRow select{min-width:180px}@media(max-width:900px){.profileLabel{display:none}.nav nav{gap:12px;overflow-x:auto}.responsiveRow{align-items:stretch;flex-direction:column}}
+
+.richEditor{border:1px solid #cfd6df;border-radius:9px;background:#fff;overflow:hidden;margin-bottom:14px}
+.richToolbar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:8px;background:#f4f6f9;border-bottom:1px solid #dce2ea}
+.richToolbar button{border:1px solid #cfd6df;background:#fff;border-radius:5px;padding:6px 9px;cursor:pointer}
+.richToolbar select{padding:6px}
+.richSurface{min-height:220px;padding:14px;outline:none;line-height:1.5}
+.richSurface.disabled{background:#f8fafc}
+.attachmentGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:16px}
+.attachmentCard{border:1px solid #dce2ea;background:#fff;border-radius:10px;overflow:hidden}
+.attachmentThumb{height:150px;background:#eef2f6;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.attachmentThumb img{width:100%;height:100%;object-fit:contain;background:#fff}
+.attachmentThumb iframe{width:100%;height:100%;border:0;background:#fff;pointer-events:none}
+.fileTile{width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#eef2f7,#dde5ee)}
+.fileExt{font-weight:700;font-size:22px;color:#536273}
+.attachmentMeta{padding:10px;display:flex;flex-direction:column;gap:5px;font-size:13px}
+.attachmentMeta a{font-weight:600;overflow-wrap:anywhere}
+.attachmentMeta span{color:#667085}
+.statusPill{display:inline-block;padding:5px 9px;border-radius:999px;font-size:12px;font-weight:700;background:#eef2f7}
+.statusPill.active{background:#e9f8ee;color:#176b2e}.statusPill.inactive{background:#f5ecec;color:#8a2d2d}

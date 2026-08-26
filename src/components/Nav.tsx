@@ -18,7 +18,7 @@ export async function Nav() {
       <Link className="brand" href="/dashboard">eDekhbhal</Link>
       <nav>
         <Link href="/properties">Properties</Link>
-        <Link href="/work-areas">Work Areas</Link>
+        <Link href="/work-areas">Work Areas</Link><Link href="/tasks">Tasks</Link>
         <Link href="/team">Team</Link>
         <Link href="/organization">Organization</Link>
         <Link href="/audit">Audit Trail</Link>
