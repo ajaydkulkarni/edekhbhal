@@ -10,7 +10,7 @@ export async function POST(req:Request){
   try{
     const data=schema.parse(await req.json());
     const property=await prisma.property.findUnique({where:{id:data.propertyId}});
-    if(!property)return NextResponse.json({error:"Property not found"},{status:404});
+    if(!property)return NextResponse.json({error:"Property not found"},{status:404});if(property.status!=="ACTIVE")return NextResponse.json({error:"Work Areas can only be created under an active Property."},{status:409});
     const {user,membership}=await requireMembership(property.organizationId);
     if(!["ADMIN","PROPERTY_MANAGER"].includes(membership.role))return NextResponse.json({error:"Permission denied"},{status:403});
     const created=await prisma.$transaction(async tx=>{

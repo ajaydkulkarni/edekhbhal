@@ -40,12 +40,15 @@ enum ActionType {
   USER_UPDATED
   USER_DEACTIVATED
   ROLE_CHANGED
+  PROFILE_UPDATED
   PROPERTY_CREATED
   PROPERTY_UPDATED
   PROPERTY_DELETED
+  PROPERTY_REACTIVATED
   WORK_AREA_CREATED
   WORK_AREA_UPDATED
   WORK_AREA_DELETED
+  WORK_AREA_REACTIVATED
   QR_GENERATED
   QR_REPRINTED
   QR_REGENERATED
@@ -139,6 +142,7 @@ model Property {
   postalCode     String?
   country        String?
   timezone       String?
+  status         Status @default(ACTIVE)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
