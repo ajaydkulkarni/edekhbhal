@@ -1,25 +1,43 @@
-# eDekhbhal v0.4.0 — Tasks
+# eDekhbhal v0.5.0
 
-This release introduces organization-level reusable Tasks. The future Schedule module can associate these task definitions with individual Work Areas.
+Schedules release.
 
-## Tasks
-- Tasks belong to the Organization, not a Property or Work Area.
-- ADMIN and PROPERTY_MANAGER can create, edit, inactivate/reactivate Tasks.
-- USER can view Tasks read-only.
-- Task Name accepts a complete sentence (up to 500 characters).
-- Task Description is rich text with bold, italics, underline, bullet/numbered lists and font sizes.
-- Multiple attachments can be added and removed.
-- Images show image thumbnails.
-- PDFs and text files use inline browser previews.
-- Other files show a file-type tile and can be opened/downloaded.
-- All Task and attachment changes are included in the Audit Trail.
+## New Schedules module
 
-## Staging attachment storage
-For v0.4.0, attachments are stored in PostgreSQL as Base64 with a 2 MB-per-file limit. This keeps the staging deployment self-contained and avoids introducing another secret/service configuration during feature development.
+Schedules are organization-scoped planning definitions that connect one Work Area with one or more reusable Tasks.
 
-Before production, move attachment binaries to Supabase Storage (or equivalent object storage) and retain only metadata/storage keys in PostgreSQL.
+Only `ADMIN` and `PROPERTY_MANAGER` can create, edit, duplicate, inactivate, reactivate, or reorder Schedules. `USER` can view them.
 
-## Required database upgrade
-Run `supabase-v0.4.0.sql` in Supabase SQL Editor **after** the v0.3.0 upgrade and before testing Tasks.
+### Schedule fields
+- Schedule Name
+- One Time or Recurring
+- Recurrence builder: every N minutes, hours, days, weeks, months, or years
+- Weekly selected weekdays
+- Monthly selected calendar day(s)
+- Start date/time and Work Area/Property timezone
+- Work Area selector with parent Property always visible
+- One or more organization Tasks
 
-No existing Property, Work Area or QR data is changed by the upgrade.
+### Per-Schedule Task
+- Sequence
+- Planned duration in strict `HH:MM`
+- Automatically calculated first-occurrence Task Start and End
+- Evidence requirement:
+  - None
+  - Photo every performance
+  - Video every performance
+  - Random evidence: 1 in every N performances, with Photo / Video / Either
+
+Reordering Tasks or changing duration recalculates all subsequent planned times immediately.
+
+### Random evidence
+v0.5.0 stores the rule (`1 in N`) and evidence type. The future execution engine will implement randomized sampling across blocks of N performances so evidence is required once per block at a randomized position rather than using an independent probability on every run.
+
+### Audit
+Schedule create, update, inactivate, reactivate and duplicate operations are audit-trailed. Schedule update audit snapshots include frequency, Work Area, ordered Tasks, duration and evidence settings, so task additions/removals/reordering and evidence changes are preserved in old/new values.
+
+## Database upgrade
+Before testing v0.5.0, run `supabase-v0.5.0.sql` in Supabase SQL Editor.
+
+## Existing staging configuration
+Keep the existing Vercel environment variables, including the Supabase pooled `DATABASE_URL` with `pgbouncer=true&connection_limit=1`.

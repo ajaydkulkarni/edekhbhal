@@ -29,6 +29,34 @@ enum SubscriptionStatus {
   CANCELED
   INCOMPLETE
 }
+
+enum ScheduleFrequencyType {
+  ONE_TIME
+  RECURRING
+}
+
+enum ScheduleRecurrenceUnit {
+  MINUTE
+  HOUR
+  DAY
+  WEEK
+  MONTH
+  YEAR
+}
+
+enum EvidenceRule {
+  NONE
+  PHOTO
+  VIDEO
+  RANDOM
+}
+
+enum RandomEvidenceType {
+  PHOTO
+  VIDEO
+  EITHER
+}
+
 enum ActionType {
   LOGIN
   LOGIN_FAILED
@@ -47,6 +75,11 @@ enum ActionType {
   TASK_REACTIVATED
   TASK_ATTACHMENT_ADDED
   TASK_ATTACHMENT_REMOVED
+  SCHEDULE_CREATED
+  SCHEDULE_UPDATED
+  SCHEDULE_INACTIVATED
+  SCHEDULE_REACTIVATED
+  SCHEDULE_DUPLICATED
   PROPERTY_CREATED
   PROPERTY_UPDATED
   PROPERTY_DELETED
@@ -79,6 +112,7 @@ model User {
   magicTokens   MagicLinkToken[]
   tasksCreated  Task[] @relation("TaskCreatedBy")
   attachmentsAdded TaskAttachment[] @relation("TaskAttachmentAddedBy")
+  schedulesCreated Schedule[] @relation("ScheduleCreatedBy")
 }
 
 model Session {
@@ -123,6 +157,7 @@ model Organization {
   subscription Subscription?
   auditLogs    AuditLog[]
   tasks        Task[]
+  schedules    Schedule[]
 }
 
 model OrganizationMember {
@@ -170,6 +205,7 @@ model WorkArea {
   updatedAt          DateTime @updatedAt
   property           Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
   qrCodes            QrCode[]
+  schedules          Schedule[]
   @@index([propertyId])
 }
 
@@ -200,6 +236,7 @@ model Task {
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   createdBy      User @relation("TaskCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
   attachments    TaskAttachment[]
+  scheduleTasks  ScheduleTask[]
   @@index([organizationId, status])
   @@index([organizationId, name])
 }
@@ -216,6 +253,52 @@ model TaskAttachment {
   task          Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
   addedBy       User @relation("TaskAttachmentAddedBy", fields: [addedById], references: [id], onDelete: Restrict)
   @@index([taskId, createdAt])
+}
+
+
+model Schedule {
+  id                 String                @id @default(cuid())
+  organizationId     String
+  name               String                @db.VarChar(500)
+  frequencyType      ScheduleFrequencyType
+  recurrenceUnit     ScheduleRecurrenceUnit?
+  recurrenceInterval Int?
+  recurrenceConfig   Json?
+  startAt            DateTime
+  timezone           String                @db.VarChar(100)
+  workAreaId         String
+  status             Status                @default(ACTIVE)
+  createdById        String
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+  organization       Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  workArea           WorkArea              @relation(fields: [workAreaId], references: [id], onDelete: Restrict)
+  createdBy          User                  @relation("ScheduleCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  scheduleTasks      ScheduleTask[]
+
+  @@index([organizationId, status])
+  @@index([workAreaId, status])
+  @@index([organizationId, startAt])
+}
+
+model ScheduleTask {
+  id                        String             @id @default(cuid())
+  scheduleId                String
+  taskId                    String
+  sequence                  Int
+  durationMinutes           Int
+  plannedStartOffsetMinutes Int
+  plannedEndOffsetMinutes   Int
+  evidenceRule              EvidenceRule       @default(NONE)
+  randomEveryN              Int?
+  randomEvidenceType        RandomEvidenceType?
+  createdAt                 DateTime           @default(now())
+  updatedAt                 DateTime           @updatedAt
+  schedule                  Schedule           @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  task                      Task               @relation(fields: [taskId], references: [id], onDelete: Restrict)
+
+  @@unique([scheduleId, sequence])
+  @@index([taskId])
 }
 
 model Plan {
