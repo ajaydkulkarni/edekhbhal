@@ -23,7 +23,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     const { user, membership } = await requireMembership(old.property.organizationId);
     if (!["ADMIN", "PROPERTY_MANAGER"].includes(membership.role)) return NextResponse.json({ error: "Permission denied" }, { status: 403 });
     const data = schema.parse(await req.json());
-    if (Object.prototype.hasOwnProperty.call(data, "workingHours")) const normalizedWorkingHours = normalizeWorkingHours(data.workingHours); data.workingHours = (normalizedWorkingHours === null ? Prisma.DbNull : normalizedWorkingHours) as any;
+    if (Object.prototype.hasOwnProperty.call(data, "workingHours")) {
+      const normalizedWorkingHours = normalizeWorkingHours(data.workingHours);
+      data.workingHours = (normalizedWorkingHours === null ? Prisma.DbNull : normalizedWorkingHours) as any;
+    }
     const updated = await prisma.$transaction(async tx => {
       const workArea = await tx.workArea.update({ where: { id }, data });
       const action = data.status === "INACTIVE" && old.status !== "INACTIVE" ? "WORK_AREA_DELETED" : data.status === "ACTIVE" && old.status !== "ACTIVE" ? "WORK_AREA_REACTIVATED" : "WORK_AREA_UPDATED";

@@ -29,7 +29,10 @@ export async function PATCH(req: Request) {
     });
     if (!membership || membership.role !== "ADMIN") return NextResponse.json({ error: "Permission denied" }, { status: 403 });
     const data = schema.parse(await req.json());
-    if (Object.prototype.hasOwnProperty.call(data, "workingHours")) const normalizedWorkingHours = normalizeWorkingHours(data.workingHours); data.workingHours = (normalizedWorkingHours === null ? Prisma.DbNull : normalizedWorkingHours) as any;
+    if (Object.prototype.hasOwnProperty.call(data, "workingHours")) {
+      const normalizedWorkingHours = normalizeWorkingHours(data.workingHours);
+      data.workingHours = (normalizedWorkingHours === null ? Prisma.DbNull : normalizedWorkingHours) as any;
+    }
     const old = membership.organization;
     const updated = await prisma.$transaction(async tx => {
       const organization = await tx.organization.update({ where: { id: membership.organizationId }, data });
