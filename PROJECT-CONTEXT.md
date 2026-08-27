@@ -1897,4 +1897,25 @@ Mobile navigation is:
 # End of Canonical Context
 
 When this document conflicts with older chat text, the latest dated/build-specific section in this file is the working context unless the product owner explicitly changes it.
+---
+
+## v0.6.0 Build Hotfix — Canonical Prisma Schema & Root Duplicate Files
+
+The first v0.6.0 Vercel build reached Next.js compilation successfully but failed during TypeScript validation.
+
+Diagnosis from the deployed GitHub tree:
+
+- The repository contains the correct application under `src/` and the correct Prisma schema at `prisma/schema.prisma`.
+- It also contains older flattened duplicate files at the repository root, including files such as `page (6).tsx`, `route (xx).ts`, component copies, and a stale root `schema.prisma`.
+- The default TypeScript glob `**/*.ts` / `**/*.tsx` caused Next.js type checking to include those stale root duplicates.
+- Prisma also selected the stale root `schema.prisma` instead of the canonical `prisma/schema.prisma`, so the generated Prisma Client did not contain newer v0.6.0 fields such as `Organization.claimExpiryMinutes`.
+
+The hotfix therefore makes two defensive changes:
+
+1. `package.json` explicitly uses `prisma/schema.prisma` for Prisma generate/push commands.
+2. `tsconfig.json` type-checks only `src/**/*.ts`, `src/**/*.tsx`, Next generated types, and `next-env.d.ts`; the separate `mobile/` project remains excluded from the Web build.
+
+No Supabase migration or Vercel environment-variable change is required for this hotfix.
+
+Longer-term repository hygiene: the obsolete flattened root duplicates should be deleted from GitHub, but the build no longer depends on that cleanup.
 
