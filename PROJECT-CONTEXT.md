@@ -9,8 +9,8 @@
 > Going forward, this file should be updated with every build/release and kept in the root of the GitHub repository as `PROJECT-CONTEXT.md`.
 
 **Last updated:** 2026-08-27
-**Current application version:** v0.5.2
-**Current deployment status:** v0.5.1 is deployed successfully; v0.5.2 staging Demo Data Admin utility prepared for deployment
+**Current application version:** v0.6.0
+**Current deployment status:** v0.5.x Web staging is operational; v0.6.0 Mobile Execution foundation is prepared for Supabase migration and Vercel/API deployment
 **Current GitHub deployment commit observed in successful Vercel build:** `e6343e1`
 
 ---
@@ -1266,6 +1266,34 @@ Added:
 - Upcoming Generated Occurrences UI
 - Occurrence generation/reconciliation audit events
 
+### v0.5.2
+
+Added:
+
+- Staging-only Admin Demo Data page/API
+- Canonical idempotent demo seed available from deployed Vercel app
+- 6 users, 3 properties, 10 work areas, 15 tasks and 8 varied schedules
+- `DEMO_DATA_ENABLED` staging safeguard
+- Updated canonical `PROJECT-CONTEXT.md` release practice
+
+### v0.6.0
+
+Added:
+
+- Web Logout
+- Organization-configurable Schedule claim expiry
+- Atomic USER occurrence claiming/release/expiry
+- Work Area QR validation to start execution
+- Server-authoritative Schedule and Task timers
+- Sequential Task start/completion workflow
+- Task-level and Schedule-level append-only notes
+- Live camera-only photo/video evidence
+- Private Supabase Storage signed-upload flow
+- Mobile session APIs and USER queue
+- Personal mobile performance report
+- React Native/Expo Android+iOS project under `/mobile`
+- Mobile audit events and v0.6.0 database migration
+
 ---
 
 ## 32. v0.5.1 Deployment Incident & Resolution
@@ -1636,7 +1664,6 @@ After those tests pass:
 
 ---
 
-# End of Canonical Context
 
 When this document conflicts with older chat text, the **latest dated section/build decision in this file** should be treated as the working project context unless the product owner explicitly changes it.
 ---
@@ -1733,4 +1760,141 @@ Environment variable added:
 `DEMO_DATA_ENABLED=false` by default.
 
 This variable must never be automatically enabled in a future production project.
+
+---
+
+## 44. v0.6.0 — Mobile Execution Foundation
+
+The existing Next.js application is formally referred to as the **Web version**. A separate installed **Mobile application** is being built primarily for `USER` role members, with one React Native/Expo codebase designed for both Android and Apple iOS.
+
+The Web real-time Supervisor Dashboard is intentionally parked until the mobile execution workflow is completed and validated. The generated execution data will then feed the Supervisor Dashboard.
+
+### Web change: Logout
+
+A visible Logout action is added to the Web navigation and revokes the current Web Session before returning to Login.
+
+### Organization-level claim expiry
+
+`Organization.claimExpiryMinutes` is introduced, defaulting to 15 minutes and editable by ADMIN. It is deliberately configurable rather than hard-coded.
+
+A claimed occurrence remains `PENDING` with `assignedUserId`, `claimedAt`, and `claimExpiresAt`. If the Work Area QR is not scanned before expiry, the claim is released to the queue. Once QR validation succeeds and execution becomes `IN_PROGRESS`, the claim no longer expires.
+
+### Mobile queue and claim rules
+
+- Mobile execution is currently restricted to active `USER` memberships.
+- Viewing the next ScheduleOccurrence does not claim it.
+- USER presses **Accept / Go to Work Area** to claim.
+- Claim is atomic; a database partial unique index guarantees a USER cannot have two PENDING/IN_PROGRESS assigned occurrences simultaneously.
+- The queue prioritizes the earliest generated unassigned PENDING occurrence.
+- There is **no early-start restriction**. A USER may accept/start any upcoming occurrence already generated into the rolling horizon.
+- Completed occurrences retain `assignedUserId` for historical performance reporting.
+
+### QR start rule
+
+Successful scan must validate:
+
+1. QR record exists and is ACTIVE.
+2. QR belongs to the expected Work Area.
+3. Occurrence belongs to the USER and Organization.
+4. Claim has not expired.
+5. Occurrence is still startable.
+
+Only successful QR validation writes the authoritative server `ScheduleOccurrence.startedAt` and Task 1 `actualStartAt` timestamps.
+
+### Server-authoritative timers
+
+The phone displays elapsed time calculated from server timestamps. The phone clock/timer is not the authoritative performance record.
+
+When a Task completes:
+
+- Task actual end/duration are saved.
+- Next Task immediately becomes IN_PROGRESS and receives a new `actualStartAt`.
+- Task timer therefore resets for the next Task.
+- Overall Schedule timer continues from the original QR scan.
+
+Final Task completion writes Schedule completion time and actual overall duration.
+
+### Evidence
+
+v0.6.0 evidence quantity is one photo or one video per required Task performance. Video maximum is 30 seconds in the mobile capture UI.
+
+The mobile app provides **live camera capture only**. No gallery/image-picker dependency or workflow is included.
+
+Random evidence remains resolved by occurrence generation. Mobile receives concrete `evidenceRequired` and `evidenceTypeRequired` fields and cannot decide the random sampling outcome.
+
+Evidence bytes are uploaded directly to a private Supabase Storage bucket `execution-evidence` using short-lived signed upload URLs. The server verifies object existence, actual Storage size, content type and task/path ownership before inserting `ScheduleOccurrenceEvidence` metadata.
+
+The Supabase server secret/service-role key stays only in Vercel server environment variables and must never be embedded in mobile binaries.
+
+### Task and Schedule notes
+
+New append-only `ScheduleOccurrenceNote` records support:
+
+- `SCHEDULE` scope for overall execution observations.
+- `TASK` scope for Task-specific observations.
+
+Examples include delays, access issues, leaks, damaged equipment or other field observations. Notes include author/time and are audit-trailed. Notes are created during active execution; they are not an editable master-data field.
+
+### New mobile audit actions
+
+- `SCHEDULE_CLAIMED`
+- `SCHEDULE_CLAIM_RELEASED`
+- `SCHEDULE_CLAIM_EXPIRED`
+- `SCHEDULE_EXECUTION_STARTED`
+- `TASK_EXECUTION_STARTED`
+- `TASK_EXECUTION_COMPLETED`
+- `SCHEDULE_EXECUTION_COMPLETED`
+- `TASK_NOTE_ADDED`
+- `SCHEDULE_NOTE_ADDED`
+- `EVIDENCE_CAPTURED`
+- `MOBILE_SESSION_CREATED`
+
+### Mobile authentication
+
+Mobile reuses the eDekhbhal email identity model and opaque Session tokens. Tokens are kept in encrypted device SecureStore. Staging supports a Development Sign In flow because outbound email/mobile deep-link delivery is not yet connected. Production email OTP/deep-link delivery remains a pre-public-release task.
+
+### Mobile application technology
+
+The `/mobile` project uses React Native with Expo/Expo Router and is designed for Android and iOS. It includes:
+
+- camera QR scanning;
+- camera photo/video evidence;
+- encrypted session storage;
+- task/schedule timers;
+- rich HTML Task instructions;
+- notes;
+- My Work queue;
+- personal performance report;
+- profile/logout.
+
+Mobile navigation is:
+
+`My Work | Scan | Report | Profile`
+
+### New server environment variables
+
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY` (server-only secret)
+- `EVIDENCE_BUCKET=execution-evidence`
+- optional `MOBILE_DEV_AUTH_ENABLED`
+
+### v0.6.0 database migration
+
+`supabase-v0.6.0.sql` adds claim fields, actual duration seconds, Organization claim expiry, occurrence notes, mobile audit enums, concurrency indexes and the private evidence Storage bucket.
+
+### Current next steps after v0.6.0 deploy
+
+1. Run the Supabase v0.6.0 SQL migration.
+2. Add the server-only Supabase Storage variables to Vercel.
+3. Deploy Web/API v0.6.0 and validate the Vercel build.
+4. Produce an internal Android preview build with Expo EAS and test on a physical device.
+5. Configure iOS signing/internal distribution/TestFlight and test on a physical iPhone.
+6. Complete mobile workflow hardening based on field tests.
+7. Return to the Web version and build the real-time Supervisor Dashboard over ScheduleOccurrence execution data.
+
+---
+
+# End of Canonical Context
+
+When this document conflicts with older chat text, the latest dated/build-specific section in this file is the working context unless the product owner explicitly changes it.
 

@@ -1,6 +1,6 @@
 {
   "name": "edekhbhal",
-  "version": "0.5.2",
+  "version": "0.6.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -18,7 +18,8 @@
     "qrcode": "^1.5.4",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
-    "zod": "^4.0.17"
+    "zod": "^4.0.17",
+    "@supabase/supabase-js": "^2.105.0"
   },
   "devDependencies": {
     "@types/node": "^24.3.0",
