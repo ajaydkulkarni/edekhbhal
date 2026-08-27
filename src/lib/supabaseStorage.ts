@@ -49,14 +49,25 @@ export async function evidenceObjectExists(path: string) {
   return Boolean(data);
 }
 
-export async function getEvidenceObjectInfo(path: string) {
+export async function getEvidenceObjectInfo(
+  path: string
+): Promise<{ size: number; contentType: string | null }> {
   const { data, error } = await client()
     .storage
     .from(EVIDENCE_BUCKET)
     .info(path);
-  if (error || !data) throw new Error(error?.message ?? "Unable to inspect evidence upload.");
+
+  if (error || !data) {
+    throw new Error(error?.message ?? "Unable to inspect evidence upload.");
+  }
+
+  const size = data.size;
+  if (typeof size !== "number" || !Number.isFinite(size) || size <= 0) {
+    throw new Error("Unable to determine a valid evidence file size.");
+  }
+
   return {
-    size: data.size,
+    size,
     contentType: data.contentType ?? null
   };
 }
