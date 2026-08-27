@@ -19,7 +19,9 @@
       "package": "com.edekhbhal.mobile",
       "permissions": [
         "CAMERA",
-        "RECORD_AUDIO"
+        "RECORD_AUDIO",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
       ]
     },
     "plugins": [
@@ -35,7 +37,12 @@
       "expo-secure-store"
     ],
     "extra": {
-      "apiUrl": "https://edekhbhal-staging.vercel.app"
-    }
+      "apiUrl": "https://edekhbhal-staging.vercel.app",
+      "router": {},
+      "eas": {
+        "projectId": "03092aca-28a2-433b-959e-72e3c6e1cccb"
+      }
+    },
+    "owner": "ajayimagine"
   }
 }
