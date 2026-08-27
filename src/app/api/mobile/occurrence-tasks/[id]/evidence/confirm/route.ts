@@ -91,6 +91,13 @@ export async function POST(
     const objectInfo = await getEvidenceObjectInfo(input.storagePath);
     const actualSize = objectInfo.size;
     const sizeLimit = input.type === "PHOTO" ? MAX_PHOTO_BYTES : MAX_VIDEO_BYTES;
+    if (!Number.isFinite(actualSize) || actualSize <= 0) {
+      throw new MobileApiError(
+        409,
+        "INVALID_UPLOAD",
+        "The uploaded evidence file size could not be verified. Please capture it again."
+      );
+    }
     if (actualSize > sizeLimit) {
       throw new MobileApiError(413, "FILE_TOO_LARGE", "Captured evidence exceeds the allowed file size.");
     }
