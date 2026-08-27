@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { Nav } from "@/components/Nav";
 import { WorkAreaManager } from "@/components/WorkAreaManager";
 import { PropertyEditor } from "@/components/PropertyEditor";
+import { WorkingHoursEditor } from "@/components/WorkingHoursEditor";
 import { getSessionUser } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 
@@ -18,6 +19,7 @@ export default async function PropertyDetail({params}:{params:Promise<{id:string
   return <><Nav/><main className="container">
     <div className="breadcrumbs"><Link href="/properties">Properties</Link> / {property.name}</div>
     <h1>{property.name}</h1><p className="muted">Parent Organization: {property.organization.name}</p><PropertyEditor property={property} canManage={canManage}/>
+    <WorkingHoursEditor title="Property Working Hours" endpoint={`/api/properties/${property.id}`} value={property.workingHours} canEdit={canManage} inheritLabel={`Organization (${property.organization.name})`} />
     <div className="card" style={{marginBottom:24}}>
       <strong>Address</strong><p className="muted">{[property.addressLine1,property.addressLine2,property.addressLine3,property.city,property.state,property.postalCode,property.country].filter(Boolean).join(", ")||"No address entered"}</p>
       <strong>Time Zone</strong><p className="muted">{property.timezone||property.organization.timezone}</p>

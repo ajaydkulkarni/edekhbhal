@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireMembership } from "@/lib/session";
 import { audit } from "@/lib/audit";
+import { reconcileScheduleOccurrences } from "@/lib/occurrenceGenerator";
 
 export async function POST(_: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -38,6 +39,7 @@ export async function POST(_: Request, { params }: { params: Promise<{ id: strin
           recurrenceInterval: source.recurrenceInterval,
           recurrenceConfig: source.recurrenceConfig ?? Prisma.JsonNull,
           startAt: source.startAt,
+          endDate: source.endDate,
           timezone: source.timezone,
           workAreaId: source.workAreaId,
           createdById: user.id
@@ -70,6 +72,7 @@ export async function POST(_: Request, { params }: { params: Promise<{ id: strin
       return schedule;
     });
 
+    await reconcileScheduleOccurrences(copy.id, { userId: user.id, reason: "edit" });
     return NextResponse.json({ schedule: copy });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "Unable to duplicate Schedule." }, { status: 400 });

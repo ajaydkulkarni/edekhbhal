@@ -1,43 +1,42 @@
-# eDekhbhal v0.5.0
+# eDekhbhal v0.5.1
 
-Schedules release.
+This release extends Schedules with a recurring End Date, hierarchical Working Hours, and the database/generation foundation for real-time Schedule execution.
 
-## New Schedules module
+## Recurring Schedule End Date
+Recurring Schedules now have an optional End Date. If entered, the Schedule remains eligible through 11:59 PM on that calendar date in the Schedule/Work Area timezone. A blank End Date means the recurrence has no date-based end.
 
-Schedules are organization-scoped planning definitions that connect one Work Area with one or more reusable Tasks.
+## Working Hours hierarchy
+Working hours can be defined at:
+1. Organization
+2. Property (inherit Organization or override)
+3. Work Area (inherit Property or override)
 
-Only `ADMIN` and `PROPERTY_MANAGER` can create, edit, duplicate, inactivate, reactivate, or reorder Schedules. `USER` can view them.
+Organization `workingHours = null` means unrestricted / 24x7. At Property and Work Area levels, `null` means inherit. Multiple working windows per weekday and overnight windows such as 22:00-06:00 are supported.
 
-### Schedule fields
-- Schedule Name
-- One Time or Recurring
-- Recurrence builder: every N minutes, hours, days, weeks, months, or years
-- Weekly selected weekdays
-- Monthly selected calendar day(s)
-- Start date/time and Work Area/Property timezone
-- Work Area selector with parent Property always visible
-- One or more organization Tasks
+Occurrence generation uses the effective Work Area hours. It creates an occurrence only if the *entire planned Schedule* fits inside an open working-hours window.
 
-### Per-Schedule Task
-- Sequence
-- Planned duration in strict `HH:MM`
-- Automatically calculated first-occurrence Task Start and End
-- Evidence requirement:
-  - None
-  - Photo every performance
-  - Video every performance
-  - Random evidence: 1 in every N performances, with Photo / Video / Either
+## ScheduleOccurrence foundation
+The following tables are added:
+- `ScheduleOccurrence`: one immutable planned occurrence of a Schedule.
+- `ScheduleOccurrenceTask`: snapshots the ordered Tasks, descriptions, planned times, durations, and evidence decision for that occurrence.
+- `ScheduleOccurrenceEvidence`: future mobile evidence records pointing to external storage paths/thumbnails.
 
-Reordering Tasks or changing duration recalculates all subsequent planned times immediately.
+Completed/in-progress execution records are never regenerated. Future PENDING occurrences are reconciled when a Schedule definition changes.
 
-### Random evidence
-v0.5.0 stores the rule (`1 in N`) and evidence type. The future execution engine will implement randomized sampling across blocks of N performances so evidence is required once per block at a randomized position rather than using an independent probability on every run.
+## Random evidence
+For a Schedule Task configured as `1 in N`, each occurrence stores a concrete `evidenceRequired` decision. The generator deterministically chooses one position within each block of N performances, avoiding long random gaps while keeping the selected position unpredictable to the normal user workflow.
 
-### Audit
-Schedule create, update, inactivate, reactivate and duplicate operations are audit-trailed. Schedule update audit snapshots include frequency, Work Area, ordered Tasks, duration and evidence settings, so task additions/removals/reordering and evidence changes are preserved in old/new values.
+## Rolling occurrence generator
+`/api/cron/schedule-occurrences` generates/reconciles a 48-hour rolling horizon. `vercel-cron.example.json` contains a three-times-daily example (00:15, 08:15, and 16:15 UTC). It is deliberately not activated as `vercel.json`, because Vercel Cron frequency/availability depends on the Vercel plan. Schedule create/edit still triggers immediate generation/reconciliation, so newly created Schedules do not wait for the next batch. After confirming the project plan, copy/merge the example cron entries into the project’s active Vercel configuration, or call the protected endpoint from another scheduler.
 
-## Database upgrade
-Before testing v0.5.0, run `supabase-v0.5.0.sql` in Supabase SQL Editor.
+Set a private Vercel environment variable named `CRON_SECRET`. The endpoint requires `Authorization: Bearer <CRON_SECRET>`.
 
-## Existing staging configuration
-Keep the existing Vercel environment variables, including the Supabase pooled `DATABASE_URL` with `pgbouncer=true&connection_limit=1`.
+## Audit
+Occurrence generation/reconciliation is audit-trailed with generated/skipped counts and generation horizon. Schedule edits continue to retain old/new snapshots.
+
+## Upgrade order
+1. Run `supabase-v0.5.1.sql` in Supabase SQL Editor.
+2. Add `CRON_SECRET` in Vercel environment variables.
+3. Upload/deploy the v0.5.1 code.
+4. Configure a scheduler to call the protected occurrence endpoint up to three times daily (the included Vercel example can be activated if supported by your Vercel plan).
+5. Test Organization → Property → Work Area working-hours inheritance and create a recurring Schedule with an End Date.

@@ -37,6 +37,7 @@ type InitialSchedule = {
   recurrenceConfig: { weekdays?: number[]; monthDays?: number[] } | null;
   startLocal: string;
   timezone: string;
+  endDate: string | null;
   workAreaId: string;
   status: string;
   items: ScheduleItem[];
@@ -104,6 +105,7 @@ export function ScheduleEditor({
   const [workAreaId, setWorkAreaId] = useState(initial?.workAreaId ?? (workAreas.find((w) => w.status === "ACTIVE" && w.propertyStatus === "ACTIVE")?.id ?? ""));
   const selectedWorkArea = workAreas.find((w) => w.id === workAreaId);
   const [startLocal, setStartLocal] = useState(initial?.startLocal ?? "");
+  const [endDate, setEndDate] = useState(initial?.endDate ?? "");
   const [items, setItems] = useState<ScheduleItem[]>(initial?.items ?? []);
   const [taskToAdd, setTaskToAdd] = useState("");
   const [error, setError] = useState("");
@@ -186,6 +188,7 @@ export function ScheduleEditor({
         recurrenceInterval: frequencyType === "RECURRING" ? Number(recurrenceInterval) : null,
         recurrenceConfig,
         startLocal,
+        endDate: frequencyType === "RECURRING" ? (endDate || null) : null,
         timezone: selectedWorkArea?.timezone || initial?.timezone || "UTC",
         workAreaId,
         tasks: items.map((item, index) => ({
@@ -268,6 +271,7 @@ export function ScheduleEditor({
           <input type="datetime-local" value={startLocal} onChange={(e) => setStartLocal(e.target.value)} disabled={!canManage} />
           <small className="muted">Time zone: {selectedWorkArea?.timezone || initial?.timezone || "UTC"}</small>
         </label>
+        {frequencyType === "RECURRING" && <label>Schedule End Date (optional)<input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} disabled={!canManage}/><small className="muted">If entered, the recurring Schedule remains eligible through 11:59 PM on this date in the Work Area time zone.</small></label>}
       </div>
 
       {frequencyType === "RECURRING" && <div className="recurrenceBox">

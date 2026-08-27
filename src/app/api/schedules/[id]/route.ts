@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { requireMembership } from "@/lib/session";
 import { audit } from "@/lib/audit";
 import { buildOffsets, durationToMinutes, zonedLocalToUtc } from "@/lib/schedule";
+import { reconcileScheduleOccurrences } from "@/lib/occurrenceGenerator";
 
 const taskSchema = z.object({
   taskId: z.string().min(1),
@@ -25,6 +26,7 @@ const fullSchema = z.object({
     monthDays: z.array(z.number().int().min(1).max(31)).optional()
   }).nullable().optional(),
   startLocal: z.string(),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
   timezone: z.string().min(1).max(100),
   workAreaId: z.string().min(1),
   tasks: z.array(taskSchema).min(1)
@@ -40,6 +42,7 @@ function snapshot(schedule: any) {
     recurrenceInterval: schedule.recurrenceInterval,
     recurrenceConfig: schedule.recurrenceConfig,
     startAt: schedule.startAt instanceof Date ? schedule.startAt.toISOString() : schedule.startAt,
+    endDate: schedule.endDate instanceof Date ? schedule.endDate.toISOString().slice(0,10) : schedule.endDate,
     timezone: schedule.timezone,
     workAreaId: schedule.workAreaId,
     status: schedule.status,
@@ -87,6 +90,11 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         }, tx);
         return s;
       });
+      if (status === "INACTIVE") await prisma.scheduleOccurrence.updateMany({ where: { scheduleId: id, status: "PENDING", scheduledStartAt: { gt: new Date() } }, data: { status: "CANCELED" } });
+      if (status === "ACTIVE") {
+        await prisma.scheduleOccurrence.deleteMany({ where: { scheduleId: id, status: "CANCELED", scheduledStartAt: { gt: new Date() } } });
+        await reconcileScheduleOccurrences(id, { userId: user.id, reason: "edit" });
+      }
       return NextResponse.json({ schedule: updated });
     }
 
@@ -113,6 +121,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     const durations = input.tasks.map((x) => durationToMinutes(x.duration));
     const offsets = buildOffsets(durations);
     const startAt = zonedLocalToUtc(input.startLocal, input.timezone);
+    const endDate = input.frequencyType === "RECURRING" && input.endDate ? new Date(`${input.endDate}T00:00:00.000Z`) : null;
+    if (endDate && input.endDate! < input.startLocal.slice(0,10)) return NextResponse.json({ error: "Schedule End Date cannot be before the Start Date." }, { status: 400 });
 
     const updated = await prisma.$transaction(async (tx) => {
       const schedule = await tx.schedule.update({
@@ -124,6 +134,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
           recurrenceInterval: input.frequencyType === "RECURRING" ? input.recurrenceInterval : null,
           recurrenceConfig: input.frequencyType === "RECURRING" && input.recurrenceConfig ? input.recurrenceConfig : Prisma.JsonNull,
           startAt,
+          endDate,
+          occurrenceGeneratedThrough: null,
           timezone: input.timezone,
           workAreaId: input.workAreaId
         }
@@ -160,6 +172,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       return schedule;
     });
 
+    await prisma.scheduleOccurrence.deleteMany({ where: { scheduleId: id, status: "PENDING", scheduledStartAt: { gt: new Date() } } });
+    await reconcileScheduleOccurrences(id, { userId: user.id, reason: "edit" });
     return NextResponse.json({ schedule: updated });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "Unable to update Schedule." }, { status: 400 });

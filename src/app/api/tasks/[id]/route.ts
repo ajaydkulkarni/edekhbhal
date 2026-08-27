@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireMembership } from "@/lib/session";
 import { audit } from "@/lib/audit";
 import { sanitizeRichText } from "@/lib/richText";
+import { reconcileScheduleOccurrences } from "@/lib/occurrenceGenerator";
 
 const schema = z.object({
   name: z.string().trim().min(2).max(500).optional(),
@@ -45,6 +46,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       }, tx);
       return task;
     });
+    const scheduleLinks = await prisma.scheduleTask.findMany({ where: { taskId: id, schedule: { status: "ACTIVE" } }, select: { scheduleId: true } });
+    for (const link of scheduleLinks) await reconcileScheduleOccurrences(link.scheduleId, { userId: user.id, reason: "edit" });
     return NextResponse.json({ task: updated });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "Unable to update task" }, { status: 400 });

@@ -28,7 +28,8 @@ export default async function ScheduleDetailPage({ params }: { params: Promise<{
     where: { id },
     include: {
       workArea: { include: { property: true } },
-      scheduleTasks: { include: { task: true }, orderBy: { sequence: "asc" } }
+      scheduleTasks: { include: { task: true }, orderBy: { sequence: "asc" } },
+      occurrences: { where: { scheduledStartAt: { gte: new Date() } }, include: { tasks: true }, orderBy: { scheduledStartAt: "asc" }, take: 20 }
     }
   });
   if (!schedule) notFound();
@@ -58,6 +59,7 @@ export default async function ScheduleDetailPage({ params }: { params: Promise<{
     recurrenceConfig: (schedule.recurrenceConfig ?? null) as { weekdays?: number[]; monthDays?: number[] } | null,
     startLocal: localInputValue(schedule.startAt, schedule.timezone),
     timezone: schedule.timezone,
+    endDate: schedule.endDate ? schedule.endDate.toISOString().slice(0,10) : null,
     workAreaId: schedule.workAreaId,
     status: schedule.status,
     items: schedule.scheduleTasks.map((item) => ({
@@ -88,5 +90,10 @@ export default async function ScheduleDetailPage({ params }: { params: Promise<{
     </div></div>
     <p className="muted">First occurrence: {formatInZone(schedule.startAt, schedule.timezone)} ({schedule.timezone})</p>
     <ScheduleEditor canManage={canManage} workAreas={waOptions} tasks={taskOptions} initial={initial as any}/>
+    <div style={{marginTop:32}}><h2>Upcoming Generated Occurrences</h2><p className="muted">These rows are pre-generated from the Schedule definition and will be the execution records used by the mobile module and Supervisor dashboard.</p></div>
+    <div className="card"><table className="table"><thead><tr><th>Planned Start</th><th>Planned End</th><th>Tasks</th><th>Evidence Checks</th><th>Status</th></tr></thead><tbody>
+      {schedule.occurrences.map(o=><tr key={o.id}><td>{formatInZone(o.scheduledStartAt,o.timezone)}</td><td>{formatInZone(o.scheduledEndAt,o.timezone)}</td><td>{o.tasks.length}</td><td>{o.tasks.filter(t=>t.evidenceRequired).length}</td><td>{o.status}</td></tr>)}
+      {!schedule.occurrences.length&&<tr><td colSpan={5} className="muted">No upcoming occurrences have been generated. Check the Schedule dates, effective working hours, and occurrence-generator setup.</td></tr>}
+    </tbody></table></div>
   </main></>;
 }

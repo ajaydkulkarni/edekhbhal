@@ -40,7 +40,7 @@ export default async function SchedulesPage() {
             const total = schedule.scheduleTasks.reduce((sum, item) => sum + item.durationMinutes, 0);
             return <tr key={schedule.id}>
               <td style={{ maxWidth: 300 }}><strong>{schedule.name}</strong></td>
-              <td>{recurrenceLabel(schedule as any)}</td>
+              <td>{recurrenceLabel(schedule as any)}{schedule.frequencyType === "RECURRING" && <><br/><span className="muted">Ends: {schedule.endDate ? schedule.endDate.toISOString().slice(0,10) : "No end date"}</span></>}</td>
               <td>{formatInZone(schedule.startAt, schedule.timezone)}<br/><span className="muted">{schedule.timezone}</span></td>
               <td><strong>{schedule.workArea.name}</strong><br/><span className="muted">{schedule.workArea.property.name}</span></td>
               <td>{schedule.scheduleTasks.length}</td>

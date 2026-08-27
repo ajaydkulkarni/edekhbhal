@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { requireUser } from "@/lib/session";
 import { audit } from "@/lib/audit";
 import { buildOffsets, durationToMinutes, zonedLocalToUtc } from "@/lib/schedule";
+import { reconcileScheduleOccurrences } from "@/lib/occurrenceGenerator";
 
 const scheduleTaskSchema = z.object({
   taskId: z.string().min(1),
@@ -25,6 +26,7 @@ const schema = z.object({
     monthDays: z.array(z.number().int().min(1).max(31)).optional()
   }).nullable().optional(),
   startLocal: z.string(),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
   timezone: z.string().min(1).max(100),
   workAreaId: z.string().min(1),
   tasks: z.array(scheduleTaskSchema).min(1)
@@ -60,6 +62,8 @@ export async function POST(req: Request) {
     const durations = input.tasks.map((x) => durationToMinutes(x.duration));
     const offsets = buildOffsets(durations);
     const startAt = zonedLocalToUtc(input.startLocal, input.timezone);
+    const endDate = input.frequencyType === "RECURRING" && input.endDate ? new Date(`${input.endDate}T00:00:00.000Z`) : null;
+    if (endDate && input.endDate! < input.startLocal.slice(0,10)) return NextResponse.json({ error: "Schedule End Date cannot be before the Start Date." }, { status: 400 });
 
     const schedule = await prisma.$transaction(async (tx) => {
       const created = await tx.schedule.create({
@@ -71,6 +75,7 @@ export async function POST(req: Request) {
           recurrenceInterval: input.frequencyType === "RECURRING" ? input.recurrenceInterval : null,
           recurrenceConfig: input.frequencyType === "RECURRING" && input.recurrenceConfig ? input.recurrenceConfig : Prisma.JsonNull,
           startAt,
+          endDate,
           timezone: input.timezone,
           workAreaId: input.workAreaId,
           createdById: user.id
@@ -107,6 +112,7 @@ export async function POST(req: Request) {
           recurrenceInterval: created.recurrenceInterval,
           recurrenceConfig: input.recurrenceConfig ?? null,
           startAt: created.startAt.toISOString(),
+          endDate: created.endDate?.toISOString().slice(0,10) ?? null,
           timezone: created.timezone,
           workAreaId: created.workAreaId,
           status: created.status,
@@ -116,6 +122,7 @@ export async function POST(req: Request) {
       return created;
     });
 
+    await reconcileScheduleOccurrences(schedule.id, { userId: user.id, reason: "edit" });
     return NextResponse.json({ schedule });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "Unable to create Schedule." }, { status: 400 });
