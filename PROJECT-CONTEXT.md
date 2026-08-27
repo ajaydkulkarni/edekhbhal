@@ -9,8 +9,8 @@
 > Going forward, this file should be updated with every build/release and kept in the root of the GitHub repository as `PROJECT-CONTEXT.md`.
 
 **Last updated:** 2026-08-27
-**Current application version:** v0.5.1  
-**Current deployment status:** Successfully built and deployed on Vercel after v0.5.1 syntax hotfix  
+**Current application version:** v0.5.2
+**Current deployment status:** v0.5.1 is deployed successfully; v0.5.2 staging Demo Data Admin utility prepared for deployment
 **Current GitHub deployment commit observed in successful Vercel build:** `e6343e1`
 
 ---
@@ -1679,4 +1679,58 @@ On re-run, seeded Schedule definitions are reset to their canonical demo values.
 Demo login emails use the existing magic-link flow and are documented in `SEED-DEMO.md`. No demo passwords are created.
 
 This is a staging/test convenience and should not be wired to run automatically on every production deployment.
+---
+
+## 43. v0.5.2 — Vercel/Supabase Demo Data Admin Utility
+
+Because the project owner does not maintain a local Node/Prisma environment, the preferred staging
+demo-data workflow is now a protected web utility hosted inside the deployed Vercel application.
+
+New route:
+
+`/admin/demo-data`
+
+New API:
+
+`POST /api/admin/demo-data`
+
+The feature is available only when all applicable safeguards pass:
+
+1. `DEMO_DATA_ENABLED=true`
+2. Deployment identifies as the known staging host `edekhbhal-staging.vercel.app`
+3. User is authenticated
+4. User has an active `ADMIN` Organization membership
+5. Browser request originates from `APP_URL` when Origin is present
+6. User explicitly types the confirmation word `POPULATE`
+
+The server-side utility uses Vercel's existing `DATABASE_URL` and writes directly to the Supabase
+staging PostgreSQL database. No local environment or CLI is required.
+
+The seed remains idempotent and canonical:
+
+- 1 Demo Organization
+- 6 Users
+- 3 Properties
+- 10 Work Areas
+- QR records
+- 15 Tasks
+- 8 varied Schedules
+- 48-hour rolling ScheduleOccurrence generation
+
+On refresh, only future `PENDING` occurrences for seeded demo Schedules are reconciled. Historical,
+`IN_PROGRESS`, and completed execution records are preserved.
+
+The web populate/refresh operation is audit-trailed. To avoid a database migration solely for this
+staging utility, the audit uses existing `ActionType.ORGANIZATION_UPDATED` with:
+
+- `entityType = DemoDataSeed`
+- `metadata.operation = DEMO_DATA_POPULATED`
+
+A future schema release may introduce a dedicated demo-data audit action if desired.
+
+Environment variable added:
+
+`DEMO_DATA_ENABLED=false` by default.
+
+This variable must never be automatically enabled in a future production project.
 

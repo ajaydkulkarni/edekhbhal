@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getSessionUser } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
+import { isDemoDataEnabled } from "@/lib/demoDataAccess";
 
 export async function Nav() {
   const user = await getSessionUser();
@@ -23,6 +24,7 @@ export async function Nav() {
         <Link href="/organization">Organization</Link>
         <Link href="/audit">Audit Trail</Link>
         <Link href="/subscription">Subscription</Link>
+        {membership?.role === "ADMIN" && isDemoDataEnabled() && <Link href="/admin/demo-data">Demo Data</Link>}
       </nav>
       <Link className="orgBadge" href="/profile" title="My Profile">
         {membership?.organization.logoUrl ? (

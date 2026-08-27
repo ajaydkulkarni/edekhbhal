@@ -1,4 +1,4 @@
-# eDekhbhal v0.5.1
+# eDekhbhal v0.5.2
 
 This release extends Schedules with a recurring End Date, hierarchical Working Hours, and the database/generation foundation for real-time Schedule execution.
 
@@ -40,3 +40,12 @@ Occurrence generation/reconciliation is audit-trailed with generated/skipped cou
 3. Upload/deploy the v0.5.1 code.
 4. Configure a scheduler to call the protected occurrence endpoint up to three times daily (the included Vercel example can be activated if supported by your Vercel plan).
 5. Test Organization → Property → Work Area working-hours inheritance and create a recurring Schedule with an End Date.
+
+
+## v0.5.2 — Staging Demo Data Admin utility
+
+Adds a staging-only `/admin/demo-data` page. When `DEMO_DATA_ENABLED=true` is set in the
+eDekhbhal staging Vercel project, an authenticated Admin can populate/refresh the canonical
+demo dataset directly from the deployed application. No local Node/Prisma environment is required.
+
+No database migration is required for v0.5.2.

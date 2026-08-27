@@ -74,3 +74,29 @@ The users are created with verified email flags and use the application's existi
 - `demo.worker2@edekhbhal.test`
 
 No passwords are created or stored by the seed.
+## Preferred staging method: Vercel Admin page
+
+No local development environment is required.
+
+1. In Vercel → Project Settings → Environment Variables, add:
+   - `DEMO_DATA_ENABLED=true`
+   - Enable it for the staging Production environment.
+2. Redeploy the staging application.
+3. Login to eDekhbhal with an existing `ADMIN` account.
+4. Open `/admin/demo-data` (the **Demo Data** nav item is visible to Admins when enabled).
+5. Type `POPULATE`.
+6. Click **Populate Demo Data** or **Refresh Demo Data**.
+
+The API runs inside Vercel and uses the existing Vercel `DATABASE_URL` to populate Supabase.
+
+Defense in depth:
+- Requires an authenticated `ADMIN`.
+- Requires `DEMO_DATA_ENABLED=true`.
+- Requires the application host to identify as `edekhbhal-staging.vercel.app`.
+- Requires the confirmation word `POPULATE`.
+- Rejects cross-origin browser POSTs when `APP_URL` is present.
+
+The web action is audit-trailed. To avoid a database schema migration solely for this staging utility,
+the audit uses the existing `ORGANIZATION_UPDATED` action with `entityType=DemoDataSeed` and
+`metadata.operation=DEMO_DATA_POPULATED`.
+

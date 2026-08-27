@@ -35,3 +35,13 @@ select{border:1px solid #cfd6df;border-radius:7px;padding:10px;background:#fff;f
 @media(max-width:800px){.scheduleSummary{flex-direction:column}.scheduleSummary>div{min-width:0}.randomEvidence{grid-template-columns:1fr}}
 
 .workingHoursCard{margin-top:24px;margin-bottom:24px}.workingHoursGrid{display:grid;gap:10px;margin:16px 0}.workingDay{display:grid;grid-template-columns:130px 1fr auto;gap:12px;align-items:start;padding:10px 0;border-bottom:1px solid #edf0f4}.workingDay input[type=time]{width:120px}.workingDay .row{margin-bottom:6px}@media(max-width:760px){.workingDay{grid-template-columns:1fr}.workingDay input[type=time]{width:100%}}
+
+
+.demoStats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin:18px 0}
+.demoStats>div{border:1px solid #dde3eb;border-radius:10px;padding:14px;background:#f8fafc;display:flex;flex-direction:column;gap:4px}
+.demoStats span{font-size:24px;font-weight:700}
+.notice{border-radius:10px;padding:14px 16px;margin:16px 0;border:1px solid #d7dde6}
+.notice p:last-child{margin-bottom:0}
+.notice.warning{background:#fffaf0}
+.notice.success{background:#f2fbf4}
+.demoDataPage code{word-break:break-word}
