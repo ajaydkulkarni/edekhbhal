@@ -1918,4 +1918,18 @@ The hotfix therefore makes two defensive changes:
 No Supabase migration or Vercel environment-variable change is required for this hotfix.
 
 Longer-term repository hygiene: the obsolete flattened root duplicates should be deleted from GitHub, but the build no longer depends on that cleanup.
+---
+
+## v0.6.0 Build Hotfix 2 — Supabase Evidence Object Size Type
+
+After the canonical Prisma-schema / TypeScript-scope hotfix, Vercel correctly loaded
+`prisma/schema.prisma` and compiled the Next.js application. Type checking then exposed
+a stricter issue in the evidence-confirmation endpoint: Supabase Storage metadata types
+allow an object's `size` to be undefined.
+
+The fix makes `getEvidenceObjectInfo()` validate the Storage metadata and return a strict
+numeric `size`. The evidence confirmation route also keeps a defensive runtime validation
+before enforcing photo/video size limits.
+
+No database migration or Vercel environment-variable change is required for this hotfix.
 
