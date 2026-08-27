@@ -1,0 +1,7 @@
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { prisma } from "@/lib/prisma";
+import { requireUser } from "@/lib/session";
+import { audit } from "@/lib/audit";
+const schema=z.object({email:z.string().email().transform(v=>v.toLowerCase().trim()),role:z.enum(["ADMIN","PROPERTY_MANAGER","USER"])});
+export async function POST(req:Request){try{const actor=await requireUser();const membership=await prisma.organizationMember.findFirst({where:{userId:actor.id,status:"ACTIVE"}});if(!membership||membership.role!=="ADMIN")return NextResponse.json({error:"Permission denied"},{status:403});const data=schema.parse(await req.json());const member=await prisma.$transaction(async tx=>{const user=await tx.user.upsert({where:{email:data.email},update:{active:true},create:{email:data.email}});const result=await tx.organizationMember.upsert({where:{organizationId_userId:{organizationId:membership.organizationId,userId:user.id}},update:{role:data.role,status:"ACTIVE"},create:{organizationId:membership.organizationId,userId:user.id,role:data.role,status:"ACTIVE"}});await audit({organizationId:membership.organizationId,userId:actor.id,action:"USER_INVITED",entityType:"OrganizationMember",entityId:result.id,newValue:{email:user.email,role:result.role,status:result.status}},tx);return result});return NextResponse.json({member})}catch(e){return NextResponse.json({error:e instanceof Error?e.message:"Unable to add user"},{status:400})}}

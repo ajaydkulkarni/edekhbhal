@@ -1,0 +1,462 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum MembershipRole {
+  ADMIN
+  PROPERTY_MANAGER
+  USER
+}
+enum Status {
+  ACTIVE
+  INACTIVE
+  PENDING
+  REVOKED
+}
+enum AuditResult {
+  SUCCESS
+  FAILURE
+}
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  INCOMPLETE
+}
+
+enum ScheduleFrequencyType {
+  ONE_TIME
+  RECURRING
+}
+
+enum ScheduleRecurrenceUnit {
+  MINUTE
+  HOUR
+  DAY
+  WEEK
+  MONTH
+  YEAR
+}
+
+enum EvidenceRule {
+  NONE
+  PHOTO
+  VIDEO
+  RANDOM
+}
+
+enum RandomEvidenceType {
+  PHOTO
+  VIDEO
+  EITHER
+}
+
+enum EvidenceCaptureType {
+  PHOTO
+  VIDEO
+}
+
+enum ScheduleOccurrenceStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  PARTIALLY_COMPLETED
+  MISSED
+  CANCELED
+}
+
+enum ScheduleOccurrenceTaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  SKIPPED
+  FAILED
+  MISSED
+}
+
+enum ActionType {
+  LOGIN
+  LOGIN_FAILED
+  LOGOUT
+  MAGIC_LINK_REQUESTED
+  ORGANIZATION_CREATED
+  ORGANIZATION_UPDATED
+  USER_INVITED
+  USER_UPDATED
+  USER_DEACTIVATED
+  ROLE_CHANGED
+  PROFILE_UPDATED
+  TASK_CREATED
+  TASK_UPDATED
+  TASK_INACTIVATED
+  TASK_REACTIVATED
+  TASK_ATTACHMENT_ADDED
+  TASK_ATTACHMENT_REMOVED
+  SCHEDULE_CREATED
+  SCHEDULE_UPDATED
+  SCHEDULE_INACTIVATED
+  SCHEDULE_REACTIVATED
+  SCHEDULE_DUPLICATED
+  SCHEDULE_OCCURRENCES_GENERATED
+  SCHEDULE_OCCURRENCES_RECONCILED
+  PROPERTY_CREATED
+  PROPERTY_UPDATED
+  PROPERTY_DELETED
+  PROPERTY_REACTIVATED
+  WORK_AREA_CREATED
+  WORK_AREA_UPDATED
+  WORK_AREA_DELETED
+  WORK_AREA_REACTIVATED
+  QR_GENERATED
+  QR_REPRINTED
+  QR_REGENERATED
+  QR_REVOKED
+  SUBSCRIPTION_CREATED
+  SUBSCRIPTION_UPDATED
+  SUBSCRIPTION_CANCELED
+  PERMISSION_DENIED
+}
+
+model User {
+  id            String @id @default(cuid())
+  email         String @unique
+  name          String?
+  emailVerified DateTime?
+  active        Boolean @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  memberships   OrganizationMember[]
+  sessions      Session[]
+  auditEvents   AuditLog[]
+  magicTokens   MagicLinkToken[]
+  tasksCreated  Task[] @relation("TaskCreatedBy")
+  attachmentsAdded TaskAttachment[] @relation("TaskAttachmentAddedBy")
+  schedulesCreated Schedule[] @relation("ScheduleCreatedBy")
+  occurrenceEvidenceCaptured ScheduleOccurrenceEvidence[] @relation("OccurrenceEvidenceCapturedBy")
+}
+
+model Session {
+  id        String @id @default(cuid())
+  userId    String
+  tokenHash String @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model MagicLinkToken {
+  id        String @id @default(cuid())
+  userId    String
+  tokenHash String @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Organization {
+  id           String @id @default(cuid())
+  name         String
+  logoUrl      String?
+  addressLine1 String?
+  addressLine2 String?
+  addressLine3 String?
+  city         String?
+  state        String?
+  postalCode   String?
+  country      String?
+  timezone     String
+  workingHours Json?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  memberships  OrganizationMember[]
+  properties   Property[]
+  subscription Subscription?
+  auditLogs    AuditLog[]
+  tasks        Task[]
+  schedules    Schedule[]
+  scheduleOccurrences ScheduleOccurrence[]
+}
+
+model OrganizationMember {
+  id             String @id @default(cuid())
+  organizationId String
+  userId         String
+  role           MembershipRole @default(USER)
+  status         Status @default(ACTIVE)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([organizationId, userId])
+  @@index([userId])
+}
+
+model Property {
+  id             String @id @default(cuid())
+  organizationId String
+  name           String
+  addressLine1   String?
+  addressLine2   String?
+  addressLine3   String?
+  city           String?
+  state          String?
+  postalCode     String?
+  country        String?
+  timezone       String?
+  workingHours   Json?
+  status         Status @default(ACTIVE)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  workAreas      WorkArea[]
+  @@index([organizationId])
+}
+
+model WorkArea {
+  id                 String @id @default(cuid())
+  propertyId         String
+  name               String
+  description        String?
+  locationIdentifier String?
+  workingHours       Json?
+  status             Status @default(ACTIVE)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  property           Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  qrCodes            QrCode[]
+  schedules          Schedule[]
+  scheduleOccurrences ScheduleOccurrence[]
+  @@index([propertyId])
+}
+
+model QrCode {
+  id            String @id @default(cuid())
+  workAreaId    String
+  tokenHash     String @unique
+  tokenPreview  String
+  status        Status @default(ACTIVE)
+  generatedAt   DateTime @default(now())
+  generatedById String
+  revokedAt     DateTime?
+  revokedById   String?
+  workArea      WorkArea @relation(fields: [workAreaId], references: [id], onDelete: Cascade)
+  @@index([workAreaId, status])
+}
+
+
+model Task {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String   @db.VarChar(500)
+  descriptionHtml String  @db.Text
+  status         Status   @default(ACTIVE)
+  createdById    String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy      User @relation("TaskCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  attachments    TaskAttachment[]
+  scheduleTasks  ScheduleTask[]
+  occurrenceTasks ScheduleOccurrenceTask[]
+  @@index([organizationId, status])
+  @@index([organizationId, name])
+}
+
+model TaskAttachment {
+  id            String   @id @default(cuid())
+  taskId        String
+  fileName      String   @db.VarChar(255)
+  mimeType      String   @db.VarChar(150)
+  sizeBytes     Int
+  contentBase64 String   @db.Text
+  addedById     String
+  createdAt     DateTime @default(now())
+  task          Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  addedBy       User @relation("TaskAttachmentAddedBy", fields: [addedById], references: [id], onDelete: Restrict)
+  @@index([taskId, createdAt])
+}
+
+
+model Schedule {
+  id                 String                @id @default(cuid())
+  organizationId     String
+  name               String                @db.VarChar(500)
+  frequencyType      ScheduleFrequencyType
+  recurrenceUnit     ScheduleRecurrenceUnit?
+  recurrenceInterval Int?
+  recurrenceConfig   Json?
+  startAt            DateTime
+  endDate            DateTime?              @db.Date
+  occurrenceGeneratedThrough DateTime?
+  timezone           String                @db.VarChar(100)
+  workAreaId         String
+  status             Status                @default(ACTIVE)
+  createdById        String
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+  organization       Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  workArea           WorkArea              @relation(fields: [workAreaId], references: [id], onDelete: Restrict)
+  createdBy          User                  @relation("ScheduleCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  scheduleTasks      ScheduleTask[]
+  occurrences        ScheduleOccurrence[]
+
+  @@index([organizationId, status])
+  @@index([workAreaId, status])
+  @@index([organizationId, startAt])
+}
+
+model ScheduleTask {
+  id                        String             @id @default(cuid())
+  scheduleId                String
+  taskId                    String
+  sequence                  Int
+  durationMinutes           Int
+  plannedStartOffsetMinutes Int
+  plannedEndOffsetMinutes   Int
+  evidenceRule              EvidenceRule       @default(NONE)
+  randomEveryN              Int?
+  randomEvidenceType        RandomEvidenceType?
+  createdAt                 DateTime           @default(now())
+  updatedAt                 DateTime           @updatedAt
+  schedule                  Schedule           @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  task                      Task               @relation(fields: [taskId], references: [id], onDelete: Restrict)
+
+  @@unique([scheduleId, sequence])
+  @@index([taskId])
+}
+
+
+model ScheduleOccurrence {
+  id                     String                   @id @default(cuid())
+  organizationId         String
+  scheduleId             String
+  workAreaId             String
+  scheduledStartAt       DateTime
+  scheduledEndAt         DateTime
+  timezone               String                   @db.VarChar(100)
+  scheduleNameSnapshot   String                   @db.VarChar(500)
+  workAreaNameSnapshot   String                   @db.VarChar(500)
+  propertyNameSnapshot   String                   @db.VarChar(500)
+  plannedDurationMinutes Int
+  status                 ScheduleOccurrenceStatus @default(PENDING)
+  generatedAt            DateTime                 @default(now())
+  startedAt              DateTime?
+  completedAt            DateTime?
+  createdAt              DateTime                 @default(now())
+  updatedAt              DateTime                 @updatedAt
+  organization           Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  schedule               Schedule                 @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  workArea               WorkArea                 @relation(fields: [workAreaId], references: [id], onDelete: Restrict)
+  tasks                  ScheduleOccurrenceTask[]
+
+  @@unique([scheduleId, scheduledStartAt])
+  @@index([organizationId, scheduledStartAt, status])
+  @@index([workAreaId, scheduledStartAt, status])
+}
+
+model ScheduleOccurrenceTask {
+  id                     String                       @id @default(cuid())
+  occurrenceId           String
+  taskId                 String
+  sequence               Int
+  taskNameSnapshot       String                       @db.VarChar(500)
+  taskDescriptionSnapshot String                      @db.Text
+  plannedDurationMinutes Int
+  plannedStartAt         DateTime
+  plannedEndAt           DateTime
+  evidenceRuleSnapshot   EvidenceRule
+  evidenceRequired       Boolean                      @default(false)
+  evidenceTypeRequired   RandomEvidenceType?
+  status                 ScheduleOccurrenceTaskStatus @default(PENDING)
+  actualStartAt          DateTime?
+  actualEndAt            DateTime?
+  actualDurationMinutes  Int?
+  createdAt              DateTime                     @default(now())
+  updatedAt              DateTime                     @updatedAt
+  occurrence             ScheduleOccurrence           @relation(fields: [occurrenceId], references: [id], onDelete: Cascade)
+  task                   Task                         @relation(fields: [taskId], references: [id], onDelete: Restrict)
+  evidence               ScheduleOccurrenceEvidence[]
+
+  @@unique([occurrenceId, sequence])
+  @@index([taskId])
+  @@index([occurrenceId, status])
+}
+
+model ScheduleOccurrenceEvidence {
+  id               String                 @id @default(cuid())
+  occurrenceTaskId String
+  type             EvidenceCaptureType
+  storagePath      String                 @db.Text
+  thumbnailPath    String?                @db.Text
+  mimeType         String                 @db.VarChar(150)
+  sizeBytes        Int?
+  capturedAt       DateTime               @default(now())
+  capturedById     String
+  metadata         Json?
+  createdAt        DateTime               @default(now())
+  occurrenceTask   ScheduleOccurrenceTask @relation(fields: [occurrenceTaskId], references: [id], onDelete: Cascade)
+  capturedBy       User                   @relation("OccurrenceEvidenceCapturedBy", fields: [capturedById], references: [id], onDelete: Restrict)
+
+  @@index([occurrenceTaskId, capturedAt])
+}
+
+model Plan {
+  id                String @id @default(cuid())
+  code              String @unique
+  name              String
+  maxUsers          Int?
+  maxProperties     Int?
+  maxWorkAreas      Int?
+  monthlyPriceCents Int
+  active            Boolean @default(true)
+  subscriptions     Subscription[]
+}
+
+model Subscription {
+  id                     String @id @default(cuid())
+  organizationId         String @unique
+  planId                 String
+  status                 SubscriptionStatus @default(TRIALING)
+  currentPeriodStart     DateTime?
+  currentPeriodEnd       DateTime?
+  providerCustomerId     String?
+  providerSubscriptionId String?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+  organization           Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  plan                   Plan @relation(fields: [planId], references: [id])
+}
+
+model AuditLog {
+  id             String @id @default(cuid())
+  organizationId String?
+  userId         String?
+  action         ActionType
+  result         AuditResult @default(SUCCESS)
+  entityType     String?
+  entityId       String?
+  oldValue       Json?
+  newValue       Json?
+  metadata       Json?
+  ipAddress      String?
+  userAgent      String?
+  requestId      String?
+  createdAt      DateTime @default(now())
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  user           User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  @@index([organizationId, createdAt])
+  @@index([userId, createdAt])
+  @@index([entityType, entityId, createdAt])
+  @@index([action, createdAt])
+}

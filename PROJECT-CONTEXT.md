@@ -8,7 +8,7 @@
 >
 > Going forward, this file should be updated with every build/release and kept in the root of the GitHub repository as `PROJECT-CONTEXT.md`.
 
-**Last updated:** 2026-08-26  
+**Last updated:** 2026-08-27
 **Current application version:** v0.5.1  
 **Current deployment status:** Successfully built and deployed on Vercel after v0.5.1 syntax hotfix  
 **Current GitHub deployment commit observed in successful Vercel build:** `e6343e1`
@@ -1639,3 +1639,44 @@ After those tests pass:
 # End of Canonical Context
 
 When this document conflicts with older chat text, the **latest dated section/build decision in this file** should be treated as the working project context unless the product owner explicitly changes it.
+---
+
+## 42. Demo / Staging Seed Data
+
+A repeatable staging/demo seed script has been added as:
+
+`prisma/seed-demo.ts`
+
+Package command:
+
+`npm run db:seed:demo`
+
+The seed is deliberately protected by:
+
+`DEMO_SEED_CONFIRM=YES`
+
+It uses stable deterministic seed IDs and upserts only the eDekhbhal demo data. It does not delete unrelated Organizations or user data.
+
+Current canonical demo dataset:
+
+- 1 Organization: `eDekhbhal Demo Operations`
+- 6 Users:
+  - 1 `ADMIN`
+  - 2 `PROPERTY_MANAGER`
+  - 3 `USER` accounts
+- 3 Properties
+- 10 Work Areas
+- Active QR records for all seeded Work Areas
+- 15 Organization-level Tasks with rich-text instructions
+- 8 Schedules covering one-time, minute, hour, daily, weekly and monthly patterns
+- Photo, Video and Random `1 in N` evidence variations
+- Professional Subscription
+- Seed audit records
+- Rolling 48-hour ScheduleOccurrence generation
+
+On re-run, seeded Schedule definitions are reset to their canonical demo values. Only **future PENDING** occurrences belonging to the eight seeded Schedules are removed/reconciled; historical, `IN_PROGRESS` and completed execution records remain intact.
+
+Demo login emails use the existing magic-link flow and are documented in `SEED-DEMO.md`. No demo passwords are created.
+
+This is a staging/test convenience and should not be wired to run automatically on every production deployment.
+
