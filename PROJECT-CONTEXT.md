@@ -1964,3 +1964,26 @@ Fixes applied:
 - react-native-worklets peer-resolution messages remain warnings only and do not block dependency installation.
 
 The first EAS Android preview build had already created and stored the Android signing keystore remotely with Expo.
+
+---
+
+## v0.6.0 Mobile Android Build Compatibility — Final Expo 57 Alignment
+
+The first Android EAS preview build failed during npm dependency installation because react-dom resolved to a version incompatible with React 19.2.3.
+
+The second Android EAS preview build progressed through dependency installation but failed during the native Gradle/C++ phase because react-native-worklets 0.12.x was incompatible with expo-modules-core 57.0.14.
+
+Final Expo SDK 57 alignment:
+- React: 19.2.3
+- react-dom: 19.2.3
+- React Native: 0.86.3
+- react-native-reanimated: 4.5.1
+- react-native-worklets: 0.10.1
+- Removed obsolete newArchEnabled from mobile/app.json because Expo SDK 57 uses the New Architecture by default.
+- Removed deprecated TypeScript baseUrl configuration while preserving @/* path aliases.
+- `npx expo install --check` reports dependencies are up to date.
+- `npx expo-doctor` passes 21/21 checks.
+- `npm run typecheck` passes.
+- `npm ci` completes successfully.
+
+Expo Android signing credentials are stored remotely and should continue to be reused.
