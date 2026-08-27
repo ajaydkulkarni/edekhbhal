@@ -218,7 +218,8 @@ async function seedUsersAndOrganization() {
       postalCode: "84101",
       country: "USA",
       timezone: DEMO_TIMEZONE,
-      workingHours: organizationHours as any
+      workingHours: organizationHours as any,
+      claimExpiryMinutes: 15
     },
     create: {
       id: DEMO_ORG_ID,
@@ -230,7 +231,8 @@ async function seedUsersAndOrganization() {
       postalCode: "84101",
       country: "USA",
       timezone: DEMO_TIMEZONE,
-      workingHours: organizationHours as any
+      workingHours: organizationHours as any,
+      claimExpiryMinutes: 15
     }
   });
 
@@ -872,6 +874,7 @@ async function seedSchedules(organizationId: string, adminId: string) {
       where: {
         scheduleId: definition.id,
         status: "PENDING",
+        assignedUserId: null,
         scheduledStartAt: { gt: new Date() }
       }
     });

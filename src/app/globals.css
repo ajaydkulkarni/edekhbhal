@@ -45,3 +45,7 @@ select{border:1px solid #cfd6df;border-radius:7px;padding:10px;background:#fff;f
 .notice.warning{background:#fffaf0}
 .notice.success{background:#f2fbf4}
 .demoDataPage code{word-break:break-word}
+
+.navAccount{display:flex;align-items:center;gap:10px}
+.navLogout{border:0;background:transparent;text-decoration:underline;cursor:pointer;font:inherit;padding:6px 4px}
+.navLogout:disabled{opacity:.6;cursor:wait}

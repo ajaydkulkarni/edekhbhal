@@ -129,7 +129,7 @@ export async function reconcileScheduleOccurrences(scheduleId: string, opts?: { 
   if (!schedule.scheduleTasks.length || totalDuration <= 0) return { created: 0, skipped: 0 };
 
   if (opts?.reason === "edit") {
-    await prisma.scheduleOccurrence.deleteMany({ where: { scheduleId: schedule.id, status: "PENDING", scheduledStartAt: { gt: now } } });
+    await prisma.scheduleOccurrence.deleteMany({ where: { scheduleId: schedule.id, status: "PENDING", assignedUserId: null, scheduledStartAt: { gt: now } } });
   }
 
   const hours = effectiveWorkingHours(schedule.workArea.workingHours, schedule.workArea.property.workingHours, schedule.organization.workingHours);

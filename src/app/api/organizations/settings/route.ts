@@ -17,6 +17,7 @@ const schema = z.object({
   postalCode: z.string().optional(),
   country: z.string().optional(),
   timezone: z.string().min(1).optional(),
+  claimExpiryMinutes: z.number().int().min(1).max(1440).optional(),
   workingHours: z.any().nullable().optional(),
 });
 

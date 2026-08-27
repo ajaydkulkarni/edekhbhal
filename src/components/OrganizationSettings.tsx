@@ -15,6 +15,7 @@ type Organization = {
   postalCode: string | null;
   country: string | null;
   timezone: string;
+  claimExpiryMinutes: number;
 };
 
 export function OrganizationSettings({ organization, canEdit }: { organization: Organization; canEdit: boolean }) {
@@ -51,6 +52,7 @@ export function OrganizationSettings({ organization, canEdit }: { organization: 
         postalCode: String(formData.get("postalCode") || ""),
         country: String(formData.get("country") || ""),
         timezone: String(formData.get("timezone") || "UTC"),
+        claimExpiryMinutes: Number(formData.get("claimExpiryMinutes") || organization.claimExpiryMinutes || 15),
       };
 
       const r = await fetch("/api/organizations/settings", {
@@ -91,6 +93,20 @@ export function OrganizationSettings({ organization, canEdit }: { organization: 
         <label>ZIP / PIN<input name="postalCode" defaultValue={organization.postalCode || ""} disabled={!canEdit} /></label>
         <label>Country<input name="country" defaultValue={organization.country || ""} disabled={!canEdit} /></label>
         <label>Time Zone<input name="timezone" defaultValue={organization.timezone} disabled={!canEdit} /></label>
+        <label>
+          Schedule Claim Expiry (minutes)
+          <input
+            name="claimExpiryMinutes"
+            type="number"
+            min={1}
+            max={1440}
+            defaultValue={organization.claimExpiryMinutes || 15}
+            disabled={!canEdit}
+          />
+          <span className="helpText">
+            If a USER claims work but does not scan the Work Area QR within this period, the work returns to the queue.
+          </span>
+        </label>
       </div>
 
       {error && <p className="error">{error}</p>}
