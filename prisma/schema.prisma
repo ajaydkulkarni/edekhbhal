@@ -62,6 +62,11 @@ enum EvidenceCaptureType {
   VIDEO
 }
 
+enum OccurrenceNoteScope {
+  SCHEDULE
+  TASK
+}
+
 enum ScheduleOccurrenceStatus {
   PENDING
   IN_PROGRESS
@@ -105,6 +110,17 @@ enum ActionType {
   SCHEDULE_DUPLICATED
   SCHEDULE_OCCURRENCES_GENERATED
   SCHEDULE_OCCURRENCES_RECONCILED
+  SCHEDULE_CLAIMED
+  SCHEDULE_CLAIM_RELEASED
+  SCHEDULE_CLAIM_EXPIRED
+  SCHEDULE_EXECUTION_STARTED
+  TASK_EXECUTION_STARTED
+  TASK_EXECUTION_COMPLETED
+  SCHEDULE_EXECUTION_COMPLETED
+  TASK_NOTE_ADDED
+  SCHEDULE_NOTE_ADDED
+  EVIDENCE_CAPTURED
+  MOBILE_SESSION_CREATED
   PROPERTY_CREATED
   PROPERTY_UPDATED
   PROPERTY_DELETED
@@ -139,6 +155,8 @@ model User {
   attachmentsAdded TaskAttachment[] @relation("TaskAttachmentAddedBy")
   schedulesCreated Schedule[] @relation("ScheduleCreatedBy")
   occurrenceEvidenceCaptured ScheduleOccurrenceEvidence[] @relation("OccurrenceEvidenceCapturedBy")
+  occurrencesAssigned ScheduleOccurrence[] @relation("OccurrenceAssignedTo")
+  occurrenceNotesCreated ScheduleOccurrenceNote[] @relation("OccurrenceNoteCreatedBy")
 }
 
 model Session {
@@ -177,6 +195,7 @@ model Organization {
   country      String?
   timezone     String
   workingHours Json?
+  claimExpiryMinutes Int @default(15)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   memberships  OrganizationMember[]
@@ -350,19 +369,27 @@ model ScheduleOccurrence {
   propertyNameSnapshot   String                   @db.VarChar(500)
   plannedDurationMinutes Int
   status                 ScheduleOccurrenceStatus @default(PENDING)
+  assignedUserId         String?
+  claimedAt              DateTime?
+  claimExpiresAt         DateTime?
   generatedAt            DateTime                 @default(now())
   startedAt              DateTime?
   completedAt            DateTime?
+  actualDurationSeconds  Int?
   createdAt              DateTime                 @default(now())
   updatedAt              DateTime                 @updatedAt
   organization           Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   schedule               Schedule                 @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
   workArea               WorkArea                 @relation(fields: [workAreaId], references: [id], onDelete: Restrict)
+  assignedUser           User?                    @relation("OccurrenceAssignedTo", fields: [assignedUserId], references: [id], onDelete: SetNull)
   tasks                  ScheduleOccurrenceTask[]
+  notes                  ScheduleOccurrenceNote[]
 
   @@unique([scheduleId, scheduledStartAt])
   @@index([organizationId, scheduledStartAt, status])
   @@index([workAreaId, scheduledStartAt, status])
+  @@index([organizationId, assignedUserId, status])
+  @@index([organizationId, claimExpiresAt, status])
 }
 
 model ScheduleOccurrenceTask {
@@ -382,15 +409,35 @@ model ScheduleOccurrenceTask {
   actualStartAt          DateTime?
   actualEndAt            DateTime?
   actualDurationMinutes  Int?
+  actualDurationSeconds  Int?
   createdAt              DateTime                     @default(now())
   updatedAt              DateTime                     @updatedAt
   occurrence             ScheduleOccurrence           @relation(fields: [occurrenceId], references: [id], onDelete: Cascade)
   task                   Task                         @relation(fields: [taskId], references: [id], onDelete: Restrict)
   evidence               ScheduleOccurrenceEvidence[]
+  notes                  ScheduleOccurrenceNote[]
 
   @@unique([occurrenceId, sequence])
   @@index([taskId])
   @@index([occurrenceId, status])
+}
+
+
+model ScheduleOccurrenceNote {
+  id               String                     @id @default(cuid())
+  occurrenceId     String
+  occurrenceTaskId String?
+  scope            OccurrenceNoteScope
+  note             String                     @db.Text
+  createdById      String
+  createdAt        DateTime                   @default(now())
+  occurrence       ScheduleOccurrence         @relation(fields: [occurrenceId], references: [id], onDelete: Cascade)
+  occurrenceTask   ScheduleOccurrenceTask?    @relation(fields: [occurrenceTaskId], references: [id], onDelete: Cascade)
+  createdBy        User                       @relation("OccurrenceNoteCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([occurrenceId, createdAt])
+  @@index([occurrenceTaskId, createdAt])
+  @@index([createdById, createdAt])
 }
 
 model ScheduleOccurrenceEvidence {
