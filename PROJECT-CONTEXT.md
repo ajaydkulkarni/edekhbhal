@@ -1947,3 +1947,20 @@ The Web navigation CSS now:
 
 No database migration or Vercel environment-variable change is required.
 
+
+---
+
+## v0.6.0 Mobile Build Compatibility Hotfix
+
+First Expo EAS Android preview build failed during the Install dependencies phase due to npm dependency resolution.
+
+Fixes applied:
+- Added react-dom 19.2.3 to align with React 19.2.3 used by Expo SDK 57.
+- Updated react-native from 0.86.2 to Expo's expected 0.86.3.
+- Regenerated mobile/package-lock.json.
+- Removed deprecated TypeScript baseUrl option from mobile/tsconfig.json while preserving the @/* path alias.
+- `npx expo install --check` now reports dependencies are up to date.
+- `npm ci` now completes successfully.
+- react-native-worklets peer-resolution messages remain warnings only and do not block dependency installation.
+
+The first EAS Android preview build had already created and stored the Android signing keystore remotely with Expo.
