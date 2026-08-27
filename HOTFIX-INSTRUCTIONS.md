@@ -1,31 +1,17 @@
-# eDekhbhal v0.6.0 — Evidence Storage Type Hotfix
+# eDekhbhal v0.6.0 — Logout Visibility Hotfix
 
-This fixes the Vercel TypeScript error:
+The Web Logout control already exists and the logout API is implemented correctly.
+The issue is visual: the Logout button did not explicitly set a text color. On the dark
+navigation bar, the browser default button text color can make it appear missing.
 
-`'actualSize' is possibly 'undefined'`
+This hotfix:
+- makes Logout explicitly white,
+- gives it a subtle visible border/background,
+- prevents it from shrinking away at the far right of the navigation bar.
 
-## Why it happened
+Upload this file to GitHub, replacing the existing file:
 
-Supabase Storage's object metadata type allows `size` to be absent/undefined.
-The application was already checking the uploaded object, but TypeScript correctly
-refused to compare an optional `size` value against the configured byte limit.
+`src/app/globals.css`
 
-## Fix
-
-The storage helper now validates `data.size` and returns a strict:
-
-`Promise<{ size: number; contentType: string | null }>`
-
-The evidence confirmation route also performs a defensive runtime size check.
-
-## Upload to GitHub
-
-Replace these two files, preserving their exact paths:
-
-- `src/lib/supabaseStorage.ts`
-- `src/app/api/mobile/occurrence-tasks/[id]/evidence/confirm/route.ts`
-
-No Supabase SQL needs to be rerun.
-No Vercel environment variable needs to be changed.
-
-The previous Prisma/tsconfig hotfix should remain in place.
+No Supabase SQL changes.
+No Vercel environment-variable changes.

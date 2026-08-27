@@ -1932,4 +1932,18 @@ numeric `size`. The evidence confirmation route also keeps a defensive runtime v
 before enforcing photo/video size limits.
 
 No database migration or Vercel environment-variable change is required for this hotfix.
+---
+
+## v0.6.0 Web Hotfix — Logout Visibility
+
+The Web logout functionality and `/api/auth/logout` endpoint were already present and correct,
+but the header Logout button did not explicitly define a text color. Browser default button
+styling could therefore make the control effectively invisible on the dark navigation bar.
+
+The Web navigation CSS now:
+- explicitly renders Logout in white,
+- gives it a subtle border/background so it is discoverable,
+- prevents the account/logout area from shrinking away at the right edge.
+
+No database migration or Vercel environment-variable change is required.
 
