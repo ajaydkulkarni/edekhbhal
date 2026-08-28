@@ -9,8 +9,8 @@
 > Going forward, this file should be updated with every build/release and kept in the root of the GitHub repository as `PROJECT-CONTEXT.md`.
 
 **Last updated:** 2026-08-27
-**Current application version:** v0.6.0
-**Current deployment status:** v0.5.x Web staging is operational; v0.6.0 Mobile Execution foundation is prepared for Supabase migration and Vercel/API deployment
+**Current application version:** v0.6.1 (Reports Foundation)
+**Current deployment status:** v0.6.0 Web/backend staging is operational; the first Android Expo EAS preview APK is built and field-tested successfully; v0.6.1 Reports Foundation is the next Web increment
 **Current GitHub deployment commit observed in successful Vercel build:** `e6343e1`
 
 ---
@@ -1948,71 +1948,129 @@ The Web navigation CSS now:
 No database migration or Vercel environment-variable change is required.
 
 
----
-
-## v0.6.0 Mobile Build Compatibility Hotfix
-
-First Expo EAS Android preview build failed during the Install dependencies phase due to npm dependency resolution.
-
-Fixes applied:
-- Added react-dom 19.2.3 to align with React 19.2.3 used by Expo SDK 57.
-- Updated react-native from 0.86.2 to Expo's expected 0.86.3.
-- Regenerated mobile/package-lock.json.
-- Removed deprecated TypeScript baseUrl option from mobile/tsconfig.json while preserving the @/* path alias.
-- `npx expo install --check` now reports dependencies are up to date.
-- `npm ci` now completes successfully.
-- react-native-worklets peer-resolution messages remain warnings only and do not block dependency installation.
-
-The first EAS Android preview build had already created and stored the Android signing keystore remotely with Expo.
 
 ---
 
-## v0.6.0 Mobile Android Build Compatibility — Final Expo 57 Alignment
+## v0.6.0 Mobile Build Compatibility and First Successful Android APK
 
-The first Android EAS preview build failed during npm dependency installation because react-dom resolved to a version incompatible with React 19.2.3.
+The Expo SDK 57 mobile build required dependency alignment before Android EAS could compile successfully.
 
-The second Android EAS preview build progressed through dependency installation but failed during the native Gradle/C++ phase because react-native-worklets 0.12.x was incompatible with expo-modules-core 57.0.14.
+Final aligned mobile versions:
 
-Final Expo SDK 57 alignment:
-- React: 19.2.3
-- react-dom: 19.2.3
-- React Native: 0.86.3
-- react-native-reanimated: 4.5.1
-- react-native-worklets: 0.10.1
-- Removed obsolete newArchEnabled from mobile/app.json because Expo SDK 57 uses the New Architecture by default.
-- Removed deprecated TypeScript baseUrl configuration while preserving @/* path aliases.
-- `npx expo install --check` reports dependencies are up to date.
+- React `19.2.3`
+- react-dom `19.2.3`
+- React Native `0.86.3`
+- react-native-reanimated `4.5.1`
+- react-native-worklets `0.10.1`
+
+Additional compatibility changes:
+
+- Removed obsolete `newArchEnabled` from `mobile/app.json` because Expo SDK 57 uses the New Architecture by default.
+- Removed deprecated TypeScript `baseUrl` while preserving the `@/*` alias.
 - `npx expo-doctor` passes 21/21 checks.
 - `npm run typecheck` passes.
-- `npm ci` completes successfully.
+- `npm ci` succeeds.
 
-Expo Android signing credentials are stored remotely and should continue to be reused.
+First successful Android preview APK build:
+
+- Build ID: `c65932fb-df7d-44d2-85ae-d06b84c5d450`
+- Profile: `preview`
+- Distribution: `internal`
+- SDK: `57.0.0`
+- App version: `0.6.0`
+- Version code: `1`
+- Source commit used by EAS: `204aeb0138b39131837a12599b89e49346f0506e`
+- Status: finished
+
+The mobile application has been field-tested successfully through the execution workflow. Execution data is persisted against concrete Schedule Occurrences and Occurrence Tasks, preserving the Schedule/Work Area/Property snapshots and server-authoritative execution timestamps needed for reporting.
 
 ---
 
-## v0.6.0 Mobile Android — First Successful APK Build
+## Agreed QR Enhancements for the Next Web Increment
 
-First successful Expo EAS Android preview build completed.
+The standalone Work Areas page should expose the same QR management controls that already exist under Property detail:
 
-Build details:
-- Platform: Android
-- Profile: preview
-- Distribution: internal
-- Expo SDK: 57
-- App version: 0.6.0
-- Version code: 1
-- Build ID: c65932fb-df7d-44d2-85ae-d06b84c5d450
-- Commit: 204aeb0138b39131837a12599b89e49346f0506e
-- Status: finished
+- active QR visibility,
+- View/Reprint QR,
+- Regenerate QR,
+- Print QR,
+- Admin/Property Manager authorization,
+- existing QR audit behavior.
 
-The successful build followed Expo SDK 57 dependency alignment:
-- React 19.2.3
-- react-dom 19.2.3
-- React Native 0.86.3
-- react-native-reanimated 4.5.1
-- react-native-worklets 0.10.1
-- Expo Doctor 21/21 checks passed
-- TypeScript typecheck passed
-- npm ci completed successfully
+The same physical Work Area QR will remain dual-purpose:
 
-The generated APK is suitable for direct internal installation on Android devices.
+1. eDekhbhal mobile app scan -> authenticated Work Area validation and execution start.
+2. Ordinary phone-camera scan -> public Web transparency page.
+
+The public transparency page should show the latest completed Schedule/service for the Work Area, including:
+
+- Schedule/Task List name,
+- service date and actual start/end,
+- serviced-by user's display name,
+- planned total duration vs actual total duration,
+- all completed Tasks,
+- each Task's planned duration vs actual duration and deviation.
+
+Internal notes, audit details, worker contact information and evidence media remain private unless explicitly changed later. Public QR transparency should be Organization-configurable so tenants can disable it when required.
+
+---
+
+## v0.6.1 Reports Foundation — Service Log
+
+The first Web report is **Reports -> Service Log**.
+
+Access is restricted to active `ADMIN` and `PROPERTY_MANAGER` memberships.
+
+The Service Log is Task-performance based: one row represents one completed `ScheduleOccurrenceTask`. It is tenant-scoped through the parent `ScheduleOccurrence.organizationId`.
+
+Current columns:
+
+1. Property
+2. Work Area
+3. Task List
+4. Sr. No.
+5. Task Performed
+6. Actual Time Taken
+7. Scheduled Time
+8. Deviation
+9. User
+10. Date
+11. Start Time
+12. End Time
+
+Field mapping:
+
+- Property -> `ScheduleOccurrence.propertyNameSnapshot`
+- Work Area -> `ScheduleOccurrence.workAreaNameSnapshot`
+- Task List -> `ScheduleOccurrence.scheduleNameSnapshot` (the current data model uses Schedule as the executable Task List)
+- Sr. No. -> `ScheduleOccurrenceTask.sequence`
+- Task Performed -> `ScheduleOccurrenceTask.taskNameSnapshot`
+- Actual Time Taken -> `ScheduleOccurrenceTask.actualDurationSeconds`, with a defensive fallback calculated from actual start/end timestamps
+- Scheduled Time -> `ScheduleOccurrenceTask.plannedDurationMinutes`
+- Deviation -> actual duration minus planned duration
+- User -> `ScheduleOccurrence.assignedUser`, display name with email fallback
+- Date / Start Time / End Time -> Task actual start/end timestamps displayed in the occurrence timezone
+
+The report intentionally uses snapshot fields so later edits to Schedule, Property, Work Area or Task definitions do not rewrite historical report output.
+
+Initial filters:
+
+- Property
+- Work Area
+- Task List / Schedule
+- User
+
+Initial result limit: latest 500 matching completed Task performances.
+
+No database migration is required for the Service Log; all required reporting data is already stored by the v0.6.0 occurrence/execution model.
+
+Recommended next report enhancements:
+
+- date-range filtering using Organization/Schedule timezone semantics,
+- CSV/XLSX export,
+- occurrence-level drill-down,
+- evidence/notes drill-down for authorized management users,
+- schedule completion summary,
+- user performance analytics,
+- Property/Work Area service-compliance analytics,
+- real-time Supervisor Dashboard.

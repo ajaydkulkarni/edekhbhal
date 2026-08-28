@@ -14,6 +14,9 @@ export async function Nav() {
     : null;
 
   const initials = membership?.organization.name?.slice(0, 2).toUpperCase() ?? "ED";
+  const canViewReports = membership
+    ? ["ADMIN", "PROPERTY_MANAGER"].includes(membership.role)
+    : false;
 
   return (
     <header className="nav">
@@ -21,6 +24,7 @@ export async function Nav() {
       <nav>
         <Link href="/properties">Properties</Link>
         <Link href="/work-areas">Work Areas</Link><Link href="/tasks">Tasks</Link><Link href="/schedules">Schedules</Link>
+        {canViewReports && <Link href="/reports">Reports</Link>}
         <Link href="/team">Team</Link>
         <Link href="/organization">Organization</Link>
         <Link href="/audit">Audit Trail</Link>
