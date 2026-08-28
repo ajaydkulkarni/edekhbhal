@@ -10,7 +10,9 @@ if [ ! -f "$ROOT/package.json" ] || [ ! -d "$ROOT/src" ] || [ ! -d "$ROOT/mobile
 fi
 
 cp -a "$PACKAGE_DIR/v0.8.0-files/." "$ROOT/"
-cp "$PACKAGE_DIR/supabase-v0.8.0-mobile-profile-i18n.sql" "$ROOT/supabase-v0.8.0-mobile-profile-i18n.sql"
+if [ "$PACKAGE_DIR" != "$ROOT" ]; then
+  cp "$PACKAGE_DIR/supabase-v0.8.0-mobile-profile-i18n.sql" "$ROOT/supabase-v0.8.0-mobile-profile-i18n.sql"
+fi
 
 python3 - <<'PY'
 from pathlib import Path

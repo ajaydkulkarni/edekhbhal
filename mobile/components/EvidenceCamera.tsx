@@ -3,6 +3,7 @@ import { File } from "expo-file-system";
 import React, { useRef, useState } from "react";
 import { Alert, Modal, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import { apiFetch } from "@/lib/api";
+import { useI18n } from "@/lib/i18n";
 import { colors, PrimaryButton, SecondaryButton } from "./Ui";
 
 export type CaptureType = "PHOTO" | "VIDEO";
@@ -30,6 +31,7 @@ export function EvidenceCamera({
   onClose: () => void;
   onSaved: () => Promise<void> | void;
 }) {
+  const { t } = useI18n();
   const cameraRef = useRef<CameraView | null>(null);
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [microphonePermission, requestMicrophonePermission] = useMicrophonePermissions();
@@ -40,7 +42,7 @@ export function EvidenceCamera({
   async function ensurePermissions(type: CaptureType) {
     let cameraGranted = cameraPermission?.granted;
     if (!cameraGranted) cameraGranted = (await requestCameraPermission()).granted;
-    if (!cameraGranted) throw new Error("Camera permission is required.");
+    if (!cameraGranted) throw new Error(t("cameraPermissionRequired"));
 
     if (type === "VIDEO") {
       let micGranted = microphonePermission?.granted;
@@ -101,7 +103,7 @@ export function EvidenceCamera({
       await onSaved();
       onClose();
     } catch (error) {
-      Alert.alert("Evidence", error instanceof Error ? error.message : "Unable to save photo evidence.");
+      Alert.alert(t("evidence"), error instanceof Error ? error.message : "Unable to save photo evidence.");
     } finally {
       setBusy(false);
     }
@@ -120,7 +122,7 @@ export function EvidenceCamera({
       onClose();
     } catch (error) {
       setRecording(false);
-      Alert.alert("Evidence", error instanceof Error ? error.message : "Unable to save video evidence.");
+      Alert.alert(t("evidence"), error instanceof Error ? error.message : "Unable to save video evidence.");
     } finally {
       setBusy(false);
     }
@@ -131,28 +133,28 @@ export function EvidenceCamera({
   return <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
     <View style={styles.container}>
       <View style={styles.topbar}>
-        <Text style={styles.title}>Capture Evidence</Text>
-        <Pressable onPress={onClose} disabled={busy}><Text style={styles.close}>Close</Text></Pressable>
+        <Text style={styles.title}>{t("captureEvidence")}</Text>
+        <Pressable onPress={onClose} disabled={busy}><Text style={styles.close}>{t("close")}</Text></Pressable>
       </View>
 
       {allowedType === "EITHER" ? <View style={styles.typeRow}>
         <Pressable style={[styles.typeButton, captureType === "PHOTO" && styles.typeSelected]} onPress={() => setCaptureType("PHOTO")} disabled={busy}>
-          <Text style={captureType === "PHOTO" ? styles.typeSelectedText : styles.typeText}>Photo</Text>
+          <Text style={captureType === "PHOTO" ? styles.typeSelectedText : styles.typeText}>{t("photo")}</Text>
         </Pressable>
         <Pressable style={[styles.typeButton, captureType === "VIDEO" && styles.typeSelected]} onPress={() => setCaptureType("VIDEO")} disabled={busy}>
-          <Text style={captureType === "VIDEO" ? styles.typeSelectedText : styles.typeText}>Video</Text>
+          <Text style={captureType === "VIDEO" ? styles.typeSelectedText : styles.typeText}>{t("video")}</Text>
         </Pressable>
       </View> : null}
 
       <CameraView ref={cameraRef} style={styles.camera} facing="back" mode={captureType === "VIDEO" ? "video" : "picture"} />
 
       <View style={styles.bottom}>
-        <Text style={styles.help}>Evidence must be captured live. The app does not provide access to the photo gallery.</Text>
+        <Text style={styles.help}>{t("liveEvidenceOnly")}</Text>
         {captureType === "VIDEO" ? (
-          recording ? <PrimaryButton title="Stop Recording" onPress={() => cameraRef.current?.stopRecording()} />
-          : <PrimaryButton title="Record Video (max 30 sec)" onPress={captureVideo} busy={busy} />
-        ) : <PrimaryButton title="Take Photo" onPress={capturePhoto} busy={busy} />}
-        <SecondaryButton title="Cancel" onPress={onClose} disabled={busy} />
+          recording ? <PrimaryButton title={t("stopRecording")} onPress={() => cameraRef.current?.stopRecording()} />
+          : <PrimaryButton title={t("recordVideoMax")} onPress={captureVideo} busy={busy} />
+        ) : <PrimaryButton title={t("takePhoto")} onPress={capturePhoto} busy={busy} />}
+        <SecondaryButton title={t("cancel")} onPress={onClose} disabled={busy} />
       </View>
     </View>
   </Modal>;

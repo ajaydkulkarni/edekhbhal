@@ -3,21 +3,25 @@ import React, { useCallback, useState } from "react";
 import { Alert, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { apiFetch } from "@/lib/api";
 import { useSession } from "@/lib/session";
+import { useI18n } from "@/lib/i18n";
+import { useOccurrenceTranslation } from "@/lib/contentTranslation";
 import type { Occurrence } from "@/lib/types";
 import { Card, colors, Pill, PrimaryButton, ScreenHeader, SecondaryButton } from "@/components/Ui";
 
-function formatDate(value: string, timeZone: string) {
-  return new Intl.DateTimeFormat("en-US", { timeZone, dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
+function formatDate(value: string, timeZone: string, locale: string) {
+  return new Intl.DateTimeFormat(locale, { timeZone, dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
 }
 
 export default function WorkScreen() {
   const session = useSession();
+  const { t, info } = useI18n();
   const membership = session.memberships.find((m) => m.organizationId === session.organizationId);
   const [state, setState] = useState<"AVAILABLE" | "CLAIMED" | "IN_PROGRESS" | "EMPTY">("EMPTY");
   const [occurrence, setOccurrence] = useState<Occurrence | null>(null);
   const [claimExpiryMinutes, setClaimExpiryMinutes] = useState(15);
   const [loading, setLoading] = useState(false);
   const [claiming, setClaiming] = useState(false);
+  const translation = useOccurrenceTranslation(occurrence?.id, session.user?.preferredLanguage);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -27,13 +31,13 @@ export default function WorkScreen() {
       setOccurrence(data.occurrence);
       setClaimExpiryMinutes(data.claimExpiryMinutes);
     } catch (error) {
-      Alert.alert("My Work", error instanceof Error ? error.message : "Unable to load work queue.");
+      Alert.alert(t("myWork"), error instanceof Error ? error.message : t("workLoadError"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
-  useFocusEffect(useCallback(() => { load(); }, [load]));
+  useFocusEffect(useCallback(() => { void load(); }, [load]));
 
   async function claim() {
     if (!occurrence) return;
@@ -44,7 +48,7 @@ export default function WorkScreen() {
       setState("CLAIMED");
       router.push("/(tabs)/scan");
     } catch (error) {
-      Alert.alert("Claim Schedule", error instanceof Error ? error.message : "Unable to claim Schedule.");
+      Alert.alert(t("schedule"), error instanceof Error ? error.message : "Unable to claim Schedule.");
       await load();
     } finally {
       setClaiming(false);
@@ -57,40 +61,43 @@ export default function WorkScreen() {
       await apiFetch(`/api/mobile/occurrences/${occurrence.id}/release`, { method: "POST" });
       await load();
     } catch (error) {
-      Alert.alert("Release Schedule", error instanceof Error ? error.message : "Unable to release Schedule.");
+      Alert.alert(t("schedule"), error instanceof Error ? error.message : "Unable to release Schedule.");
     }
   }
 
+  const scheduleName = translation.data?.scheduleName ?? occurrence?.scheduleName;
+
   return <View style={styles.screen}>
-    <ScreenHeader organizationName={membership?.organizationName} title="My Work" subtitle="Next available Schedule" />
+    <ScreenHeader organizationName={membership?.organizationName} title={t("myWork")} subtitle={t("nextAvailableSchedule")} />
     <ScrollView contentContainerStyle={styles.content} refreshControl={<RefreshControl refreshing={loading} onRefresh={load} />}>
       {!occurrence ? <Card>
-        <Text style={styles.emptyTitle}>No queued work is currently available.</Text>
-        <Text style={styles.muted}>Pull down to refresh. Upcoming ScheduleOccurrences appear here as they are generated.</Text>
+        <Text style={styles.emptyTitle}>{t("noQueuedWork")}</Text>
+        <Text style={styles.muted}>{t("pullToRefresh")}</Text>
       </Card> : <Card>
         <View style={styles.rowBetween}>
-          <Pill>{state === "AVAILABLE" ? "AVAILABLE" : state === "CLAIMED" ? "CLAIMED" : "IN PROGRESS"}</Pill>
-          <Text style={styles.taskCount}>{occurrence.completedTaskCount}/{occurrence.taskCount} Tasks</Text>
+          <Pill>{state === "AVAILABLE" ? t("available") : state === "CLAIMED" ? t("claimed") : t("inProgress")}</Pill>
+          <Text style={styles.taskCount}>{occurrence.completedTaskCount}/{occurrence.taskCount} {t("tasks")}</Text>
         </View>
-        <Text style={styles.schedule}>{occurrence.scheduleName}</Text>
+        <Text style={styles.schedule}>{scheduleName}</Text>
+        {translation.data?.scheduleName && translation.data.scheduleName !== occurrence.scheduleName ? <Text style={styles.source}>{t("englishSource")}: {occurrence.scheduleName}</Text> : null}
         <Text style={styles.property}>{occurrence.propertyName}</Text>
         <Text style={styles.workArea}>{occurrence.workAreaName}</Text>
         <View style={styles.detailGrid}>
-          <View><Text style={styles.label}>Scheduled</Text><Text style={styles.value}>{formatDate(occurrence.scheduledStartAt, occurrence.timezone)}</Text></View>
-          <View><Text style={styles.label}>Planned duration</Text><Text style={styles.value}>{occurrence.plannedDurationMinutes} min</Text></View>
+          <View><Text style={styles.label}>{t("scheduled")}</Text><Text style={styles.value}>{formatDate(occurrence.scheduledStartAt, occurrence.timezone, info.speechLocale)}</Text></View>
+          <View><Text style={styles.label}>{t("plannedDuration")}</Text><Text style={styles.value}>{occurrence.plannedDurationMinutes} {t("minuteShort")}</Text></View>
         </View>
         {state === "AVAILABLE" ? <>
-          <Text style={styles.muted}>You may begin this Schedule before its scheduled time. Press Accept only when you intend to travel to the Work Area.</Text>
-          <PrimaryButton title="Accept / Go to Work Area" onPress={claim} busy={claiming} />
-          <Text style={styles.expiry}>After claiming, scan the Work Area QR within {claimExpiryMinutes} minute(s).</Text>
+          <Text style={styles.muted}>{t("acceptHint")}</Text>
+          <PrimaryButton title={t("acceptGoWorkArea")} onPress={claim} busy={claiming} />
+          <Text style={styles.expiry}>{t("scanWithin")} {claimExpiryMinutes} {t("minutes")}</Text>
         </> : null}
         {state === "CLAIMED" ? <>
-          <Text style={styles.muted}>This work is reserved for you until the claim expires. Reach the Work Area and scan its QR Code.</Text>
-          {occurrence.claimExpiresAt ? <Text style={styles.claimUntil}>Reserved until {formatDate(occurrence.claimExpiresAt, occurrence.timezone)}</Text> : null}
-          <PrimaryButton title="Scan Work Area QR" onPress={() => router.push("/(tabs)/scan")} />
-          <SecondaryButton title="Return to Queue" onPress={release} />
+          <Text style={styles.muted}>{t("reservedHint")}</Text>
+          {occurrence.claimExpiresAt ? <Text style={styles.claimUntil}>{t("reservedUntil")} {formatDate(occurrence.claimExpiresAt, occurrence.timezone, info.speechLocale)}</Text> : null}
+          <PrimaryButton title={t("scanWorkAreaQr")} onPress={() => router.push("/(tabs)/scan")} />
+          <SecondaryButton title={t("returnToQueue")} onPress={release} />
         </> : null}
-        {state === "IN_PROGRESS" ? <PrimaryButton title="Continue Current Schedule" onPress={() => router.push(`/execution/${occurrence.id}`)} /> : null}
+        {state === "IN_PROGRESS" ? <PrimaryButton title={t("continueSchedule")} onPress={() => router.push(`/execution/${occurrence.id}`)} /> : null}
       </Card>}
     </ScrollView>
   </View>;
@@ -102,6 +109,7 @@ const styles = StyleSheet.create({
   rowBetween: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   taskCount: { color: colors.muted, fontWeight: "700" },
   schedule: { fontSize: 22, fontWeight: "900", color: colors.text, marginTop: 16 },
+  source: { color: colors.muted, fontSize: 11, marginTop: 3 },
   property: { fontSize: 15, color: colors.muted, marginTop: 6 },
   workArea: { fontSize: 19, fontWeight: "800", color: colors.primary, marginTop: 2, marginBottom: 16 },
   detailGrid: { gap: 12, marginBottom: 16 },

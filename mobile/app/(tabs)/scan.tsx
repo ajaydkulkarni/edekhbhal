@@ -4,11 +4,13 @@ import React, { useCallback, useState } from "react";
 import { Alert, StyleSheet, Text, View } from "react-native";
 import { apiFetch } from "@/lib/api";
 import { useSession } from "@/lib/session";
+import { useI18n } from "@/lib/i18n";
 import type { Occurrence } from "@/lib/types";
 import { Card, colors, PrimaryButton, ScreenHeader } from "@/components/Ui";
 
 export default function ScanScreen() {
   const session = useSession();
+  const { t } = useI18n();
   const membership = session.memberships.find((m) => m.organizationId === session.organizationId);
   const [permission, requestPermission] = useCameraPermissions();
   const [occurrence, setOccurrence] = useState<Occurrence | null>(null);
@@ -22,10 +24,10 @@ export default function ScanScreen() {
       setOccurrence(data.occurrence);
       if (data.state === "IN_PROGRESS" && data.occurrence) router.replace(`/execution/${data.occurrence.id}`);
     } catch (error) {
-      Alert.alert("Scan", error instanceof Error ? error.message : "Unable to load current work.");
+      Alert.alert(t("scan"), error instanceof Error ? error.message : "Unable to load current work.");
     }
-  }, []);
-  useFocusEffect(useCallback(() => { load(); }, [load]));
+  }, [t]);
+  useFocusEffect(useCallback(() => { void load(); }, [load]));
 
   async function scanned(value: string) {
     if (scanning || !occurrence) return;
@@ -38,17 +40,17 @@ export default function ScanScreen() {
       router.replace(`/execution/${data.occurrence.id}`);
     } catch (error) {
       Alert.alert("QR Code", error instanceof Error ? error.message : "Unable to validate QR Code.", [
-        { text: "Try Again", onPress: () => setScanning(false) }
+        { text: t("tryAgain"), onPress: () => setScanning(false) }
       ]);
     }
   }
 
   if (!occurrence || queueState === "AVAILABLE" || queueState === "EMPTY") {
-    return <View style={styles.screen}><ScreenHeader organizationName={membership?.organizationName} title="Scan" subtitle="Work Area QR"/><View style={styles.pad}><Card><Text style={styles.title}>Claim a Schedule first.</Text><Text style={styles.help}>Go to My Work, accept the next Schedule, then return here when you reach the Work Area.</Text><PrimaryButton title="Go to My Work" onPress={() => router.push("/(tabs)/work")}/></Card></View></View>;
+    return <View style={styles.screen}><ScreenHeader organizationName={membership?.organizationName} title={t("scan")} subtitle={t("workAreaQr")}/><View style={styles.pad}><Card><Text style={styles.title}>{t("claimFirst")}</Text><Text style={styles.help}>{t("claimFirstHelp")}</Text><PrimaryButton title={t("goToMyWork")} onPress={() => router.push("/(tabs)/work")}/></Card></View></View>;
   }
 
   if (!permission?.granted) {
-    return <View style={styles.screen}><ScreenHeader organizationName={membership?.organizationName} title="Scan"/><View style={styles.pad}><Card><Text style={styles.title}>Camera permission is required.</Text><Text style={styles.help}>eDekhbhal uses the camera to read the Work Area QR Code. This starts the authoritative Schedule and Task timers.</Text><PrimaryButton title="Allow Camera" onPress={requestPermission}/></Card></View></View>;
+    return <View style={styles.screen}><ScreenHeader organizationName={membership?.organizationName} title={t("scan")}/><View style={styles.pad}><Card><Text style={styles.title}>{t("cameraPermissionRequired")}</Text><Text style={styles.help}>{t("cameraPermissionHelp")}</Text><PrimaryButton title={t("allowCamera")} onPress={requestPermission}/></Card></View></View>;
   }
 
   return <View style={styles.screen}>
@@ -59,7 +61,7 @@ export default function ScanScreen() {
       barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
       onBarcodeScanned={scanning ? undefined : (event) => scanned(event.data)}
     />
-    <View style={styles.overlay}><Text style={styles.scanText}>{scanning ? "Validating Work Area…" : "Point the camera at the eDekhbhal QR Code"}</Text></View>
+    <View style={styles.overlay}><Text style={styles.scanText}>{scanning ? t("validatingWorkArea") : t("pointCamera")}</Text></View>
   </View>;
 }
 

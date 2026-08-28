@@ -2,43 +2,45 @@ import { ActionType } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { audit } from "@/lib/audit";
-import { randomToken, sha256 } from "@/lib/security";
 import { membershipDto } from "@/lib/mobileAuth";
+import { randomToken, sha256 } from "@/lib/security";
+import { verifyPassword } from "@/lib/password";
 
 const schema = z.object({
-  token: z.string().min(20)
+  email: z.string().email().transform((value) => value.toLowerCase().trim()),
+  password: z.string().min(8).max(128)
 });
 
 export async function POST(req: Request) {
   try {
     const input = schema.parse(await req.json());
-    const record = await prisma.magicLinkToken.findFirst({
-      where: {
-        tokenHash: sha256(input.token),
-        usedAt: null,
-        expiresAt: { gt: new Date() }
-      },
+    const record = await prisma.user.findUnique({
+      where: { email: input.email },
       include: {
-        user: {
-          include: {
-            memberships: {
-              where: { status: "ACTIVE" },
-              include: { organization: true },
-              orderBy: { createdAt: "asc" }
-            }
-          }
+        memberships: {
+          where: { status: "ACTIVE" },
+          include: { organization: true },
+          orderBy: { createdAt: "asc" }
         }
       }
     });
 
-    if (!record) {
+    const valid = Boolean(record?.active && verifyPassword(input.password, record?.passwordHash));
+    if (!valid || !record) {
+      if (record) {
+        await audit({
+          userId: record.id,
+          action: ActionType.LOGIN_FAILED,
+          metadata: { method: "mobile_password", reason: "invalid_credentials" }
+        });
+      }
       return Response.json(
-        { error: "Invalid or expired authentication link.", code: "INVALID_TOKEN" },
-        { status: 400 }
+        { error: "Email or password is not recognized.", code: "INVALID_CREDENTIALS" },
+        { status: 401 }
       );
     }
 
-    const mobileMemberships = record.user.memberships.filter((membership) => membership.role === "USER");
+    const mobileMemberships = record.memberships.filter((membership) => membership.role === "USER");
     if (!mobileMemberships.length) {
       return Response.json(
         {
@@ -53,37 +55,26 @@ export async function POST(req: Request) {
     const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
     await prisma.$transaction(async (tx) => {
-      await tx.magicLinkToken.update({
-        where: { id: record.id },
-        data: { usedAt: new Date() }
-      });
-      await tx.user.update({
-        where: { id: record.userId },
-        data: { emailVerified: new Date() }
-      });
       await tx.session.create({
         data: {
-          userId: record.userId,
+          userId: record.id,
           tokenHash: sha256(sessionToken),
           expiresAt,
-          authMethod: "MAGIC_LINK"
+          authMethod: "PASSWORD"
         }
       });
       await audit({
-        userId: record.userId,
+        userId: record.id,
         action: ActionType.LOGIN,
         metadata: {
-          method: "mobile_magic_link",
+          method: "mobile_password",
           memberships: mobileMemberships.map((item) => item.organizationId)
         }
       }, tx);
       await audit({
-        userId: record.userId,
+        userId: record.id,
         action: ActionType.MOBILE_SESSION_CREATED,
-        metadata: {
-          expiresAt: expiresAt.toISOString(),
-          authMethod: "MAGIC_LINK"
-        }
+        metadata: { expiresAt: expiresAt.toISOString(), authMethod: "PASSWORD" }
       }, tx);
     });
 
@@ -91,11 +82,11 @@ export async function POST(req: Request) {
       sessionToken,
       expiresAt: expiresAt.toISOString(),
       user: {
-        id: record.user.id,
-        email: record.user.email,
-        name: record.user.name,
-        preferredLanguage: record.user.preferredLanguage,
-        passwordSet: Boolean(record.user.passwordHash)
+        id: record.id,
+        email: record.email,
+        name: record.name,
+        preferredLanguage: record.preferredLanguage,
+        passwordSet: true
       },
       memberships: mobileMemberships.map(membershipDto),
       defaultOrganizationId: mobileMemberships[0].organizationId

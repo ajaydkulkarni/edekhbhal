@@ -15,7 +15,13 @@ export async function GET(req: Request) {
     });
 
     return Response.json({
-      user: { id: user.id, email: user.email, name: user.name },
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        preferredLanguage: user.preferredLanguage,
+        passwordSet: Boolean(user.passwordHash)
+      },
       memberships: memberships.map(membershipDto)
     });
   } catch (error) {

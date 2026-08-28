@@ -4,7 +4,20 @@ import { AppState } from "react-native";
 import { API_URL, apiFetch, ORGANIZATION_KEY, SESSION_KEY } from "./api";
 import type { Membership } from "./types";
 
-type User = { id: string; email: string; name: string | null };
+type User = {
+  id: string;
+  email: string;
+  name: string | null;
+  preferredLanguage: string | null;
+  passwordSet: boolean;
+};
+
+type AuthResponse = {
+  sessionToken: string;
+  user: User;
+  memberships: Membership[];
+  defaultOrganizationId: string;
+};
 
 type SessionContextValue = {
   loading: boolean;
@@ -13,6 +26,7 @@ type SessionContextValue = {
   memberships: Membership[];
   organizationId: string | null;
   signInWithToken: (token: string) => Promise<void>;
+  signInWithPassword: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   refresh: () => Promise<void>;
   selectOrganization: (organizationId: string) => Promise<void>;
@@ -33,6 +47,14 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
     setMemberships([]);
     setOrganizationId(null);
+  }, []);
+
+  const applyAuth = useCallback(async (data: AuthResponse) => {
+    await SecureStore.setItemAsync(SESSION_KEY, data.sessionToken);
+    await SecureStore.setItemAsync(ORGANIZATION_KEY, data.defaultOrganizationId);
+    setUser(data.user);
+    setMemberships(data.memberships);
+    setOrganizationId(data.defaultOrganizationId);
   }, []);
 
   const refresh = useCallback(async () => {
@@ -59,7 +81,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   }, [clearLocal]);
 
   useEffect(() => {
-    refresh();
+    void refresh();
   }, [refresh]);
 
   useEffect(() => {
@@ -107,18 +129,25 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || "Unable to sign in.");
-    await SecureStore.setItemAsync(SESSION_KEY, data.sessionToken);
-    await SecureStore.setItemAsync(ORGANIZATION_KEY, data.defaultOrganizationId);
-    setUser(data.user);
-    setMemberships(data.memberships);
-    setOrganizationId(data.defaultOrganizationId);
-  }, []);
+    await applyAuth(data as AuthResponse);
+  }, [applyAuth]);
+
+  const signInWithPassword = useCallback(async (email: string, password: string) => {
+    const response = await fetch(`${API_URL}/api/mobile/auth/password`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email, password })
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Unable to sign in.");
+    await applyAuth(data as AuthResponse);
+  }, [applyAuth]);
 
   const signOut = useCallback(async () => {
     try {
       await apiFetch("/api/mobile/logout", { method: "POST" });
     } catch {
-      // Always clear local token, even if the network request fails.
+      // Always clear the local token, even if the network request fails.
     }
     await clearLocal();
   }, [clearLocal]);
@@ -136,10 +165,11 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     memberships,
     organizationId,
     signInWithToken,
+    signInWithPassword,
     signOut,
     refresh,
     selectOrganization
-  }), [loading, user, memberships, organizationId, signInWithToken, signOut, refresh, selectOrganization]);
+  }), [loading, user, memberships, organizationId, signInWithToken, signInWithPassword, signOut, refresh, selectOrganization]);
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }

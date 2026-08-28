@@ -143,6 +143,8 @@ model User {
   id            String @id @default(cuid())
   email         String @unique
   name          String?
+  passwordHash  String? @db.Text
+  preferredLanguage String? @db.VarChar(10)
   emailVerified DateTime?
   active        Boolean @default(true)
   createdAt     DateTime @default(now())
@@ -165,6 +167,7 @@ model Session {
   tokenHash String @unique
   expiresAt DateTime
   createdAt DateTime @default(now())
+  authMethod String? @db.VarChar(30)
   user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@index([userId])
   @@index([expiresAt])
@@ -205,6 +208,7 @@ model Organization {
   tasks        Task[]
   schedules    Schedule[]
   scheduleOccurrences ScheduleOccurrence[]
+  translations ContentTranslation[]
 }
 
 model OrganizationMember {
@@ -506,4 +510,23 @@ model AuditLog {
   @@index([userId, createdAt])
   @@index([entityType, entityId, createdAt])
   @@index([action, createdAt])
+}
+
+
+model ContentTranslation {
+  id             String   @id @default(cuid())
+  organizationId String
+  sourceType     String   @db.VarChar(40)
+  sourceId       String
+  fieldName      String   @db.VarChar(40)
+  language       String   @db.VarChar(10)
+  sourceHash     String   @db.VarChar(64)
+  translatedText String   @db.Text
+  provider       String?  @db.VarChar(40)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, sourceType, sourceId, fieldName, language], name: "content_translation_key")
+  @@index([organizationId, language])
 }
