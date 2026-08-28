@@ -10,8 +10,8 @@
 
 **Last updated:** 2026-08-28
 **Current application version:** v0.8.0 (Mobile UX, Localization & Personal Reporting)
-**Current deployment status:** v0.7.0 Supervisor Dashboard / modern Web shell is deployed and field-validated; v0.8.0 Web and Mobile automated validation is green, Expo Doctor 21/21 passed, and the v0.8.0 staging database migration has been applied successfully; staging deployment and replacement Android APK build are next
-**Current GitHub deployment commit observed in successful Vercel build:** `e6343e1`
+**Current deployment status:** v0.8.0 Web/API is deployed to staging; automated Web and Mobile validation is green, Expo Doctor 21/21 passed, and the v0.8.0 staging database migration has been applied successfully; translation-provider configuration, functional regression and replacement Android APK build are next
+**Current GitHub deployment commit observed in successful Vercel build:** `024c6a4`
 
 ---
 
