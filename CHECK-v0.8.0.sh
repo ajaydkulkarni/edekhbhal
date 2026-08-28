@@ -9,13 +9,19 @@ fi
 echo "== Diff whitespace check =="
 git diff --check
 
-echo "== Prisma generate =="\nnpm run db:generate\n\necho "== Web typecheck =="
+echo "== Prisma generate =="
+npm run db:generate
+
+echo "== Web typecheck =="
 npm run typecheck
 
 echo "== Web production build =="
 npm run build
 
-echo "== Restore generated Web build metadata =="\ngit restore next-env.d.ts tsconfig.tsbuildinfo 2>/dev/null || true\n\necho "== Mobile clean install =="
+echo "== Restore generated Web build metadata =="
+git restore next-env.d.ts tsconfig.tsbuildinfo 2>/dev/null || true
+
+echo "== Mobile clean install =="
 cd mobile
 npm ci
 
