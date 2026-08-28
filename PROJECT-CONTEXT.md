@@ -1987,3 +1987,32 @@ Final Expo SDK 57 alignment:
 - `npm ci` completes successfully.
 
 Expo Android signing credentials are stored remotely and should continue to be reused.
+
+---
+
+## v0.6.0 Mobile Android — First Successful APK Build
+
+First successful Expo EAS Android preview build completed.
+
+Build details:
+- Platform: Android
+- Profile: preview
+- Distribution: internal
+- Expo SDK: 57
+- App version: 0.6.0
+- Version code: 1
+- Build ID: c65932fb-df7d-44d2-85ae-d06b84c5d450
+- Commit: 204aeb0138b39131837a12599b89e49346f0506e
+- Status: finished
+
+The successful build followed Expo SDK 57 dependency alignment:
+- React 19.2.3
+- react-dom 19.2.3
+- React Native 0.86.3
+- react-native-reanimated 4.5.1
+- react-native-worklets 0.10.1
+- Expo Doctor 21/21 checks passed
+- TypeScript typecheck passed
+- npm ci completed successfully
+
+The generated APK is suitable for direct internal installation on Android devices.
