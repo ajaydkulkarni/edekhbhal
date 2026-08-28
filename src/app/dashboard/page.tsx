@@ -1,18 +1,37 @@
 import { redirect } from "next/navigation";
 import { Nav } from "@/components/Nav";
+import { LiveOperationsDashboard } from "@/components/dashboard/LiveOperationsDashboard";
 import { getSessionUser } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 
-export default async function Dashboard(){
-  const user=await getSessionUser(); if(!user)redirect("/login");
-  const m=await prisma.organizationMember.findFirst({where:{userId:user.id,status:"ACTIVE"},include:{organization:true}});
-  if(!m)redirect("/onboarding");
-  const [properties,workAreas,users]=await Promise.all([
-    prisma.property.count({where:{organizationId:m.organizationId}}),
-    prisma.workArea.count({where:{property:{organizationId:m.organizationId}}}),
-    prisma.organizationMember.count({where:{organizationId:m.organizationId,status:"ACTIVE"}})
-  ]);
-  return <><Nav/><main className="container"><h1>Welcome to {m.organization.name}</h1><p className="muted">Signed in as {user.email} · {m.role}</p>
-    <div className="statGrid"><div className="stat"><div className="n">{properties}</div>Properties</div><div className="stat"><div className="n">{workAreas}</div>Work Areas</div><div className="stat"><div className="n">{users}</div>Users</div></div>
-  </main></>;
+export default async function Dashboard() {
+  const user = await getSessionUser();
+  if (!user) redirect("/login");
+
+  const membership = await prisma.organizationMember.findFirst({
+    where: { userId: user.id, status: "ACTIVE" },
+    include: { organization: true },
+  });
+  if (!membership) redirect("/onboarding");
+  if (!["ADMIN", "PROPERTY_MANAGER"].includes(membership.role)) redirect("/tasks");
+
+  return (
+    <>
+      <Nav />
+      <main className="container dashboardPage">
+        <div className="dashboardHero">
+          <div>
+            <span className="eyebrow">Operations command center</span>
+            <h1>{membership.organization.name}</h1>
+            <p className="muted">Live workforce, task completions, evidence and operational exceptions.</p>
+          </div>
+          <div className="dashboardIdentity">
+            <span>{user.name ?? user.email}</span>
+            <strong>{membership.role === "ADMIN" ? "Admin" : "Property Manager"}</strong>
+          </div>
+        </div>
+        <LiveOperationsDashboard />
+      </main>
+    </>
+  );
 }

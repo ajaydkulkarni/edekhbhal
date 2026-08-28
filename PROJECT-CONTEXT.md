@@ -8,9 +8,9 @@
 >
 > Going forward, this file should be updated with every build/release and kept in the root of the GitHub repository as `PROJECT-CONTEXT.md`.
 
-**Last updated:** 2026-08-27
-**Current application version:** v0.6.1 (Reports Foundation)
-**Current deployment status:** v0.6.0 Web/backend staging is operational; the first Android Expo EAS preview APK is built and field-tested successfully; v0.6.1 Reports Foundation is the next Web increment
+**Last updated:** 2026-08-28
+**Current application version:** v0.7.0 (Supervisor Dashboard & Web UX Modernization)
+**Current deployment status:** v0.6.1 Reports is deployed; v0.7.0 Supervisor Dashboard / modern Web shell has passed Web and Mobile automated validation; the v0.7.0 user_presence migration has been applied to staging; ready for GitHub commit and Vercel staging deployment
 **Current GitHub deployment commit observed in successful Vercel build:** `e6343e1`
 
 ---
@@ -2079,3 +2079,58 @@ Recommended next report enhancements:
 - user performance analytics,
 - Property/Work Area service-compliance analytics,
 - real-time Supervisor Dashboard.
+
+
+---
+
+## v0.7.0 — Supervisor Dashboard & Web UX Modernization
+
+The Web Dashboard is now an Admin/Property Manager operational command center. USER-role members remain focused on mobile execution and are redirected away from the management Dashboard.
+
+Dashboard capabilities:
+
+- live USER-role workforce table with Online / Working / Offline state;
+- last mobile login time from existing LOGIN audit events;
+- foreground-active duration from mobile heartbeat telemetry;
+- current Property, Work Area, Schedule and Task derived from the assigned IN_PROGRESS ScheduleOccurrence;
+- time in Work Area derived from server-authoritative occurrence start time;
+- auto-updating Task completion Activity Feed with actual duration, planned duration and deviation;
+- latest 20 evidence photos/videos in a private signed-URL carousel with user/work-area/task context;
+- Attention Required panel for overdue, missed and partially completed occurrences;
+- Today's Schedule Progress summary;
+- KPI cards for users online, schedules in progress, tasks completed today, exceptions and average duration deviation.
+
+Dashboard polling cadence is approximately 12 seconds. This is intentionally simple and resilient for the first Supervisor Dashboard release; realtime subscriptions/websockets can be added later if scale requires them.
+
+### USER mobile presence
+
+New additive table: `user_presence`.
+
+The mobile app sends a best-effort heartbeat every 45 seconds while foregrounded. A worker is considered online when a current heartbeat is present within approximately two minutes. Heartbeat telemetry is not written to AuditLog because doing so would create high-volume noise. Significant actions (login, logout, claim, execution start/completion, evidence, notes) remain audited.
+
+Presence failures never interrupt mobile execution or logout. The Dashboard degrades gracefully if the presence migration has not yet been applied.
+
+Migration file: `supabase-v0.7.0-dashboard.sql`.
+
+### Web navigation / visual modernization
+
+The existing URLs, APIs and business workflows are preserved. The Web shell is reorganized into a modern role-aware navigation:
+
+- Dashboard (Admin / Property Manager)
+- Operations: Properties, Work Areas, Tasks, Schedules
+- Reports (Admin / Property Manager)
+- Administration: Audit Trail, plus Team / Organization / Subscription / Demo Data where Admin permissions apply
+- Profile / Logout
+
+A new additive `modern.css` theme is loaded after the legacy stylesheet so existing components retain their functional class names while receiving consistent typography, spacing, cards, navigation, tables, forms and responsive behavior.
+
+### Security / privacy
+
+- Dashboard API is server-role-gated to active ADMIN / PROPERTY_MANAGER memberships.
+- Every Dashboard query is Organization-scoped.
+- Evidence remains in the private Supabase Storage bucket; the Dashboard only receives short-lived signed download URLs.
+- Internal notes and audit details are not exposed in the evidence carousel.
+
+### Validation required before merge/deployment
+
+Run Web typecheck and production build, Mobile typecheck and Expo Doctor, then execute the functional regression checklist in `DASHBOARD-v0.7.0-TESTING.md`.

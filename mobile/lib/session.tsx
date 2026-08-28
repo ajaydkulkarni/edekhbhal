@@ -1,5 +1,6 @@
 import * as SecureStore from "expo-secure-store";
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { AppState } from "react-native";
 import { API_URL, apiFetch, ORGANIZATION_KEY, SESSION_KEY } from "./api";
 import type { Membership } from "./types";
 
@@ -18,6 +19,7 @@ type SessionContextValue = {
 };
 
 const SessionContext = createContext<SessionContextValue | null>(null);
+const HEARTBEAT_MS = 45_000;
 
 export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
@@ -59,6 +61,43 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    if (!user?.id || !organizationId) return;
+
+    let timer: ReturnType<typeof setInterval> | null = null;
+
+    const stop = () => {
+      if (timer) clearInterval(timer);
+      timer = null;
+    };
+
+    const heartbeat = async () => {
+      try {
+        await apiFetch("/api/mobile/presence/heartbeat", { method: "POST" });
+      } catch {
+        // Presence telemetry must never interrupt field execution.
+      }
+    };
+
+    const start = () => {
+      stop();
+      void heartbeat();
+      timer = setInterval(() => void heartbeat(), HEARTBEAT_MS);
+    };
+
+    if (AppState.currentState === "active") start();
+
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state === "active") start();
+      else stop();
+    });
+
+    return () => {
+      stop();
+      subscription.remove();
+    };
+  }, [user?.id, organizationId]);
 
   const signInWithToken = useCallback(async (token: string) => {
     const response = await fetch(`${API_URL}/api/mobile/auth/exchange`, {

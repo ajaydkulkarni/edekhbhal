@@ -14,33 +14,61 @@ export async function Nav() {
     : null;
 
   const initials = membership?.organization.name?.slice(0, 2).toUpperCase() ?? "ED";
-  const canViewReports = membership
-    ? ["ADMIN", "PROPERTY_MANAGER"].includes(membership.role)
-    : false;
+  const isAdmin = membership?.role === "ADMIN";
+  const isManager = membership ? ["ADMIN", "PROPERTY_MANAGER"].includes(membership.role) : false;
+  const brandHref = isManager ? "/dashboard" : "/tasks";
 
   return (
     <header className="nav">
-      <Link className="brand" href="/dashboard">eDekhbhal</Link>
-      <nav>
-        <Link href="/properties">Properties</Link>
-        <Link href="/work-areas">Work Areas</Link><Link href="/tasks">Tasks</Link><Link href="/schedules">Schedules</Link>
-        {canViewReports && <Link href="/reports">Reports</Link>}
-        <Link href="/team">Team</Link>
-        <Link href="/organization">Organization</Link>
-        <Link href="/audit">Audit Trail</Link>
-        <Link href="/subscription">Subscription</Link>
-        {membership?.role === "ADMIN" && isDemoDataEnabled() && <Link href="/admin/demo-data">Demo Data</Link>}
-      </nav>
-      <div className="navAccount">
-        <Link className="orgBadge" href="/profile" title="My Profile">
-          {membership?.organization.logoUrl ? (
-            <img src={membership.organization.logoUrl} alt={`${membership.organization.name} logo`} />
-          ) : (
-            <span className="logoPlaceholder">{initials}</span>
-          )}
-          <span className="profileLabel">{user?.name || user?.email || "Profile"}</span>
+      <div className="navShell">
+        <Link className="brand navBrand" href={brandHref}>
+          <span className="brandMark">eD</span>
+          <span className="brandText">eDekhbhal</span>
         </Link>
-        {user && <LogoutButton />}
+
+        <nav className="navPrimary" aria-label="Primary navigation">
+          {isManager && <Link className="navLink" href="/dashboard">Dashboard</Link>}
+
+          <details className="navMenu">
+            <summary>Operations <span aria-hidden="true">⌄</span></summary>
+            <div className="navDropdown">
+              <Link href="/properties"><strong>Properties</strong><small>Buildings and locations</small></Link>
+              <Link href="/work-areas"><strong>Work Areas</strong><small>Serviceable areas and QR</small></Link>
+              <Link href="/tasks"><strong>Tasks</strong><small>Reusable task masters</small></Link>
+              <Link href="/schedules"><strong>Schedules</strong><small>Planned recurring work</small></Link>
+            </div>
+          </details>
+
+          {isManager && <Link className="navLink" href="/reports">Reports</Link>}
+
+          {isManager && (
+            <details className="navMenu">
+              <summary>Administration <span aria-hidden="true">⌄</span></summary>
+              <div className="navDropdown navDropdownRight">
+                <Link href="/audit"><strong>Audit Trail</strong><small>Operational and system history</small></Link>
+                {isAdmin && <Link href="/team"><strong>Team</strong><small>Users, roles and access</small></Link>}
+                {isAdmin && <Link href="/organization"><strong>Organization</strong><small>Settings and working hours</small></Link>}
+                {isAdmin && <Link href="/subscription"><strong>Subscription</strong><small>Plan and account status</small></Link>}
+                {isAdmin && isDemoDataEnabled() && <Link href="/admin/demo-data"><strong>Demo Data</strong><small>Staging seed utility</small></Link>}
+              </div>
+            </details>
+          )}
+        </nav>
+
+        <div className="navAccount">
+          <Link className="orgBadge" href="/profile" title="My Profile">
+            {membership?.organization.logoUrl ? (
+              <img src={membership.organization.logoUrl} alt={`${membership.organization.name} logo`} />
+            ) : (
+              <span className="logoPlaceholder">{initials}</span>
+            )}
+            <span className="profileCopy">
+              <span className="profileLabel">{user?.name || user?.email || "Profile"}</span>
+              <small>{membership?.role?.replace("PROPERTY_MANAGER", "Property Manager") ?? ""}</small>
+            </span>
+          </Link>
+          {user && <LogoutButton />}
+        </div>
       </div>
     </header>
   );
