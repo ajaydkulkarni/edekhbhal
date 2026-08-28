@@ -2053,20 +2053,25 @@ Field mapping:
 
 The report intentionally uses snapshot fields so later edits to Schedule, Property, Work Area or Task definitions do not rewrite historical report output.
 
-Initial filters:
+Current filters:
 
+- From Date
+- To Date
 - Property
 - Work Area
 - Task List / Schedule
 - User
 
-Initial result limit: latest 500 matching completed Task performances.
+Date filtering uses the Organization timezone for inclusive calendar-day boundaries. Displayed Task date/start/end values continue to use each occurrence timezone.
+
+All displayed Service Log columns are sortable by clicking the column heading. Sorting supports ascending/descending order and handles text, task sequence, actual duration, scheduled duration, deviation, user, date, start time and end time using the underlying typed values rather than formatted display text. Default sort is service date/time descending.
+
+Initial result limit: latest 500 matching completed Task performances. Column sorting applies to the matching rows loaded into the report.
 
 No database migration is required for the Service Log; all required reporting data is already stored by the v0.6.0 occurrence/execution model.
 
 Recommended next report enhancements:
 
-- date-range filtering using Organization/Schedule timezone semantics,
 - CSV/XLSX export,
 - occurrence-level drill-down,
 - evidence/notes drill-down for authorized management users,

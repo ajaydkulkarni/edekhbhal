@@ -1,48 +1,78 @@
-# eDekhbhal v0.6.1 — Reports Foundation / Service Log
+# eDekhbhal v0.6.1 — Service Log Report Patch
 
-This patch adds the first Web report without any database migration.
+This patch adds the first Reports foundation to the Web application.
 
 ## Included
 
-- `Reports` navigation entry for ADMIN and PROPERTY_MANAGER.
-- `/reports` report landing page.
-- `/reports/service-log` Service Log report.
-- Filters: Property, Work Area, Task List (Schedule), User.
-- Latest 500 completed Task performances.
-- Planned vs actual task duration and deviation.
-- Historical snapshot names and occurrence timezone-aware display.
-- Updated canonical `PROJECT-CONTEXT.md`.
+- `Reports` navigation item for ADMIN and PROPERTY_MANAGER.
+- `/reports` landing page.
+- `/reports/service-log` report.
+- One row per completed Task performance.
+- Filters for:
+  - From Date
+  - To Date
+  - Property
+  - Work Area
+  - Task List / Schedule
+  - User
+- Date filter boundaries use the Organization timezone.
+- Click any table column heading to sort ascending/descending.
+- Sortable columns:
+  - Property
+  - Work Area
+  - Task List
+  - Sr. No.
+  - Task Performed
+  - Actual Time Taken
+  - Scheduled Time
+  - Deviation
+  - User
+  - Date
+  - Start Time
+  - End Time
+- Latest 500 matching completed Task performances are loaded.
+- Historical snapshot fields are used so later master-data edits do not rewrite history.
 
-## Apply
+## No database migration required
 
-Extract this ZIP into the repository root, preserving folders and replacing `src/components/Nav.tsx` and `PROJECT-CONTEXT.md`.
+All required Service Log fields already exist in the v0.6.0 occurrence/execution data model.
 
-Then commit and push:
+## Install
+
+Extract the ZIP into the repository root so the included `src/...` paths merge into the existing source tree.
+
+Then run:
+
+```bash
+npm run typecheck
+npm run build
+```
+
+If both succeed:
 
 ```bash
 git add src/app/reports src/components/Nav.tsx PROJECT-CONTEXT.md
-git commit -m "Add Service Log reports foundation"
+git commit -m "Add sortable Service Log with date filters"
 git push
 ```
 
 Vercel should deploy automatically from `main`.
 
-## Validate
+## Test
 
-1. Sign in as an ADMIN or PROPERTY_MANAGER.
-2. Confirm `Reports` appears in the Web navigation.
-3. Open `Reports -> Service Log`.
-4. Confirm completed mobile Task executions appear.
-5. Compare one row with the corresponding mobile execution:
-   - Property / Work Area
-   - Task List / Schedule
-   - sequence
-   - Task name
-   - actual duration
-   - planned duration
-   - deviation
-   - user
-   - date/start/end
-6. Test each filter.
+1. Log in as an ADMIN or PROPERTY_MANAGER.
+2. Open **Reports -> Service Log**.
+3. Verify a known mobile-completed Task appears.
+4. Filter by a single date by setting From Date and To Date to the same date.
+5. Filter by a date range.
+6. Filter by User and verify only that user's completed Tasks appear.
+7. Combine date + Property + Work Area + Task List + User filters.
+8. Click each column heading and verify ascending/descending sorting.
+9. Compare Actual Time Taken, Scheduled Time, Deviation, Start Time and End Time against the corresponding mobile execution.
 
-No Supabase SQL or new Vercel environment variable is required.
+## Notes
+
+- Times shown in the table use the occurrence timezone.
+- Date filter boundaries use the Organization timezone.
+- Sorting applies to the matching rows loaded into the report (up to 500 rows).
+- The Work Area standalone QR controls and public QR transparency enhancement are **not** part of this patch; they remain planned for the next increment.

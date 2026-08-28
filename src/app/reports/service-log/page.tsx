@@ -3,12 +3,25 @@ import { redirect } from "next/navigation";
 import { Nav } from "@/components/Nav";
 import { getSessionUser } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
+import { zonedLocalToUtc } from "@/lib/schedule";
+import { SortableServiceLogTable, type ServiceLogRow } from "./SortableServiceLogTable";
 
 type QueryValue = string | string[] | undefined;
 type SearchParams = Record<string, QueryValue>;
 
 function first(value: QueryValue) {
   return Array.isArray(value) ? value[0] ?? "" : value ?? "";
+}
+
+function validDate(value: string) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : "";
+}
+
+function nextDate(value: string) {
+  const [year, month, day] = value.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  date.setUTCDate(date.getUTCDate() + 1);
+  return date.toISOString().slice(0, 10);
 }
 
 function durationFromSeconds(totalSeconds: number | null | undefined) {
@@ -24,9 +37,13 @@ function plannedDuration(minutes: number) {
   return durationFromSeconds(minutes * 60);
 }
 
-function deviation(actualSeconds: number | null | undefined, plannedMinutes: number) {
-  if (actualSeconds == null) return "—";
-  const difference = Math.floor(actualSeconds) - plannedMinutes * 60;
+function deviationValue(actualSeconds: number | null | undefined, plannedMinutes: number) {
+  if (actualSeconds == null) return null;
+  return Math.floor(actualSeconds) - plannedMinutes * 60;
+}
+
+function deviationLabel(difference: number | null) {
+  if (difference == null) return "—";
   if (difference === 0) return "00:00:00";
   const sign = difference > 0 ? "+" : "−";
   return `${sign}${durationFromSeconds(Math.abs(difference))}`;
@@ -74,6 +91,19 @@ export default async function ServiceLogPage({
   const workAreaId = first(query.workAreaId);
   const scheduleId = first(query.scheduleId);
   const userId = first(query.userId);
+  const dateFrom = validDate(first(query.dateFrom));
+  const dateTo = validDate(first(query.dateTo));
+
+  const dateFilter = dateFrom || dateTo
+    ? {
+        ...(dateFrom
+          ? { gte: zonedLocalToUtc(`${dateFrom}T00:00`, membership.organization.timezone) }
+          : {}),
+        ...(dateTo
+          ? { lt: zonedLocalToUtc(`${nextDate(dateTo)}T00:00`, membership.organization.timezone) }
+          : {}),
+      }
+    : { not: null };
 
   const [properties, workAreas, schedules, members, rows] = await Promise.all([
     prisma.property.findMany({
@@ -104,7 +134,7 @@ export default async function ServiceLogPage({
     prisma.scheduleOccurrenceTask.findMany({
       where: {
         status: "COMPLETED",
-        actualStartAt: { not: null },
+        actualStartAt: dateFilter,
         occurrence: {
           organizationId: membership.organizationId,
           ...(propertyId ? { workArea: { propertyId } } : {}),
@@ -129,6 +159,37 @@ export default async function ServiceLogPage({
     (a.user.name ?? a.user.email).localeCompare(b.user.name ?? b.user.email),
   );
 
+  const tableRows: ServiceLogRow[] = rows.map((row) => {
+    const occurrence = row.occurrence;
+    const effectiveActualSeconds = row.actualDurationSeconds ??
+      (row.actualStartAt && row.actualEndAt
+        ? Math.max(0, Math.floor((row.actualEndAt.getTime() - row.actualStartAt.getTime()) / 1000))
+        : null);
+    const plannedSeconds = row.plannedDurationMinutes * 60;
+    const difference = deviationValue(effectiveActualSeconds, row.plannedDurationMinutes);
+
+    return {
+      id: row.id,
+      property: occurrence.propertyNameSnapshot,
+      workArea: occurrence.workAreaNameSnapshot,
+      taskList: occurrence.scheduleNameSnapshot,
+      sequence: row.sequence,
+      taskPerformed: row.taskNameSnapshot,
+      actualTimeTaken: durationFromSeconds(effectiveActualSeconds),
+      actualSeconds: effectiveActualSeconds,
+      scheduledTime: plannedDuration(row.plannedDurationMinutes),
+      scheduledSeconds: plannedSeconds,
+      deviation: deviationLabel(difference),
+      deviationSeconds: difference,
+      user: occurrence.assignedUser?.name ?? occurrence.assignedUser?.email ?? "—",
+      date: formatDate(row.actualStartAt, occurrence.timezone),
+      startTime: formatTime(row.actualStartAt, occurrence.timezone),
+      endTime: formatTime(row.actualEndAt, occurrence.timezone),
+      actualStartAtEpoch: row.actualStartAt?.getTime() ?? null,
+      actualEndAtEpoch: row.actualEndAt?.getTime() ?? null,
+    };
+  });
+
   return (
     <>
       <Nav />
@@ -137,11 +198,21 @@ export default async function ServiceLogPage({
         <h1>Service Log</h1>
         <p className="muted">
           One row per completed Task performance. Times are shown in the Schedule occurrence timezone.
-          Showing the latest 500 matching rows.
+          Date filters use the Organization timezone ({membership.organization.timezone}). Showing the latest 500 matching rows.
         </p>
 
         <form method="get" className="card" style={{ marginBottom: 20 }}>
           <div className="formGrid">
+            <label>
+              From Date
+              <input type="date" name="dateFrom" defaultValue={dateFrom} />
+            </label>
+
+            <label>
+              To Date
+              <input type="date" name="dateTo" defaultValue={dateTo} />
+            </label>
+
             <label>
               Property
               <select name="propertyId" defaultValue={propertyId}>
@@ -192,60 +263,8 @@ export default async function ServiceLogPage({
           </div>
         </form>
 
-        <div className="card" style={{ padding: 0 }}>
-          <div style={{ overflowX: "auto" }}>
-            <table className="table" style={{ minWidth: 1500 }}>
-              <thead>
-                <tr>
-                  <th>Property</th>
-                  <th>Work Area</th>
-                  <th>Task List</th>
-                  <th>Sr. No.</th>
-                  <th>Task Performed</th>
-                  <th>Actual Time Taken</th>
-                  <th>Scheduled Time</th>
-                  <th>Deviation</th>
-                  <th>User</th>
-                  <th>Date</th>
-                  <th>Start Time</th>
-                  <th>End Time</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => {
-                  const occurrence = row.occurrence;
-                  const effectiveActualSeconds = row.actualDurationSeconds ??
-                    (row.actualStartAt && row.actualEndAt
-                      ? Math.max(0, Math.floor((row.actualEndAt.getTime() - row.actualStartAt.getTime()) / 1000))
-                      : null);
-                  const performedBy = occurrence.assignedUser?.name ?? occurrence.assignedUser?.email ?? "—";
-
-                  return (
-                    <tr key={row.id}>
-                      <td>{occurrence.propertyNameSnapshot}</td>
-                      <td>{occurrence.workAreaNameSnapshot}</td>
-                      <td>{occurrence.scheduleNameSnapshot}</td>
-                      <td>{row.sequence}</td>
-                      <td><strong>{row.taskNameSnapshot}</strong></td>
-                      <td>{durationFromSeconds(effectiveActualSeconds)}</td>
-                      <td>{plannedDuration(row.plannedDurationMinutes)}</td>
-                      <td>{deviation(effectiveActualSeconds, row.plannedDurationMinutes)}</td>
-                      <td>{performedBy}</td>
-                      <td>{formatDate(row.actualStartAt, occurrence.timezone)}</td>
-                      <td>{formatTime(row.actualStartAt, occurrence.timezone)}</td>
-                      <td>{formatTime(row.actualEndAt, occurrence.timezone)}</td>
-                    </tr>
-                  );
-                })}
-                {!rows.length && (
-                  <tr>
-                    <td colSpan={12} className="muted">No completed Task performances match the current filters.</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <p className="muted" style={{ marginTop: 0 }}>Click any column heading to sort ascending or descending.</p>
+        <SortableServiceLogTable rows={tableRows} />
       </main>
     </>
   );
