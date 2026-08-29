@@ -1,14 +1,18 @@
-# Fine-tuning Batch 02B — Mobile E2E Authentication Fix
+# Fine-tuning Batch 02C — GitHub Actions E2E Baseline
 
-The live Playwright run passed 8 of 9 tests.
+Purpose:
+- restore the missing manual GitHub Actions runner for staging E2E tests;
+- record the confirmed 9/9 live staging Playwright baseline in PROJECT-CONTEXT.md.
 
-The only failure was the mobile queue test. The application mobile API correctly requires an `Authorization: Bearer <token>` header. The original E2E test used the Web session cookie instead, so the request was rejected before queue authorization was evaluated.
+Why the workflow payload is not inside a hidden `.github` folder:
+Some upload/extraction flows skipped the hidden `.github` path in Batch 02. This package keeps the source YAML under `workflow-payload/`, and the APPLY script creates `.github/workflows/e2e-staging.yml` in the repository.
 
-This patch:
-- returns the short-lived token from the staging-only, secret-protected E2E session route;
-- adds a `mobileLogin()` E2E helper;
-- sends the Bearer token to `/api/mobile/queue/next`;
-- verifies an unassigned USER receives exactly `state: "EMPTY"` and `occurrence: null`;
-- updates PROJECT-CONTEXT.md.
+After APPLY/CHECK and commit/push, configure the same six E2E values as GitHub Actions repository secrets:
+- E2E_TEST_SECRET
+- E2E_ADMIN_EMAIL
+- E2E_PM_EMAIL
+- E2E_USER_EMAIL
+- E2E_UNASSIGNED_EMAIL
+(E2E_BASE_URL is fixed in the workflow to the staging URL.)
 
-No Supabase migration and no Vercel environment-variable changes are required.
+Do not paste secrets into chat.
