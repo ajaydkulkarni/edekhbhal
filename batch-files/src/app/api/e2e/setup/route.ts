@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+const STAGING_APP_URL = "https://edekhbhal-staging.vercel.app";
+
 function enabled() {
-  return process.env.E2E_TESTING_ENABLED === "true" && process.env.VERCEL_ENV !== "production";
+  const appUrl = (process.env.APP_URL || "").replace(/\/$/, "");
+  return process.env.E2E_TESTING_ENABLED === "true" && appUrl === STAGING_APP_URL;
 }
 function required(name: string) {
   const value = process.env[name];

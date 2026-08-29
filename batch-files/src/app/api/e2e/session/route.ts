@@ -5,9 +5,11 @@ import { prisma } from "@/lib/prisma";
 import { randomToken, sha256 } from "@/lib/security";
 
 const bodySchema = z.object({ email: z.string().email() });
+const STAGING_APP_URL = "https://edekhbhal-staging.vercel.app";
 
 function enabled() {
-  return process.env.E2E_TESTING_ENABLED === "true" && process.env.VERCEL_ENV !== "production";
+  const appUrl = (process.env.APP_URL || "").replace(/\/$/, "");
+  return process.env.E2E_TESTING_ENABLED === "true" && appUrl === STAGING_APP_URL;
 }
 function allowedEmails() {
   return [process.env.E2E_ADMIN_EMAIL, process.env.E2E_PM_EMAIL, process.env.E2E_USER_EMAIL, process.env.E2E_UNASSIGNED_EMAIL]

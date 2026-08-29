@@ -1,26 +1,13 @@
-# Fine-tuning Batch 02 — Automated Functional Testing Foundation
+# Fine-tuning Batch 02A — E2E Runtime Hotfix
 
-Adds Playwright staging E2E automation without changing the semantic application version.
+The first live E2E run exposed two infrastructure issues:
 
-Required Vercel staging environment variables:
-- E2E_TESTING_ENABLED=true
-- E2E_TEST_SECRET=<strong random secret>
-- E2E_ADMIN_EMAIL=<existing active Admin email in staging>
-- E2E_PM_EMAIL=<dedicated automation PM email>
-- E2E_USER_EMAIL=<dedicated automation assigned User email>
-- E2E_UNASSIGNED_EMAIL=<dedicated automation unassigned User email>
+1. The dedicated staging Vercel project reports VERCEL_ENV=production for its production branch, so the original E2E guard incorrectly returned 404.
+2. Codespaces Chromium was downloaded but Linux runtime libraries such as libatk were missing.
 
-Security:
-- E2E endpoints are disabled when VERCEL_ENV=production.
-- Every E2E request requires E2E_TEST_SECRET.
-- Only explicitly configured emails can receive E2E sessions.
-- Do not commit secret values.
+Fixes:
+- E2E endpoints now require E2E_TESTING_ENABLED=true AND APP_URL=https://edekhbhal-staging.vercel.app.
+- E2E_TEST_SECRET and explicit test-email allow-list checks remain required.
+- The Playwright install script now uses --with-deps chromium.
 
-Workflow:
-1. Extract locally and upload all extracted files to GitHub preserving paths.
-2. In Codespaces: git pull, APPLY, CHECK.
-3. Push canonical changes.
-4. Add Vercel staging E2E environment variables and redeploy.
-5. Configure matching terminal/GitHub Actions secrets.
-6. Install Chromium once: npx playwright install chromium
-7. Run: npm run test:e2e
+No Supabase migration is required.
