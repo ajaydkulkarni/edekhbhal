@@ -38,3 +38,14 @@ export async function login(page: Page, email: string) {
   await page.goto("/dashboard");
   await expect(page).not.toHaveURL(/\/login/);
 }
+
+export async function mobileLogin(request: APIRequestContext, email: string) {
+  const response = await request.post("/api/e2e/session", {
+    headers: { "x-e2e-secret": e2eSecret() },
+    data: { email }
+  });
+  expect(response.ok(), await response.text()).toBeTruthy();
+  const body = await response.json();
+  expect(body.token).toBeTruthy();
+  return body.token as string;
+}

@@ -2463,3 +2463,11 @@ RLS is deliberately not enabled in this batch. First validate application-level 
 - E2E enablement now binds to APP_URL=https://edekhbhal-staging.vercel.app plus E2E_TESTING_ENABLED=true instead of rejecting VERCEL_ENV=production.
 - Secret and explicit-email allow-list checks remain mandatory.
 - Codespaces Playwright install command now includes Linux system dependencies via `playwright install --with-deps chromium`.
+
+
+
+### Fine-tuning Batch 02B — Mobile E2E Authentication Fix
+- The first mostly-green live Playwright run passed 8/9 tests.
+- The remaining mobile queue test was a test-harness mismatch, not an application authorization failure: mobile APIs require `Authorization: Bearer <session-token>`, while the Web E2E login helper only established the `edk_session` cookie.
+- The staging-only E2E session helper now also returns its generated short-lived session token to an authenticated E2E caller.
+- Mobile API E2E tests use that token as a Bearer token and assert the unassigned USER receives exactly `state: "EMPTY"` and `occurrence: null`.

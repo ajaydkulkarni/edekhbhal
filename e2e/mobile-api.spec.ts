@@ -1,11 +1,14 @@
-import { test, expect } from "@playwright/test";
-import { accountEmails, login, setupFixtures } from "./helpers";
+import { expect, test } from "@playwright/test";
+import { accountEmails, mobileLogin, setupFixtures } from "./helpers";
 
-test("unassigned User receives no executable mobile queue work", async ({ page, request }) => {
+test("unassigned User receives no executable mobile queue work", async ({ request }) => {
   await setupFixtures(request);
-  await login(page, accountEmails().unassigned);
-  const response = await page.request.get("/api/mobile/queue/next");
-  expect(response.ok()).toBeTruthy();
+  const token = await mobileLogin(request, accountEmails().unassigned);
+  const response = await request.get("/api/mobile/queue/next", {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  expect(response.ok(), await response.text()).toBeTruthy();
   const body = await response.json();
-  expect(body.state ?? body.status ?? "EMPTY").toMatch(/EMPTY|NONE|NO_WORK/i);
+  expect(body.state).toBe("EMPTY");
+  expect(body.occurrence).toBeNull();
 });

@@ -40,5 +40,5 @@ export async function POST(req: Request) {
   (await cookies()).set("edk_session", token, {
     httpOnly: true, sameSite: "lax", secure: true, path: "/", maxAge: 2 * 60 * 60
   });
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, token });
 }
