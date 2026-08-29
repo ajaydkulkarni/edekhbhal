@@ -160,6 +160,8 @@ model User {
   occurrenceEvidenceCaptured ScheduleOccurrenceEvidence[] @relation("OccurrenceEvidenceCapturedBy")
   occurrencesAssigned ScheduleOccurrence[] @relation("OccurrenceAssignedTo")
   occurrenceNotesCreated ScheduleOccurrenceNote[] @relation("OccurrenceNoteCreatedBy")
+  propertyAssignmentsMade OrganizationMemberProperty[] @relation("PropertyAssignmentMadeBy")
+  personnelDocumentsUploaded PersonnelDocument[] @relation("PersonnelDocumentUploadedBy")
 }
 
 model Session {
@@ -218,6 +220,20 @@ model OrganizationMember {
   userId         String
   role           MembershipRole @default(USER)
   status         Status @default(ACTIVE)
+  addressLine1   String?
+  addressLine2   String?
+  addressLine3   String?
+  city           String?
+  state          String?
+  postalCode     String?
+  country        String?
+  mobilePhone    String?
+  residencePhone String?
+  alternatePhone String?
+  notes          String? @db.Text
+  photoStoragePath String? @db.Text
+  propertyAssignments OrganizationMemberProperty[]
+  personnelDocuments PersonnelDocument[]
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -225,6 +241,41 @@ model OrganizationMember {
   @@unique([organizationId, userId])
   @@index([userId])
 }
+
+
+model OrganizationMemberProperty {
+  id                   String @id @default(cuid())
+  organizationMemberId String
+  propertyId           String
+  assignedById         String
+  assignedAt           DateTime @default(now())
+  member               OrganizationMember @relation(fields: [organizationMemberId], references: [id], onDelete: Cascade)
+  property             Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  assignedBy           User @relation("PropertyAssignmentMadeBy", fields: [assignedById], references: [id], onDelete: Restrict)
+
+  @@unique([organizationMemberId, propertyId])
+  @@index([propertyId])
+  @@index([assignedById])
+}
+
+model PersonnelDocument {
+  id                   String @id @default(cuid())
+  organizationMemberId String
+  documentType         String @db.VarChar(100)
+  description          String @db.VarChar(500)
+  fileName             String @db.VarChar(255)
+  mimeType             String @db.VarChar(150)
+  sizeBytes            Int?
+  storagePath          String @db.Text
+  expiryDate           DateTime? @db.Date
+  uploadedById         String
+  createdAt            DateTime @default(now())
+  member               OrganizationMember @relation(fields: [organizationMemberId], references: [id], onDelete: Cascade)
+  uploadedBy           User @relation("PersonnelDocumentUploadedBy", fields: [uploadedById], references: [id], onDelete: Restrict)
+
+  @@index([organizationMemberId, createdAt])
+}
+
 
 model Property {
   id             String @id @default(cuid())
@@ -244,6 +295,7 @@ model Property {
   updatedAt      DateTime @updatedAt
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   workAreas      WorkArea[]
+  memberAssignments OrganizationMemberProperty[]
   @@index([organizationId])
 }
 

@@ -8,9 +8,9 @@
 >
 > Going forward, this file should be updated with every build/release and kept in the root of the GitHub repository as `PROJECT-CONTEXT.md`.
 
-**Last updated:** 2026-08-28
+**Last updated:** 2026-08-29
 **Current application version:** v0.9.1 (Direct Work Area QR Visibility Hotfix)
-**Current deployment status:** v0.9.0 Web/API deployed successfully and initial Compliance / Work Area Service Status / public QR checks passed; v0.9.1 direct Work Area QR visibility hotfix prepared for validation
+**Current deployment status:** v0.9.1 is deployed and validated in staging. Fine-tuning Batch 01 (Audit Trail + Personnel Profiles + Property Assignments + first-stage property-scope enforcement) is prepared for staging validation. RLS is intentionally deferred until application-level property scoping passes role regression.
 **Current GitHub deployment commit observed in successful Vercel build:** `024c6a4`
 
 **Current Android field build:** v0.8.1, versionCode 3, EAS build `55db02b1-76dd-4e86-9f73-db97be2a17c7`, source commit `ad4ea3bf21658583c07843d6569b09e174459316`.
@@ -2406,3 +2406,33 @@ The displayed QR remains the same QR identity used for:
 - No database migration.
 - No mobile binary change.
 - Existing v0.8.1 Android APK remains valid.
+
+
+---
+
+## Fine-tuning Batch 01 — Audit, Personnel & Property Access Foundation
+
+This batch is intentionally **not** a semantic version bump. The application remains v0.9.1 until the broader access-control work, including the RLS security gate, is validated and ready to become the next meaningful release.
+
+### Audit Trail
+- Date/User/Action/Entity filters, global search, pagination and sorting.
+- CSV/XLSX export respects active filters/search.
+
+### Personnel Profiles
+- Name, address, phones, Role, Status and internal Notes.
+- Private profile picture upload with browser camera capture when available.
+- Multiple verification documents with type, description, optional expiry and signed private access.
+- User self-service never exposes internal Notes.
+- Property Managers may maintain User personnel details only within their assigned scope.
+- Role, Status and Property assignment remain Admin controls.
+
+### Property Assignments
+- Many-to-many OrganizationMember ↔ Property assignment.
+- Admin can assign multiple Properties from Team profile or Property → Team Assignments.
+- Admin has Organization-wide access.
+- Property Manager and User access is assignment-based.
+- User with no assigned Property gets no available mobile work.
+- Property master-data create/edit is Admin-only; Property Manager sees assigned Property master data read-only.
+
+### RLS security gate
+RLS is deliberately not enabled in this batch. First validate application-level Admin / Property Manager / User property scoping in staging. Then complete remaining endpoint scoping and introduce RLS in staging with an appropriate non-bypass runtime role / request context before the next release is production-ready.
