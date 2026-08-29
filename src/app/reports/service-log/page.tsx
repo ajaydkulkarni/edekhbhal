@@ -94,6 +94,14 @@ export default async function ServiceLogPage({
   const dateFrom = validDate(first(query.dateFrom));
   const dateTo = validDate(first(query.dateTo));
 
+  const exportParams = new URLSearchParams();
+  if (dateFrom) exportParams.set("dateFrom", dateFrom);
+  if (dateTo) exportParams.set("dateTo", dateTo);
+  if (propertyId) exportParams.set("propertyId", propertyId);
+  if (workAreaId) exportParams.set("workAreaId", workAreaId);
+  if (scheduleId) exportParams.set("scheduleId", scheduleId);
+  if (userId) exportParams.set("userId", userId);
+
   const dateFilter = dateFrom || dateTo
     ? {
         ...(dateFrom
@@ -260,6 +268,18 @@ export default async function ServiceLogPage({
           <div className="row" style={{ marginTop: 12 }}>
             <button className="button" type="submit">Apply Filters</button>
             <Link className="button secondary" href="/reports/service-log">Clear</Link>
+            <a
+              className="button secondary"
+              href={`/api/reports/service-log/export?${exportParams.toString()}&format=csv`}
+            >
+              Export CSV
+            </a>
+            <a
+              className="button secondary"
+              href={`/api/reports/service-log/export?${exportParams.toString()}&format=xlsx`}
+            >
+              Export XLSX
+            </a>
           </div>
         </form>
 

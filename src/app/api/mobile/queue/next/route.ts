@@ -9,13 +9,25 @@ import {
   occurrenceInclude,
   releaseExpiredClaims
 } from "@/lib/mobileExecution";
+import { supersedeDueOccurrences } from "@/lib/occurrenceSupersession";
 
 export async function GET(req: Request) {
   try {
     const { user, membership, organization } = await requireMobileMembership(req);
+
     await releaseExpiredClaims(membership.organizationId);
 
-    const active = await activeOccurrenceForUser(membership.organizationId, user.id);
+    // Reconcile stale recurring work before choosing the next mobile item.
+    // This makes the queue correct even between scheduled cron runs.
+    await supersedeDueOccurrences({
+      organizationId: membership.organizationId
+    });
+
+    const active = await activeOccurrenceForUser(
+      membership.organizationId,
+      user.id
+    );
+
     if (active) {
       return Response.json({
         state: active.status === "IN_PROGRESS" ? "IN_PROGRESS" : "CLAIMED",

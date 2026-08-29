@@ -110,6 +110,7 @@ enum ActionType {
   SCHEDULE_DUPLICATED
   SCHEDULE_OCCURRENCES_GENERATED
   SCHEDULE_OCCURRENCES_RECONCILED
+  SCHEDULE_OCCURRENCE_AUTO_MISSED
   SCHEDULE_CLAIMED
   SCHEDULE_CLAIM_RELEASED
   SCHEDULE_CLAIM_EXPIRED
@@ -322,6 +323,7 @@ model Schedule {
   startAt            DateTime
   endDate            DateTime?              @db.Date
   occurrenceGeneratedThrough DateTime?
+  supersedeUnstarted Boolean               @default(true)
   timezone           String                @db.VarChar(100)
   workAreaId         String
   status             Status                @default(ACTIVE)
@@ -380,6 +382,8 @@ model ScheduleOccurrence {
   startedAt              DateTime?
   completedAt            DateTime?
   actualDurationSeconds  Int?
+  autoMissedAt           DateTime?
+  missedReason           String?                  @db.Text
   createdAt              DateTime                 @default(now())
   updatedAt              DateTime                 @updatedAt
   organization           Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -394,6 +398,7 @@ model ScheduleOccurrence {
   @@index([workAreaId, scheduledStartAt, status])
   @@index([organizationId, assignedUserId, status])
   @@index([organizationId, claimExpiresAt, status])
+  @@index([scheduleId, scheduledStartAt, status])
 }
 
 model ScheduleOccurrenceTask {

@@ -10,26 +10,51 @@ export default async function ReportsPage() {
 
   const membership = await prisma.organizationMember.findFirst({
     where: { userId: user.id, status: "ACTIVE" },
-    include: { organization: true },
+    include: { organization: true }
   });
 
   if (!membership) redirect("/onboarding");
-  if (!["ADMIN", "PROPERTY_MANAGER"].includes(membership.role)) redirect("/dashboard");
+  if (!["ADMIN", "PROPERTY_MANAGER"].includes(membership.role)) {
+    redirect("/dashboard");
+  }
 
   return (
     <>
       <Nav />
       <main className="container">
         <h1>Reports</h1>
-        <p className="muted">Operational reporting for {membership.organization.name}.</p>
+        <p className="muted">
+          Operational reporting for {membership.organization.name}.
+        </p>
 
-        <div className="card" style={{ maxWidth: 720 }}>
-          <h2 style={{ marginTop: 0 }}>Service Log</h2>
-          <p className="muted">
-            Task-level execution history with planned versus actual duration, deviation,
-            servicing user, and actual start/end time.
-          </p>
-          <Link className="button" href="/reports/service-log">Open Service Log</Link>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))",
+            gap: 16
+          }}
+        >
+          <div className="card">
+            <h2 style={{ marginTop: 0 }}>Service Log</h2>
+            <p className="muted">
+              Task-level execution history with planned versus actual duration,
+              deviation, servicing user and actual start/end time.
+            </p>
+            <Link className="button" href="/reports/service-log">
+              Open Service Log
+            </Link>
+          </div>
+
+          <div className="card">
+            <h2 style={{ marginTop: 0 }}>Service Compliance & Analytics</h2>
+            <p className="muted">
+              Completed, partial and missed occurrence compliance by Property,
+              Work Area, Schedule and User, with occurrence drill-down.
+            </p>
+            <Link className="button" href="/reports/compliance">
+              Open Compliance
+            </Link>
+          </div>
         </div>
       </main>
     </>

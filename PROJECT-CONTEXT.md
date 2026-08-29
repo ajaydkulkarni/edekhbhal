@@ -9,9 +9,11 @@
 > Going forward, this file should be updated with every build/release and kept in the root of the GitHub repository as `PROJECT-CONTEXT.md`.
 
 **Last updated:** 2026-08-28
-**Current application version:** v0.8.1 (Mobile Navigation Visibility Hotfix)
-**Current deployment status:** v0.8.0 Web/API and database migration are deployed to staging; v0.8.1 mobile navigation visibility hotfix is being validated before replacement Android APK build
+**Current application version:** v0.9.0 (Smart Service Compliance & Public Work Area QR)
+**Current deployment status:** v0.8.1 Android APK field-tested successfully; v0.9.0 automated validation is green, staging database migration has been applied successfully, and Web/API deployment verification is next
 **Current GitHub deployment commit observed in successful Vercel build:** `024c6a4`
+
+**Current Android field build:** v0.8.1, versionCode 3, EAS build `55db02b1-76dd-4e86-9f73-db97be2a17c7`, source commit `ad4ea3bf21658583c07843d6569b09e174459316`.
 
 ---
 
@@ -2254,3 +2256,114 @@ The v0.8.1 mobile-only hotfix:
 - bumps Android `versionCode` to 3 so the corrected APK installs as an update.
 
 No database migration or Web/API change is required for this hotfix.
+
+
+---
+
+## v0.9.0 — Smart Service Compliance & Public Work Area QR
+
+This release consolidates the next Web/API operational roadmap around service compliance.
+
+### Smart recurring-schedule supersession
+
+Recurring operational schedules use a **latest due occurrence wins** rule when `Schedule.supersedeUnstarted = true` (default).
+
+- Future pre-generated occurrences do not supersede anything until their own `scheduledStartAt`.
+- When a later occurrence of the same recurring Schedule becomes due, older unstarted `PENDING` occurrences are automatically changed to `MISSED`.
+- A claimed-but-unstarted occurrence is still `PENDING`; it is released and marked `MISSED` when superseded.
+- `IN_PROGRESS`, `COMPLETED`, `PARTIALLY_COMPLETED`, `MISSED` and `CANCELED` history is never rewritten.
+- PENDING occurrence Tasks are marked `MISSED` at the same time.
+- The reason is stored in `ScheduleOccurrence.missedReason`.
+- `autoMissedAt` records when the rule was applied.
+- Audit action: `SCHEDULE_OCCURRENCE_AUTO_MISSED`.
+- Reconciliation runs in the occurrence cron and immediately before the mobile next-work queue is resolved.
+
+This prevents repetitive operational work from accumulating as a catch-up backlog while preserving accountability in management reporting.
+
+### Public Work Area QR status
+
+The existing printed Work Area QR remains the single QR identity.
+
+A normal phone camera can scan it without installing or opening the eDekhbhal mobile application. The public `/qr/[token]` page shows only safe operational status:
+
+- Work Area and Property;
+- last completed/partially completed service;
+- last service date/time and duration;
+- relative last-serviced age;
+- next scheduled service;
+- recent completed/partial/missed service history.
+
+The public page deliberately does **not** expose worker identity, email addresses, internal notes, evidence, audit information or tenant administration data.
+
+The authenticated eDekhbhal mobile app continues to use the same QR identity for execution validation. Regenerating/revoking a QR makes the previous public QR invalid because the public route requires an ACTIVE `QrCode` record.
+
+### Work Area Web service status
+
+Admin/Property Manager Work Areas now provide a Service Status page with:
+
+- current active public QR link;
+- last service;
+- next scheduled service;
+- recent history;
+- direct management occurrence drill-down.
+
+### Service Compliance & Analytics
+
+New `/reports/compliance` reporting provides:
+
+- Completed / Partially Completed / Missed KPIs;
+- service-compliance percentage;
+- filters by date, Property, Work Area, Schedule, User and final status;
+- summaries by Schedule;
+- summaries by Property;
+- summaries by Work Area;
+- summaries by User;
+- occurrence-level drill-down.
+
+### Occurrence management drill-down
+
+`/reports/occurrences/[id]` is restricted to active ADMIN / PROPERTY_MANAGER memberships and is organization-scoped. It shows:
+
+- occurrence snapshot/context;
+- schedule and Task timing/status;
+- actual durations;
+- auto-miss reason;
+- Schedule and Task notes;
+- authorized evidence previews through short-lived signed URLs.
+
+### Service Log exports
+
+The existing Service Log retains its filters and gains:
+
+- CSV export;
+- XLSX export;
+- export limit up to 5,000 matching completed Task performances.
+
+The XLSX endpoint uses the server-side `xlsx` package. Export endpoints are session-authenticated, management-role-gated and Organization-scoped.
+
+### Database additions
+
+- `Schedule.supersedeUnstarted Boolean @default(true)`
+- `ScheduleOccurrence.autoMissedAt DateTime?`
+- `ScheduleOccurrence.missedReason String?`
+- `ActionType.SCHEDULE_OCCURRENCE_AUTO_MISSED`
+- supporting occurrence index
+
+Migration: `supabase-v0.9.0-smart-compliance.sql`.
+
+### Mobile binary impact
+
+No new Android binary is required for v0.9.0. The installed v0.8.1 app receives the smarter queue behavior through the server API. Public QR status is browser-based and works from a normal phone camera.
+
+### v0.9.0 staging gate
+
+1. Apply package.
+2. Install root dependencies without forcing audit upgrades.
+3. Generate Prisma client.
+4. Web typecheck.
+5. Web production build.
+6. Mobile typecheck.
+7. Expo Doctor.
+8. Apply `supabase-v0.9.0-smart-compliance.sql` in staging.
+9. Redeploy/verify Vercel.
+10. Functional regression using `TESTING-v0.9.0.md`.
