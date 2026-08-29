@@ -10,8 +10,8 @@
 
 **Last updated:** 2026-08-29
 **Current application version:** v0.9.1 (Direct Work Area QR Visibility Hotfix)
-**Current deployment status:** v0.9.1 remains deployed in staging. Fine-tuning Batch 01 is under functional validation. Batch 01A hotfix fixes Property Manager self-service profile access while preserving assigned-property restrictions for viewing other personnel. RLS remains deferred until application-level property scoping passes role regression.
-**Current GitHub deployment commit observed in successful Vercel build:** `2c05ae2`
+**Current deployment status:** v0.9.1 remains the application version. Fine-tuning Batch 02 adds Playwright staging E2E automation, deterministic test identities/fixtures, role/property access tests and a manual GitHub Actions E2E workflow. RLS remains deferred until application/API scope enforcement and E2E role regression are green.
+**Current GitHub deployment commit observed in successful Vercel build:** `9c24f7a`
 
 **Current Android field build:** v0.8.1, versionCode 3, EAS build `55db02b1-76dd-4e86-9f73-db97be2a17c7`, source commit `ad4ea3bf21658583c07843d6569b09e174459316`.
 
@@ -2444,3 +2444,14 @@ RLS is deliberately not enabled in this batch. First validate application-level 
 - Property Manager self-access is allowed.
 - Property Manager access to other personnel remains limited to USER records within assigned Property scope.
 - Internal management Notes remain hidden on self-service access.
+
+
+
+### Fine-tuning Batch 02 — Automated Functional Testing Foundation
+- Playwright is the Web/API E2E framework.
+- Tests target staging, never production.
+- Staging-only E2E auth requires E2E_TESTING_ENABLED=true, non-production Vercel environment, E2E_TEST_SECRET, and explicit allowed E2E emails.
+- E2E setup creates/reuses deterministic Property A/B plus PM, assigned User and unassigned User fixtures in the Organization belonging to E2E_ADMIN_EMAIL.
+- Initial automated coverage: key-screen smoke, Audit export smoke, PM self-profile regression, property visibility/API authorization and unassigned mobile queue.
+- GitHub Actions workflow is manual initially; automatic post-deploy execution can be enabled after stability is proven.
+- Native Android camera/QR/evidence UI remains manual for now; mobile backend/API behavior is automatable.

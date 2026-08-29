@@ -10,7 +10,11 @@
     "db:generate": "prisma generate --schema=prisma/schema.prisma",
     "db:push": "prisma db push --schema=prisma/schema.prisma",
     "db:seed": "tsx prisma/seed.ts",
-    "db:seed:demo": "tsx prisma/seed-demo.ts"
+    "db:seed:demo": "tsx prisma/seed-demo.ts",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:report": "playwright show-report",
+    "test:e2e:install": "playwright install chromium"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
@@ -29,6 +33,7 @@
     "@types/react-dom": "^19.1.7",
     "prisma": "^6.19.3",
     "tsx": "^4.20.3",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.2",
+    "@playwright/test": "^1.55.0"
   }
 }
