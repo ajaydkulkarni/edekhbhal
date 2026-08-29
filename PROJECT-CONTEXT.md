@@ -9,8 +9,8 @@
 > Going forward, this file should be updated with every build/release and kept in the root of the GitHub repository as `PROJECT-CONTEXT.md`.
 
 **Last updated:** 2026-08-28
-**Current application version:** v0.9.0 (Smart Service Compliance & Public Work Area QR)
-**Current deployment status:** v0.8.1 Android APK field-tested successfully; v0.9.0 automated validation is green, staging database migration has been applied successfully, and Web/API deployment verification is next
+**Current application version:** v0.9.1 (Direct Work Area QR Visibility Hotfix)
+**Current deployment status:** v0.9.0 Web/API deployed successfully and initial Compliance / Work Area Service Status / public QR checks passed; v0.9.1 direct Work Area QR visibility hotfix prepared for validation
 **Current GitHub deployment commit observed in successful Vercel build:** `024c6a4`
 
 **Current Android field build:** v0.8.1, versionCode 3, EAS build `55db02b1-76dd-4e86-9f73-db97be2a17c7`, source commit `ad4ea3bf21658583c07843d6569b09e174459316`.
@@ -2367,3 +2367,42 @@ No new Android binary is required for v0.9.0. The installed v0.8.1 app receives 
 8. Apply `supabase-v0.9.0-smart-compliance.sql` in staging.
 9. Redeploy/verify Vercel.
 10. Functional regression using `TESTING-v0.9.0.md`.
+
+
+---
+
+## v0.9.1 — Direct Work Area QR Visibility Hotfix
+
+Field validation of v0.9.0 confirmed Reports → Service Compliance, Work Areas → Service Status and the public QR status page were working correctly.
+
+A Web UX gap remained: when entering **Work Areas** directly, QR display/printing was still available only through the Property detail Work Area manager.
+
+v0.9.1 closes that gap without changing the QR data model or security behavior.
+
+### Direct Work Areas QR controls
+
+The standalone Work Areas table now provides the same active-QR management flow already available under Property detail:
+
+- **View / Reprint QR**
+- **Regenerate QR**
+- QR modal with the actual QR image
+- QR ID
+- Parent Property
+- **Print QR**
+
+Regenerate continues to use the existing audited QR regeneration endpoint and invalidates the prior QR exactly as before.
+
+### Work Area Service Status QR visibility
+
+The management Service Status page now renders the actual active Work Area QR image, not only a link to the public status page.
+
+The displayed QR remains the same QR identity used for:
+
+1. authenticated eDekhbhal mobile execution validation; and
+2. normal phone-camera access to the public Work Area service-status page.
+
+### Database / mobile impact
+
+- No database migration.
+- No mobile binary change.
+- Existing v0.8.1 Android APK remains valid.

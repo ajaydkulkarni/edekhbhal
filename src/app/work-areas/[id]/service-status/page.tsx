@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { Nav } from "@/components/Nav";
 import { getSessionUser } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
+import { renderQrDataUrl } from "@/lib/qr";
 
 function fmt(value: Date | null | undefined, tz: string) {
   if (!value) return "—";
@@ -83,6 +84,7 @@ export default async function WorkAreaServiceStatus({
   ]);
 
   const activeQr = workArea.qrCodes[0];
+  const qrDataUrl = activeQr ? await renderQrDataUrl(activeQr.id) : null;
 
   return (
     <>
@@ -108,15 +110,27 @@ export default async function WorkAreaServiceStatus({
           }}
         >
           <div className="card">
-            <h2 style={{ marginTop: 0 }}>Public Work Area QR</h2>
-            {activeQr ? (
+            <h2 style={{ marginTop: 0 }}>Work Area QR</h2>
+            {activeQr && qrDataUrl ? (
               <>
+                <img
+                  src={qrDataUrl}
+                  alt={`QR for ${workArea.name}`}
+                  style={{
+                    width: "100%",
+                    maxWidth: 280,
+                    aspectRatio: "1 / 1",
+                    display: "block",
+                    margin: "0 auto 12px"
+                  }}
+                />
                 <p className="muted">
-                  A normal phone camera can scan the printed QR and open the
-                  public service-status page without logging in.
+                  This is the same Work Area QR used by the eDekhbhal mobile
+                  execution flow and by a normal phone camera for public
+                  service status.
                 </p>
                 <Link
-                  className="button"
+                  className="button secondary"
                   href={`/qr/${activeQr.id}`}
                   target="_blank"
                 >
