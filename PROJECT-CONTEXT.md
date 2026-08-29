@@ -2471,3 +2471,13 @@ RLS is deliberately not enabled in this batch. First validate application-level 
 - The remaining mobile queue test was a test-harness mismatch, not an application authorization failure: mobile APIs require `Authorization: Bearer <session-token>`, while the Web E2E login helper only established the `edk_session` cookie.
 - The staging-only E2E session helper now also returns its generated short-lived session token to an authenticated E2E caller.
 - Mobile API E2E tests use that token as a Bearer token and assert the unassigned USER receives exactly `state: "EMPTY"` and `occurrence: null`.
+
+
+
+### Fine-tuning Batch 02C — GitHub Actions E2E Baseline
+- Live staging Playwright baseline is green: 9/9 tests passed.
+- Covered baseline scenarios: Audit Trail access/export, unassigned USER mobile queue returns no executable work, Admin sees both E2E Properties, PM sees only assigned Property A, PM cannot update Property master through API, PM cannot access unassigned Property B detail, USER cannot open another Team Member profile, Admin key-screen smoke coverage, and PM full self-service profile access.
+- Added manual GitHub Actions workflow `.github/workflows/e2e-staging.yml`.
+- Workflow uses Node 20, `npm ci`, Chromium with Linux dependencies, repository Actions secrets for E2E credentials, and uploads the Playwright report artifact.
+- Keep GitHub Actions workflow manual (`workflow_dispatch`) until the expanded authorization suite is stable; automatic post-deploy execution is a later step.
+- RLS remains deferred until broader server-side authorization/API regression coverage is implemented and green.
