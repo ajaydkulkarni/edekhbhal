@@ -1,15 +1,26 @@
-# Fine-tuning Batch 01A — Property Manager Self-Service Profile Hotfix
+# Fine-tuning Batch 02 — Automated Functional Testing Foundation
 
-This is a focused staging hotfix and does not change the semantic application version.
+Adds Playwright staging E2E automation without changing the semantic application version.
 
-Fix:
-- Property Manager could open My Profile but received 404 from View Full Self-Service Profile.
-- Root cause: the Team Member page rejected every PROPERTY_MANAGER target before allowing self-access.
-- New behavior: PROPERTY_MANAGER can open their own self-service profile; access to other personnel remains restricted to USER records in assigned Property scope.
-- Internal Notes remain hidden during self-service access.
+Required Vercel staging environment variables:
+- E2E_TESTING_ENABLED=true
+- E2E_TEST_SECRET=<strong random secret>
+- E2E_ADMIN_EMAIL=<existing active Admin email in staging>
+- E2E_PM_EMAIL=<dedicated automation PM email>
+- E2E_USER_EMAIL=<dedicated automation assigned User email>
+- E2E_UNASSIGNED_EMAIL=<dedicated automation unassigned User email>
+
+Security:
+- E2E endpoints are disabled when VERCEL_ENV=production.
+- Every E2E request requires E2E_TEST_SECRET.
+- Only explicitly configured emails can receive E2E sessions.
+- Do not commit secret values.
 
 Workflow:
-1. Extract locally.
-2. Upload the extracted files to GitHub preserving paths.
-3. In Codespaces run git pull, APPLY, then CHECK.
-4. No Supabase migration is required.
+1. Extract locally and upload all extracted files to GitHub preserving paths.
+2. In Codespaces: git pull, APPLY, CHECK.
+3. Push canonical changes.
+4. Add Vercel staging E2E environment variables and redeploy.
+5. Configure matching terminal/GitHub Actions secrets.
+6. Install Chromium once: npx playwright install chromium
+7. Run: npm run test:e2e
