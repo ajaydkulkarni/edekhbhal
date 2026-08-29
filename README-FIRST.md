@@ -1,39 +1,22 @@
-# eDekhbhal v0.9.0 — Smart Service Compliance & Public Work Area QR
+# eDekhbhal v0.9.1 — Direct Work Area QR Visibility Hotfix
 
-Base expected: main branch at or after the successful v0.8.1 navigation hotfix (`ad4ea3b`).
+This is a small Web-only hotfix on top of v0.9.0.
 
-## Included
+It fixes the remaining Work Areas UX gap by adding QR visibility and printing directly from the standalone **Work Areas** screen.
 
-- recurring Schedule "latest due occurrence wins" supersession;
-- automatic MISSED history with reason + audit;
-- public Work Area QR service-status page usable by a normal phone camera;
-- Work Area Web Service Status view;
-- Service Compliance & Analytics report;
-- occurrence notes/evidence drill-down for Admin/Property Manager;
-- Service Log CSV export;
-- Service Log XLSX export;
-- staging migration;
-- regression checklist;
-- canonical PROJECT-CONTEXT update.
+## Changes
 
-## Important
+- Work Areas → **View / Reprint QR**
+- Work Areas → **Regenerate QR**
+- QR modal with actual QR image
+- **Print QR** directly from Work Areas
+- Work Area Service Status page now visibly renders the active QR image
+- no database migration
+- no new Android APK
 
-- Do not apply the SQL migration before automated compile checks pass.
-- Do not run `npm audit fix --force`.
-- No new Android APK is required for v0.9.0.
-- Public QR pages intentionally exclude worker identity, notes, evidence and audit data.
-
-## Normal workflow
-
-From the repository root after these files have been uploaded to GitHub and pulled into Codespaces:
+After uploading these extracted files to GitHub and pulling them into Codespaces:
 
 ```bash
-bash APPLY-v0.9.0.sh
-bash CHECK-v0.9.0.sh
+bash APPLY-v0.9.1.sh
+bash CHECK-v0.9.1.sh
 ```
-
-After the checks pass, apply:
-
-`supabase-v0.9.0-smart-compliance.sql`
-
-in the staging Supabase SQL Editor.
