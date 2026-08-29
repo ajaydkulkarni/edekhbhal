@@ -1,33 +1,39 @@
-# eDekhbhal v0.8.1 — Mobile Navigation Visibility Hotfix
+# eDekhbhal v0.9.0 — Smart Service Compliance & Public Work Area QR
 
-This hotfix addresses the Android field-test issue where the bottom navigation tabs were rendered too close to / underneath the Android system navigation area, making Report and Profile appear missing.
+Base expected: main branch at or after the successful v0.8.1 navigation hotfix (`ad4ea3b`).
 
-## Scope
+## Included
 
-- Safe-area-aware bottom tab height and padding.
-- Explicit active/inactive tab colors.
-- Custom tab icons now receive the navigator tint color.
-- Stronger label contrast and weight.
-- Preserves My Work / Scan / Report / Profile.
-- Version becomes 0.8.1; Android versionCode becomes 3.
-- No database migration.
+- recurring Schedule "latest due occurrence wins" supersession;
+- automatic MISSED history with reason + audit;
+- public Work Area QR service-status page usable by a normal phone camera;
+- Work Area Web Service Status view;
+- Service Compliance & Analytics report;
+- occurrence notes/evidence drill-down for Admin/Property Manager;
+- Service Log CSV export;
+- Service Log XLSX export;
+- staging migration;
+- regression checklist;
+- canonical PROJECT-CONTEXT update.
 
-## Apply sequence
+## Important
 
-1. Extract this ZIP locally.
-2. Upload the **contents** of this extracted folder to the GitHub repository root, preserving the `v0.8.1-files/` path.
-3. In Codespaces, from `/workspaces/edekhbhal`, run:
+- Do not apply the SQL migration before automated compile checks pass.
+- Do not run `npm audit fix --force`.
+- No new Android APK is required for v0.9.0.
+- Public QR pages intentionally exclude worker identity, notes, evidence and audit data.
+
+## Normal workflow
+
+From the repository root after these files have been uploaded to GitHub and pulled into Codespaces:
 
 ```bash
-git pull
-bash APPLY-v0.8.1.sh
-git status --short
+bash APPLY-v0.9.0.sh
+bash CHECK-v0.9.0.sh
 ```
 
-4. Then run:
+After the checks pass, apply:
 
-```bash
-bash CHECK-v0.8.1.sh
-```
+`supabase-v0.9.0-smart-compliance.sql`
 
-5. After checks pass, commit/push and build a new Android preview APK. The expected Android versionCode is 3.
+in the staging Supabase SQL Editor.
