@@ -1,22 +1,25 @@
-# eDekhbhal v0.9.1 — Direct Work Area QR Visibility Hotfix
+# eDekhbhal Fine-tuning Batch 01
+## Audit, Personnel & Property Access Foundation
 
-This is a small Web-only hotfix on top of v0.9.0.
+This is a development batch, not a new semantic dot release. Root application version remains v0.9.1 while the broader access-control design is validated.
 
-It fixes the remaining Work Areas UX gap by adding QR visibility and printing directly from the standalone **Work Areas** screen.
+Included:
+- Audit filters/search/pagination/CSV/XLSX export
+- rich Team Member personnel profiles
+- private profile pictures and multiple ID documents
+- Admin-controlled Property assignments
+- Property → Team Assignments tab
+- Property master-data changes restricted to Admin
+- User mobile queue limited to assigned Properties
+- first-stage Property-scope helper
+- canonical PROJECT-CONTEXT update
+- staging DB migration
 
-## Changes
+After uploading extracted files to GitHub:
+1. `git pull`
+2. `bash APPLY-finetune-batch-01.sh`
+3. `bash CHECK-finetune-batch-01.sh`
+4. Only if checks are green, apply `supabase-finetune-batch-01-access-personnel.sql` to Supabase staging.
+5. Commit/push/deploy and run role regression.
 
-- Work Areas → **View / Reprint QR**
-- Work Areas → **Regenerate QR**
-- QR modal with actual QR image
-- **Print QR** directly from Work Areas
-- Work Area Service Status page now visibly renders the active QR image
-- no database migration
-- no new Android APK
-
-After uploading these extracted files to GitHub and pulling them into Codespaces:
-
-```bash
-bash APPLY-v0.9.1.sh
-bash CHECK-v0.9.1.sh
-```
+RLS is deliberately not enabled yet. It becomes the security gate after this application-level access model passes staging regression.
