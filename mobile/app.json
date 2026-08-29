@@ -2,7 +2,7 @@
   "expo": {
     "name": "eDekhbhal",
     "slug": "edekhbhal-mobile",
-    "version": "0.8.0",
+    "version": "0.8.1",
     "orientation": "portrait",
     "scheme": "edekhbhal",
     "userInterfaceStyle": "automatic",
@@ -22,7 +22,7 @@
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO"
       ],
-      "versionCode": 2,
+      "versionCode": 3,
       "softwareKeyboardLayoutMode": "resize"
     },
     "plugins": [

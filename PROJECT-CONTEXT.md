@@ -9,8 +9,8 @@
 > Going forward, this file should be updated with every build/release and kept in the root of the GitHub repository as `PROJECT-CONTEXT.md`.
 
 **Last updated:** 2026-08-28
-**Current application version:** v0.8.0 (Mobile UX, Localization & Personal Reporting)
-**Current deployment status:** v0.8.0 Web/API is deployed to staging; automated Web and Mobile validation is green, Expo Doctor 21/21 passed, and the v0.8.0 staging database migration has been applied successfully; translation-provider configuration, functional regression and replacement Android APK build are next
+**Current application version:** v0.8.1 (Mobile Navigation Visibility Hotfix)
+**Current deployment status:** v0.8.0 Web/API and database migration are deployed to staging; v0.8.1 mobile navigation visibility hotfix is being validated before replacement Android APK build
 **Current GitHub deployment commit observed in successful Vercel build:** `024c6a4`
 
 ---
@@ -2234,3 +2234,23 @@ Before staging deployment / APK build:
 6. Apply the additive Supabase v0.8.0 migration only after compile checks pass.
 7. Configure a translation provider secret in Vercel without committing any key.
 8. Regression-test claim → QR → timers → evidence → notes → completion → Dashboard → Reports.
+
+
+---
+
+## v0.8.1 — Mobile Navigation Visibility Hotfix
+
+Field testing of the v0.8.0 Android APK on a Samsung device showed that the bottom navigation tab content was rendered too close to / into the Android system navigation area. My Work remained usable, but Scan, Report and Profile labels/icons were effectively invisible, which also made Profile-only features such as preferred language, password management and Sign Out appear missing.
+
+The v0.8.1 mobile-only hotfix:
+
+- uses `react-native-safe-area-context` bottom insets for the tab bar;
+- raises the tab content above Android system navigation;
+- explicitly sets active and inactive tab colors;
+- explicitly applies the navigator-provided tint color to custom tab icons;
+- increases label contrast and weight;
+- adds a subtle active-tab background;
+- preserves the existing four tabs: My Work, Scan, Report and Profile;
+- bumps Android `versionCode` to 3 so the corrected APK installs as an update.
+
+No database migration or Web/API change is required for this hotfix.

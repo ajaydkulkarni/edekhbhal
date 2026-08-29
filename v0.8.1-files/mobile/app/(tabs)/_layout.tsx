@@ -1,10 +1,10 @@
 import { Tabs } from "expo-router";
-import { Text } from "react-native";
+import { Text, type ColorValue } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors } from "@/components/Ui";
 import { useI18n } from "@/lib/i18n";
 
-function Icon({ symbol, color }: { symbol: string; color: string }) {
+function Icon({ symbol, color }: { symbol: string; color: ColorValue }) {
   return <Text style={{ fontSize: 20, lineHeight: 22, color, fontWeight: "800" }}>{symbol}</Text>;
 }
 

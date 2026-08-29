@@ -12,6 +12,9 @@ git diff --check
 echo "== Web typecheck =="
 npm run typecheck
 
+echo "== Restore generated Web metadata =="
+git restore tsconfig.tsbuildinfo 2>/dev/null || true
+
 echo "== Mobile clean install =="
 cd mobile
 npm ci
