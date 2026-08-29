@@ -1,13 +1,14 @@
-# Fine-tuning Batch 02A — E2E Runtime Hotfix
+# Fine-tuning Batch 02B — Mobile E2E Authentication Fix
 
-The first live E2E run exposed two infrastructure issues:
+The live Playwright run passed 8 of 9 tests.
 
-1. The dedicated staging Vercel project reports VERCEL_ENV=production for its production branch, so the original E2E guard incorrectly returned 404.
-2. Codespaces Chromium was downloaded but Linux runtime libraries such as libatk were missing.
+The only failure was the mobile queue test. The application mobile API correctly requires an `Authorization: Bearer <token>` header. The original E2E test used the Web session cookie instead, so the request was rejected before queue authorization was evaluated.
 
-Fixes:
-- E2E endpoints now require E2E_TESTING_ENABLED=true AND APP_URL=https://edekhbhal-staging.vercel.app.
-- E2E_TEST_SECRET and explicit test-email allow-list checks remain required.
-- The Playwright install script now uses --with-deps chromium.
+This patch:
+- returns the short-lived token from the staging-only, secret-protected E2E session route;
+- adds a `mobileLogin()` E2E helper;
+- sends the Bearer token to `/api/mobile/queue/next`;
+- verifies an unassigned USER receives exactly `state: "EMPTY"` and `occurrence: null`;
+- updates PROJECT-CONTEXT.md.
 
-No Supabase migration is required.
+No Supabase migration and no Vercel environment-variable changes are required.
