@@ -10,7 +10,7 @@
 
 **Last updated:** 2026-08-29
 **Current application version:** v0.9.1 (Direct Work Area QR Visibility Hotfix)
-**Current deployment status:** v0.9.1 remains the application version. Fine-tuning Batch 02 adds Playwright staging E2E automation, deterministic test identities/fixtures, role/property access tests and a manual GitHub Actions E2E workflow. RLS remains deferred until application/API scope enforcement and E2E role regression are green.
+**Current deployment status:** v0.9.1 remains the application version. Fine-tuning Batch 02A corrects E2E runtime enablement for the dedicated staging Vercel project and installs Chromium system dependencies for Codespaces. E2E endpoints are gated by E2E_TESTING_ENABLED, the staging APP_URL, the E2E secret and explicit test emails. RLS remains deferred until role/security E2E regression is green.
 **Current GitHub deployment commit observed in successful Vercel build:** `9c24f7a`
 
 **Current Android field build:** v0.8.1, versionCode 3, EAS build `55db02b1-76dd-4e86-9f73-db97be2a17c7`, source commit `ad4ea3bf21658583c07843d6569b09e174459316`.
@@ -2455,3 +2455,11 @@ RLS is deliberately not enabled in this batch. First validate application-level 
 - Initial automated coverage: key-screen smoke, Audit export smoke, PM self-profile regression, property visibility/API authorization and unassigned mobile queue.
 - GitHub Actions workflow is manual initially; automatic post-deploy execution can be enabled after stability is proven.
 - Native Android camera/QR/evidence UI remains manual for now; mobile backend/API behavior is automatable.
+
+
+
+### Fine-tuning Batch 02A — E2E Runtime Hotfix
+- Dedicated staging Vercel projects can report VERCEL_ENV=production for their production branch even though the application itself is staging.
+- E2E enablement now binds to APP_URL=https://edekhbhal-staging.vercel.app plus E2E_TESTING_ENABLED=true instead of rejecting VERCEL_ENV=production.
+- Secret and explicit-email allow-list checks remain mandatory.
+- Codespaces Playwright install command now includes Linux system dependencies via `playwright install --with-deps chromium`.

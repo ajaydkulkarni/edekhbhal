@@ -14,7 +14,7 @@
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:report": "playwright show-report",
-    "test:e2e:install": "playwright install chromium"
+    "test:e2e:install": "playwright install --with-deps chromium"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
