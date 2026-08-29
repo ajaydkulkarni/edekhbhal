@@ -10,8 +10,8 @@
 
 **Last updated:** 2026-08-29
 **Current application version:** v0.9.1 (Direct Work Area QR Visibility Hotfix)
-**Current deployment status:** v0.9.1 is deployed and validated in staging. Fine-tuning Batch 01 (Audit Trail + Personnel Profiles + Property Assignments + first-stage property-scope enforcement) is prepared for staging validation. RLS is intentionally deferred until application-level property scoping passes role regression.
-**Current GitHub deployment commit observed in successful Vercel build:** `024c6a4`
+**Current deployment status:** v0.9.1 remains deployed in staging. Fine-tuning Batch 01 is under functional validation. Batch 01A hotfix fixes Property Manager self-service profile access while preserving assigned-property restrictions for viewing other personnel. RLS remains deferred until application-level property scoping passes role regression.
+**Current GitHub deployment commit observed in successful Vercel build:** `2c05ae2`
 
 **Current Android field build:** v0.8.1, versionCode 3, EAS build `55db02b1-76dd-4e86-9f73-db97be2a17c7`, source commit `ad4ea3bf21658583c07843d6569b09e174459316`.
 
@@ -2436,3 +2436,11 @@ This batch is intentionally **not** a semantic version bump. The application rem
 
 ### RLS security gate
 RLS is deliberately not enabled in this batch. First validate application-level Admin / Property Manager / User property scoping in staging. Then complete remaining endpoint scoping and introduce RLS in staging with an appropriate non-bypass runtime role / request context before the next release is production-ready.
+
+
+
+### Fine-tuning Batch 01A — Property Manager Self-Service Profile Hotfix
+- Fixes a 404 when a Property Manager opens My Profile → View Full Self-Service Profile.
+- Property Manager self-access is allowed.
+- Property Manager access to other personnel remains limited to USER records within assigned Property scope.
+- Internal management Notes remain hidden on self-service access.
