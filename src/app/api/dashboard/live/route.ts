@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/session";
 import { zonedLocalToUtc } from "@/lib/schedule";
 import { createEvidenceSignedDownload } from "@/lib/supabaseStorage";
+import { assignedPropertyIds } from "@/lib/propertyAccess";
 
 const ONLINE_WINDOW_MS = 2 * 60 * 1000;
 
@@ -64,6 +65,8 @@ export async function GET() {
   }
 
   const organizationId = membership.organizationId;
+  const propertyScopeIds = await assignedPropertyIds(membership);
+  const occurrenceScope = propertyScopeIds ? { workArea: { propertyId: { in: propertyScopeIds } } } : {};
   const timeZone = membership.organization.timezone;
   const now = new Date();
   const todayKey = localDateKey(now, timeZone);
@@ -72,7 +75,7 @@ export async function GET() {
   const onlineAfter = new Date(now.getTime() - ONLINE_WINDOW_MS);
 
   const members = await prisma.organizationMember.findMany({
-    where: { organizationId, status: "ACTIVE", role: "USER" },
+    where: { organizationId, status: "ACTIVE", role: "USER", ...(propertyScopeIds ? { propertyAssignments: { some: { propertyId: { in: propertyScopeIds } } } } : {}) },
     include: { user: { select: { id: true, name: true, email: true } } },
     orderBy: { createdAt: "asc" },
   });
@@ -90,10 +93,11 @@ export async function GET() {
     presenceAvailable = false;
   }
 
-  const [activeOccurrences, loginEvents, completedToday, progressRows, feedRows, evidenceRows, attentionRows] = await Promise.all([
+  const [activeOccurrences, loginEvents, completedToday, progressRows, feedRows, evidenceRows, attentionRows, reportedRows] = await Promise.all([
     prisma.scheduleOccurrence.findMany({
       where: {
         organizationId,
+        ...occurrenceScope,
         status: "IN_PROGRESS",
         assignedUserId: userIds.length ? { in: userIds } : undefined,
       },
@@ -114,7 +118,7 @@ export async function GET() {
       where: {
         status: "COMPLETED",
         actualEndAt: { gte: startOfDay, lt: endOfDay },
-        occurrence: { organizationId },
+        occurrence: { organizationId, ...occurrenceScope },
       },
       select: {
         actualDurationSeconds: true,
@@ -124,14 +128,14 @@ export async function GET() {
       },
     }),
     prisma.scheduleOccurrence.findMany({
-      where: { organizationId, scheduledStartAt: { gte: startOfDay, lt: endOfDay } },
+      where: { organizationId, ...occurrenceScope, scheduledStartAt: { gte: startOfDay, lt: endOfDay } },
       select: { status: true, scheduledEndAt: true },
     }),
     prisma.scheduleOccurrenceTask.findMany({
       where: {
         status: "COMPLETED",
         actualEndAt: { not: null },
-        occurrence: { organizationId },
+        occurrence: { organizationId, ...occurrenceScope },
       },
       include: {
         occurrence: {
@@ -142,7 +146,7 @@ export async function GET() {
       take: 40,
     }),
     prisma.scheduleOccurrenceEvidence.findMany({
-      where: { occurrenceTask: { occurrence: { organizationId } } },
+      where: { occurrenceTask: { occurrence: { organizationId, ...occurrenceScope } } },
       include: {
         capturedBy: { select: { id: true, name: true, email: true } },
         occurrenceTask: {
@@ -159,6 +163,7 @@ export async function GET() {
     prisma.scheduleOccurrence.findMany({
       where: {
         organizationId,
+        ...occurrenceScope,
         OR: [
           { status: "PENDING", scheduledEndAt: { lt: now } },
           { status: "MISSED", scheduledStartAt: { gte: startOfDay, lt: endOfDay } },
@@ -168,6 +173,12 @@ export async function GET() {
       include: { assignedUser: { select: { name: true, email: true } } },
       orderBy: { scheduledStartAt: "asc" },
       take: 10,
+    }),
+    prisma.reportedWorkItem.findMany({
+      where: { organizationId, status: "NEW", ...(propertyScopeIds ? { propertyId: { in: propertyScopeIds } } : {}) },
+      include: { property: { select: { name: true } }, workArea: { select: { name: true } }, reportedBy: { select: { name: true, email: true } } },
+      orderBy: { reportedAt: "desc" },
+      take: 20
     }),
   ]);
 
@@ -282,16 +293,9 @@ export async function GET() {
     };
   }));
 
-  const attention = attentionRows.map((item) => ({
-    id: item.id,
-    status: item.status,
-    scheduleName: item.scheduleNameSnapshot,
-    propertyName: item.propertyNameSnapshot,
-    workAreaName: item.workAreaNameSnapshot,
-    scheduledStartAt: item.scheduledStartAt.toISOString(),
-    scheduledEndAt: item.scheduledEndAt.toISOString(),
-    userName: item.assignedUser?.name ?? item.assignedUser?.email ?? null,
-  }));
+  const scheduleAttention = attentionRows.map((item) => ({ kind: "SCHEDULE" as const, id: item.id, status: item.status, scheduleName: item.scheduleNameSnapshot, propertyName: item.propertyNameSnapshot, workAreaName: item.workAreaNameSnapshot, scheduledStartAt: item.scheduledStartAt.toISOString(), scheduledEndAt: item.scheduledEndAt.toISOString(), userName: item.assignedUser?.name ?? item.assignedUser?.email ?? null, propertyId: null, workAreaId: item.workAreaId, note: null, reportedAt: null, reportedBy: null }));
+  const reportedAttention = reportedRows.map((item) => ({ kind: "REPORTED_WORK" as const, id: item.id, status: item.status, scheduleName: item.sourceScheduleName ?? (item.noteScope === "TASK" ? item.sourceTaskName ?? "Task Note" : "Schedule Note"), propertyName: item.property.name, workAreaName: item.workArea.name, scheduledStartAt: item.reportedAt.toISOString(), scheduledEndAt: item.reportedAt.toISOString(), userName: null, propertyId: item.propertyId, workAreaId: item.workAreaId, note: item.noteText, reportedAt: item.reportedAt.toISOString(), reportedBy: item.reportedBy.name ?? item.reportedBy.email }));
+  const attention = [...reportedAttention, ...scheduleAttention];
 
   const response = Response.json({
     generatedAt: now.toISOString(),
@@ -303,7 +307,7 @@ export async function GET() {
       usersTotal: workforce.length,
       schedulesInProgress: activeOccurrences.length,
       tasksCompletedToday: completedToday.length,
-      overdueOrMissed: progress.overdue + progress.missed + progress.partial,
+      overdueOrMissed: progress.overdue + progress.missed + progress.partial + reportedRows.length,
       averageDeviationSeconds,
     },
     workforce,

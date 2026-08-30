@@ -2481,3 +2481,22 @@ RLS is deliberately not enabled in this batch. First validate application-level 
 - Workflow uses Node 20, `npm ci`, Chromium with Linux dependencies, repository Actions secrets for E2E credentials, and uploads the Playwright report artifact.
 - Keep GitHub Actions workflow manual (`workflow_dispatch`) until the expanded authorization suite is stable; automatic post-deploy execution is a later step.
 - RLS remains deferred until broader server-side authorization/API regression coverage is implemented and green.
+
+
+
+## Fine-tuning Batch 03 — Cumulative Operations / Properties / Reported Work
+- Dashboard: standalone Users Online KPI removed; `X online / Y users` moved to `Who is active now`.
+- Dashboard KPIs consolidated into one operational summary panel.
+- Recent Evidence moved to the top, one photo/video at a time, rotating every 30 seconds, with maximize/minimize overlay and expanded horizontal thumbnail strip.
+- Lower Evidence carousel removed. Live Workforce desktop density tightened; responsive scrolling retained when needed.
+- Dashboard data is Property-scoped for Property Managers.
+- Properties: `Property Details | Work Areas | Team Assignments` retained; Team Assignments now role-separated into Property Managers and Users with compact Admin assignment checklists and contact context; PM remains read-only.
+- New mobile Task/Schedule notes create explicit `ReportedWorkItem` records and surface in Dashboard Attention Required.
+- Admin can action all reports; PM only assigned Properties; User cannot action them.
+- Create Schedule from a report is prefilled to Work Area and defaults One Time; recurring remains selectable. Resulting Schedule is explicitly linked.
+- Dismissal is historical, not deletion; dismissed items remain in Reports and can later create a Schedule while preserving dismissal history.
+- Reports adds `Reported Notes / Work Requests` with reporter/time/Property/Work Area/context/note/status/history/resulting Schedule.
+- Audit adds Entity Type/Entity ID dropdown filtering, rows/page 25/50/75/100 (default 50), range/page footer, and prospective request IP/user-agent/request-id capture.
+- Personnel document display adds image thumbnails and PDF/file placeholders linked to signed files.
+- Automated regression rule: Requirement → implementation → automated test coverage → regression suite update → PROJECT-CONTEXT update.
+- Batch 03 adds automated Reported Work tests. RLS remains deferred and is NOT enabled in this batch.

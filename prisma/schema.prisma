@@ -12,16 +12,19 @@ enum MembershipRole {
   PROPERTY_MANAGER
   USER
 }
+
 enum Status {
   ACTIVE
   INACTIVE
   PENDING
   REVOKED
 }
+
 enum AuditResult {
   SUCCESS
   FAILURE
 }
+
 enum SubscriptionStatus {
   TRIALING
   ACTIVE
@@ -65,6 +68,12 @@ enum EvidenceCaptureType {
 enum OccurrenceNoteScope {
   SCHEDULE
   TASK
+}
+
+enum ReportedWorkStatus {
+  NEW
+  DISMISSED
+  SCHEDULE_CREATED
 }
 
 enum ScheduleOccurrenceStatus {
@@ -120,6 +129,9 @@ enum ActionType {
   SCHEDULE_EXECUTION_COMPLETED
   TASK_NOTE_ADDED
   SCHEDULE_NOTE_ADDED
+  REPORTED_WORK_ITEM_CREATED
+  REPORTED_WORK_ITEM_DISMISSED
+  REPORTED_WORK_ITEM_SCHEDULE_LINKED
   EVIDENCE_CAPTURED
   MOBILE_SESSION_CREATED
   PROPERTY_CREATED
@@ -141,117 +153,123 @@ enum ActionType {
 }
 
 model User {
-  id            String @id @default(cuid())
-  email         String @unique
-  name          String?
-  passwordHash  String? @db.Text
-  preferredLanguage String? @db.VarChar(10)
-  emailVerified DateTime?
-  active        Boolean @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  memberships   OrganizationMember[]
-  sessions      Session[]
-  auditEvents   AuditLog[]
-  magicTokens   MagicLinkToken[]
-  tasksCreated  Task[] @relation("TaskCreatedBy")
-  attachmentsAdded TaskAttachment[] @relation("TaskAttachmentAddedBy")
-  schedulesCreated Schedule[] @relation("ScheduleCreatedBy")
-  occurrenceEvidenceCaptured ScheduleOccurrenceEvidence[] @relation("OccurrenceEvidenceCapturedBy")
-  occurrencesAssigned ScheduleOccurrence[] @relation("OccurrenceAssignedTo")
-  occurrenceNotesCreated ScheduleOccurrenceNote[] @relation("OccurrenceNoteCreatedBy")
-  propertyAssignmentsMade OrganizationMemberProperty[] @relation("PropertyAssignmentMadeBy")
-  personnelDocumentsUploaded PersonnelDocument[] @relation("PersonnelDocumentUploadedBy")
+  id                              String                       @id @default(cuid())
+  email                           String                       @unique
+  name                            String?
+  passwordHash                    String?                      @db.Text
+  preferredLanguage               String?                      @db.VarChar(10)
+  emailVerified                   DateTime?
+  active                          Boolean                      @default(true)
+  createdAt                       DateTime                     @default(now())
+  updatedAt                       DateTime                     @updatedAt
+  memberships                     OrganizationMember[]
+  sessions                        Session[]
+  auditEvents                     AuditLog[]
+  magicTokens                     MagicLinkToken[]
+  tasksCreated                    Task[]                       @relation("TaskCreatedBy")
+  attachmentsAdded                TaskAttachment[]             @relation("TaskAttachmentAddedBy")
+  schedulesCreated                Schedule[]                   @relation("ScheduleCreatedBy")
+  occurrenceEvidenceCaptured      ScheduleOccurrenceEvidence[] @relation("OccurrenceEvidenceCapturedBy")
+  occurrencesAssigned             ScheduleOccurrence[]         @relation("OccurrenceAssignedTo")
+  occurrenceNotesCreated          ScheduleOccurrenceNote[]     @relation("OccurrenceNoteCreatedBy")
+  reportedWorkItemsCreated        ReportedWorkItem[]           @relation("ReportedWorkReportedBy")
+  reportedWorkItemsDismissed      ReportedWorkItem[]           @relation("ReportedWorkDismissedBy")
+  reportedWorkItemsScheduleLinked ReportedWorkItem[]           @relation("ReportedWorkScheduleLinkedBy")
+  propertyAssignmentsMade         OrganizationMemberProperty[] @relation("PropertyAssignmentMadeBy")
+  personnelDocumentsUploaded      PersonnelDocument[]          @relation("PersonnelDocumentUploadedBy")
 }
 
 model Session {
-  id        String @id @default(cuid())
-  userId    String
-  tokenHash String @unique
-  expiresAt DateTime
-  createdAt DateTime @default(now())
-  authMethod String? @db.VarChar(30)
-  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id         String   @id @default(cuid())
+  userId     String
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  authMethod String?  @db.VarChar(30)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
   @@index([expiresAt])
 }
 
 model MagicLinkToken {
-  id        String @id @default(cuid())
+  id        String    @id @default(cuid())
   userId    String
-  tokenHash String @unique
+  tokenHash String    @unique
   expiresAt DateTime
   usedAt    DateTime?
-  createdAt DateTime @default(now())
-  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@index([userId])
   @@index([expiresAt])
 }
 
 model Organization {
-  id           String @id @default(cuid())
-  name         String
-  logoUrl      String?
-  addressLine1 String?
-  addressLine2 String?
-  addressLine3 String?
-  city         String?
-  state        String?
-  postalCode   String?
-  country      String?
-  timezone     String
-  workingHours Json?
-  claimExpiryMinutes Int @default(15)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  memberships  OrganizationMember[]
-  properties   Property[]
-  subscription Subscription?
-  auditLogs    AuditLog[]
-  tasks        Task[]
-  schedules    Schedule[]
+  id                  String               @id @default(cuid())
+  name                String
+  logoUrl             String?
+  addressLine1        String?
+  addressLine2        String?
+  addressLine3        String?
+  city                String?
+  state               String?
+  postalCode          String?
+  country             String?
+  timezone            String
+  workingHours        Json?
+  claimExpiryMinutes  Int                  @default(15)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  memberships         OrganizationMember[]
+  properties          Property[]
+  subscription        Subscription?
+  auditLogs           AuditLog[]
+  tasks               Task[]
+  schedules           Schedule[]
   scheduleOccurrences ScheduleOccurrence[]
-  translations ContentTranslation[]
+  reportedWorkItems   ReportedWorkItem[]
+  translations        ContentTranslation[]
 }
 
 model OrganizationMember {
-  id             String @id @default(cuid())
-  organizationId String
-  userId         String
-  role           MembershipRole @default(USER)
-  status         Status @default(ACTIVE)
-  addressLine1   String?
-  addressLine2   String?
-  addressLine3   String?
-  city           String?
-  state          String?
-  postalCode     String?
-  country        String?
-  mobilePhone    String?
-  residencePhone String?
-  alternatePhone String?
-  notes          String? @db.Text
-  photoStoragePath String? @db.Text
+  id                  String                       @id @default(cuid())
+  organizationId      String
+  userId              String
+  role                MembershipRole               @default(USER)
+  status              Status                       @default(ACTIVE)
+  addressLine1        String?
+  addressLine2        String?
+  addressLine3        String?
+  city                String?
+  state               String?
+  postalCode          String?
+  country             String?
+  mobilePhone         String?
+  residencePhone      String?
+  alternatePhone      String?
+  notes               String?                      @db.Text
+  photoStoragePath    String?                      @db.Text
   propertyAssignments OrganizationMemberProperty[]
-  personnelDocuments PersonnelDocument[]
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  user           User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  personnelDocuments  PersonnelDocument[]
+  createdAt           DateTime                     @default(now())
+  updatedAt           DateTime                     @updatedAt
+  organization        Organization                 @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user                User                         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@unique([organizationId, userId])
   @@index([userId])
 }
 
-
 model OrganizationMemberProperty {
-  id                   String @id @default(cuid())
+  id                   String             @id @default(cuid())
   organizationMemberId String
   propertyId           String
   assignedById         String
-  assignedAt           DateTime @default(now())
+  assignedAt           DateTime           @default(now())
   member               OrganizationMember @relation(fields: [organizationMemberId], references: [id], onDelete: Cascade)
-  property             Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  assignedBy           User @relation("PropertyAssignmentMadeBy", fields: [assignedById], references: [id], onDelete: Restrict)
+  property             Property           @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  assignedBy           User               @relation("PropertyAssignmentMadeBy", fields: [assignedById], references: [id], onDelete: Restrict)
 
   @@unique([organizationMemberId, propertyId])
   @@index([propertyId])
@@ -259,92 +277,96 @@ model OrganizationMemberProperty {
 }
 
 model PersonnelDocument {
-  id                   String @id @default(cuid())
+  id                   String             @id @default(cuid())
   organizationMemberId String
-  documentType         String @db.VarChar(100)
-  description          String @db.VarChar(500)
-  fileName             String @db.VarChar(255)
-  mimeType             String @db.VarChar(150)
+  documentType         String             @db.VarChar(100)
+  description          String             @db.VarChar(500)
+  fileName             String             @db.VarChar(255)
+  mimeType             String             @db.VarChar(150)
   sizeBytes            Int?
-  storagePath          String @db.Text
-  expiryDate           DateTime? @db.Date
+  storagePath          String             @db.Text
+  expiryDate           DateTime?          @db.Date
   uploadedById         String
-  createdAt            DateTime @default(now())
+  createdAt            DateTime           @default(now())
   member               OrganizationMember @relation(fields: [organizationMemberId], references: [id], onDelete: Cascade)
-  uploadedBy           User @relation("PersonnelDocumentUploadedBy", fields: [uploadedById], references: [id], onDelete: Restrict)
+  uploadedBy           User               @relation("PersonnelDocumentUploadedBy", fields: [uploadedById], references: [id], onDelete: Restrict)
 
   @@index([organizationMemberId, createdAt])
 }
 
-
 model Property {
-  id             String @id @default(cuid())
-  organizationId String
-  name           String
-  addressLine1   String?
-  addressLine2   String?
-  addressLine3   String?
-  city           String?
-  state          String?
-  postalCode     String?
-  country        String?
-  timezone       String?
-  workingHours   Json?
-  status         Status @default(ACTIVE)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  workAreas      WorkArea[]
+  id                String                       @id @default(cuid())
+  organizationId    String
+  name              String
+  addressLine1      String?
+  addressLine2      String?
+  addressLine3      String?
+  city              String?
+  state             String?
+  postalCode        String?
+  country           String?
+  timezone          String?
+  workingHours      Json?
+  status            Status                       @default(ACTIVE)
+  createdAt         DateTime                     @default(now())
+  updatedAt         DateTime                     @updatedAt
+  organization      Organization                 @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  workAreas         WorkArea[]
   memberAssignments OrganizationMemberProperty[]
+  reportedWorkItems ReportedWorkItem[]
+
   @@index([organizationId])
 }
 
 model WorkArea {
-  id                 String @id @default(cuid())
-  propertyId         String
-  name               String
-  description        String?
-  locationIdentifier String?
-  workingHours       Json?
-  status             Status @default(ACTIVE)
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
-  property           Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  qrCodes            QrCode[]
-  schedules          Schedule[]
+  id                  String               @id @default(cuid())
+  propertyId          String
+  name                String
+  description         String?
+  locationIdentifier  String?
+  workingHours        Json?
+  status              Status               @default(ACTIVE)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  property            Property             @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  qrCodes             QrCode[]
+  schedules           Schedule[]
   scheduleOccurrences ScheduleOccurrence[]
+  reportedWorkItems   ReportedWorkItem[]
+
   @@index([propertyId])
 }
 
 model QrCode {
-  id            String @id @default(cuid())
+  id            String    @id @default(cuid())
   workAreaId    String
-  tokenHash     String @unique
+  tokenHash     String    @unique
   tokenPreview  String
-  status        Status @default(ACTIVE)
-  generatedAt   DateTime @default(now())
+  status        Status    @default(ACTIVE)
+  generatedAt   DateTime  @default(now())
   generatedById String
   revokedAt     DateTime?
   revokedById   String?
-  workArea      WorkArea @relation(fields: [workAreaId], references: [id], onDelete: Cascade)
+  workArea      WorkArea  @relation(fields: [workAreaId], references: [id], onDelete: Cascade)
+
   @@index([workAreaId, status])
 }
 
-
 model Task {
-  id             String   @id @default(cuid())
-  organizationId String
-  name           String   @db.VarChar(500)
-  descriptionHtml String  @db.Text
-  status         Status   @default(ACTIVE)
-  createdById    String
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  createdBy      User @relation("TaskCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
-  attachments    TaskAttachment[]
-  scheduleTasks  ScheduleTask[]
+  id              String                   @id @default(cuid())
+  organizationId  String
+  name            String                   @db.VarChar(500)
+  descriptionHtml String                   @db.Text
+  status          Status                   @default(ACTIVE)
+  createdById     String
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+  organization    Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy       User                     @relation("TaskCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  attachments     TaskAttachment[]
+  scheduleTasks   ScheduleTask[]
   occurrenceTasks ScheduleOccurrenceTask[]
+
   @@index([organizationId, status])
   @@index([organizationId, name])
 }
@@ -358,35 +380,36 @@ model TaskAttachment {
   contentBase64 String   @db.Text
   addedById     String
   createdAt     DateTime @default(now())
-  task          Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  addedBy       User @relation("TaskAttachmentAddedBy", fields: [addedById], references: [id], onDelete: Restrict)
+  task          Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  addedBy       User     @relation("TaskAttachmentAddedBy", fields: [addedById], references: [id], onDelete: Restrict)
+
   @@index([taskId, createdAt])
 }
 
-
 model Schedule {
-  id                 String                @id @default(cuid())
-  organizationId     String
-  name               String                @db.VarChar(500)
-  frequencyType      ScheduleFrequencyType
-  recurrenceUnit     ScheduleRecurrenceUnit?
-  recurrenceInterval Int?
-  recurrenceConfig   Json?
-  startAt            DateTime
-  endDate            DateTime?              @db.Date
+  id                         String                  @id @default(cuid())
+  organizationId             String
+  name                       String                  @db.VarChar(500)
+  frequencyType              ScheduleFrequencyType
+  recurrenceUnit             ScheduleRecurrenceUnit?
+  recurrenceInterval         Int?
+  recurrenceConfig           Json?
+  startAt                    DateTime
+  endDate                    DateTime?               @db.Date
   occurrenceGeneratedThrough DateTime?
-  supersedeUnstarted Boolean               @default(true)
-  timezone           String                @db.VarChar(100)
-  workAreaId         String
-  status             Status                @default(ACTIVE)
-  createdById        String
-  createdAt          DateTime              @default(now())
-  updatedAt          DateTime              @updatedAt
-  organization       Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  workArea           WorkArea              @relation(fields: [workAreaId], references: [id], onDelete: Restrict)
-  createdBy          User                  @relation("ScheduleCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
-  scheduleTasks      ScheduleTask[]
-  occurrences        ScheduleOccurrence[]
+  supersedeUnstarted         Boolean                 @default(true)
+  timezone                   String                  @db.VarChar(100)
+  workAreaId                 String
+  status                     Status                  @default(ACTIVE)
+  createdById                String
+  createdAt                  DateTime                @default(now())
+  updatedAt                  DateTime                @updatedAt
+  organization               Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  workArea                   WorkArea                @relation(fields: [workAreaId], references: [id], onDelete: Restrict)
+  createdBy                  User                    @relation("ScheduleCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  scheduleTasks              ScheduleTask[]
+  occurrences                ScheduleOccurrence[]
+  reportedWorkItems          ReportedWorkItem[]
 
   @@index([organizationId, status])
   @@index([workAreaId, status])
@@ -394,25 +417,24 @@ model Schedule {
 }
 
 model ScheduleTask {
-  id                        String             @id @default(cuid())
+  id                        String              @id @default(cuid())
   scheduleId                String
   taskId                    String
   sequence                  Int
   durationMinutes           Int
   plannedStartOffsetMinutes Int
   plannedEndOffsetMinutes   Int
-  evidenceRule              EvidenceRule       @default(NONE)
+  evidenceRule              EvidenceRule        @default(NONE)
   randomEveryN              Int?
   randomEvidenceType        RandomEvidenceType?
-  createdAt                 DateTime           @default(now())
-  updatedAt                 DateTime           @updatedAt
-  schedule                  Schedule           @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
-  task                      Task               @relation(fields: [taskId], references: [id], onDelete: Restrict)
+  createdAt                 DateTime            @default(now())
+  updatedAt                 DateTime            @updatedAt
+  schedule                  Schedule            @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  task                      Task                @relation(fields: [taskId], references: [id], onDelete: Restrict)
 
   @@unique([scheduleId, sequence])
   @@index([taskId])
 }
-
 
 model ScheduleOccurrence {
   id                     String                   @id @default(cuid())
@@ -454,51 +476,87 @@ model ScheduleOccurrence {
 }
 
 model ScheduleOccurrenceTask {
-  id                     String                       @id @default(cuid())
-  occurrenceId           String
-  taskId                 String
-  sequence               Int
-  taskNameSnapshot       String                       @db.VarChar(500)
-  taskDescriptionSnapshot String                      @db.Text
-  plannedDurationMinutes Int
-  plannedStartAt         DateTime
-  plannedEndAt           DateTime
-  evidenceRuleSnapshot   EvidenceRule
-  evidenceRequired       Boolean                      @default(false)
-  evidenceTypeRequired   RandomEvidenceType?
-  status                 ScheduleOccurrenceTaskStatus @default(PENDING)
-  actualStartAt          DateTime?
-  actualEndAt            DateTime?
-  actualDurationMinutes  Int?
-  actualDurationSeconds  Int?
-  createdAt              DateTime                     @default(now())
-  updatedAt              DateTime                     @updatedAt
-  occurrence             ScheduleOccurrence           @relation(fields: [occurrenceId], references: [id], onDelete: Cascade)
-  task                   Task                         @relation(fields: [taskId], references: [id], onDelete: Restrict)
-  evidence               ScheduleOccurrenceEvidence[]
-  notes                  ScheduleOccurrenceNote[]
+  id                      String                       @id @default(cuid())
+  occurrenceId            String
+  taskId                  String
+  sequence                Int
+  taskNameSnapshot        String                       @db.VarChar(500)
+  taskDescriptionSnapshot String                       @db.Text
+  plannedDurationMinutes  Int
+  plannedStartAt          DateTime
+  plannedEndAt            DateTime
+  evidenceRuleSnapshot    EvidenceRule
+  evidenceRequired        Boolean                      @default(false)
+  evidenceTypeRequired    RandomEvidenceType?
+  status                  ScheduleOccurrenceTaskStatus @default(PENDING)
+  actualStartAt           DateTime?
+  actualEndAt             DateTime?
+  actualDurationMinutes   Int?
+  actualDurationSeconds   Int?
+  createdAt               DateTime                     @default(now())
+  updatedAt               DateTime                     @updatedAt
+  occurrence              ScheduleOccurrence           @relation(fields: [occurrenceId], references: [id], onDelete: Cascade)
+  task                    Task                         @relation(fields: [taskId], references: [id], onDelete: Restrict)
+  evidence                ScheduleOccurrenceEvidence[]
+  notes                   ScheduleOccurrenceNote[]
 
   @@unique([occurrenceId, sequence])
   @@index([taskId])
   @@index([occurrenceId, status])
 }
 
-
 model ScheduleOccurrenceNote {
-  id               String                     @id @default(cuid())
+  id               String                  @id @default(cuid())
   occurrenceId     String
   occurrenceTaskId String?
   scope            OccurrenceNoteScope
-  note             String                     @db.Text
+  note             String                  @db.Text
   createdById      String
-  createdAt        DateTime                   @default(now())
-  occurrence       ScheduleOccurrence         @relation(fields: [occurrenceId], references: [id], onDelete: Cascade)
-  occurrenceTask   ScheduleOccurrenceTask?    @relation(fields: [occurrenceTaskId], references: [id], onDelete: Cascade)
-  createdBy        User                       @relation("OccurrenceNoteCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  createdAt        DateTime                @default(now())
+  occurrence       ScheduleOccurrence      @relation(fields: [occurrenceId], references: [id], onDelete: Cascade)
+  occurrenceTask   ScheduleOccurrenceTask? @relation(fields: [occurrenceTaskId], references: [id], onDelete: Cascade)
+  createdBy        User                    @relation("OccurrenceNoteCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  reportedWorkItem ReportedWorkItem?
 
   @@index([occurrenceId, createdAt])
   @@index([occurrenceTaskId, createdAt])
   @@index([createdById, createdAt])
+}
+
+model ReportedWorkItem {
+  id                 String                 @id @default(cuid())
+  organizationId     String
+  propertyId         String
+  workAreaId         String
+  sourceNoteId       String                 @unique
+  noteScope          OccurrenceNoteScope
+  noteText           String                 @db.Text
+  sourceTaskName     String?                @db.VarChar(500)
+  sourceScheduleName String?                @db.VarChar(500)
+  reportedById       String
+  reportedAt         DateTime               @default(now())
+  status             ReportedWorkStatus     @default(NEW)
+  dismissedAt        DateTime?
+  dismissedById      String?
+  linkedScheduleId   String?
+  scheduleLinkedAt   DateTime?
+  scheduleLinkedById String?
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
+  organization       Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  property           Property               @relation(fields: [propertyId], references: [id], onDelete: Restrict)
+  workArea           WorkArea               @relation(fields: [workAreaId], references: [id], onDelete: Restrict)
+  sourceNote         ScheduleOccurrenceNote @relation(fields: [sourceNoteId], references: [id], onDelete: Cascade)
+  reportedBy         User                   @relation("ReportedWorkReportedBy", fields: [reportedById], references: [id], onDelete: Restrict)
+  dismissedBy        User?                  @relation("ReportedWorkDismissedBy", fields: [dismissedById], references: [id], onDelete: SetNull)
+  linkedSchedule     Schedule?              @relation(fields: [linkedScheduleId], references: [id], onDelete: SetNull)
+  scheduleLinkedBy   User?                  @relation("ReportedWorkScheduleLinkedBy", fields: [scheduleLinkedById], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, status, reportedAt])
+  @@index([propertyId, status, reportedAt])
+  @@index([workAreaId, reportedAt])
+  @@index([reportedById, reportedAt])
+  @@index([linkedScheduleId])
 }
 
 model ScheduleOccurrenceEvidence {
@@ -520,38 +578,38 @@ model ScheduleOccurrenceEvidence {
 }
 
 model Plan {
-  id                String @id @default(cuid())
-  code              String @unique
+  id                String         @id @default(cuid())
+  code              String         @unique
   name              String
   maxUsers          Int?
   maxProperties     Int?
   maxWorkAreas      Int?
   monthlyPriceCents Int
-  active            Boolean @default(true)
+  active            Boolean        @default(true)
   subscriptions     Subscription[]
 }
 
 model Subscription {
-  id                     String @id @default(cuid())
-  organizationId         String @unique
+  id                     String             @id @default(cuid())
+  organizationId         String             @unique
   planId                 String
   status                 SubscriptionStatus @default(TRIALING)
   currentPeriodStart     DateTime?
   currentPeriodEnd       DateTime?
   providerCustomerId     String?
   providerSubscriptionId String?
-  createdAt              DateTime @default(now())
-  updatedAt              DateTime @updatedAt
-  organization           Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  plan                   Plan @relation(fields: [planId], references: [id])
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+  organization           Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  plan                   Plan               @relation(fields: [planId], references: [id])
 }
 
 model AuditLog {
-  id             String @id @default(cuid())
+  id             String        @id @default(cuid())
   organizationId String?
   userId         String?
   action         ActionType
-  result         AuditResult @default(SUCCESS)
+  result         AuditResult   @default(SUCCESS)
   entityType     String?
   entityId       String?
   oldValue       Json?
@@ -560,28 +618,28 @@ model AuditLog {
   ipAddress      String?
   userAgent      String?
   requestId      String?
-  createdAt      DateTime @default(now())
+  createdAt      DateTime      @default(now())
   organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
-  user           User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+  user           User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+
   @@index([organizationId, createdAt])
   @@index([userId, createdAt])
   @@index([entityType, entityId, createdAt])
   @@index([action, createdAt])
 }
 
-
 model ContentTranslation {
-  id             String   @id @default(cuid())
+  id             String       @id @default(cuid())
   organizationId String
-  sourceType     String   @db.VarChar(40)
+  sourceType     String       @db.VarChar(40)
   sourceId       String
-  fieldName      String   @db.VarChar(40)
-  language       String   @db.VarChar(10)
-  sourceHash     String   @db.VarChar(64)
-  translatedText String   @db.Text
-  provider       String?  @db.VarChar(40)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  fieldName      String       @db.VarChar(40)
+  language       String       @db.VarChar(10)
+  sourceHash     String       @db.VarChar(64)
+  translatedText String       @db.Text
+  provider       String?      @db.VarChar(40)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@unique([organizationId, sourceType, sourceId, fieldName, language], name: "content_translation_key")

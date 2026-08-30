@@ -88,21 +88,23 @@ export function ScheduleEditor({
   canManage,
   workAreas,
   tasks,
-  initial
+  initial,
+  defaults
 }: {
   canManage: boolean;
   workAreas: WorkAreaOption[];
   tasks: TaskOption[];
   initial?: InitialSchedule;
+  defaults?: { workAreaId?: string; reportedWorkItemId?: string; suggestedName?: string };
 }) {
   const router = useRouter();
-  const [name, setName] = useState(initial?.name ?? "");
+  const [name, setName] = useState(initial?.name ?? defaults?.suggestedName ?? "");
   const [frequencyType, setFrequencyType] = useState<"ONE_TIME" | "RECURRING">(initial?.frequencyType ?? "ONE_TIME");
   const [recurrenceUnit, setRecurrenceUnit] = useState<"MINUTE" | "HOUR" | "DAY" | "WEEK" | "MONTH" | "YEAR">(initial?.recurrenceUnit ?? "DAY");
   const [recurrenceInterval, setRecurrenceInterval] = useState(initial?.recurrenceInterval ?? 1);
   const [weekdays, setWeekdays] = useState<number[]>(initial?.recurrenceConfig?.weekdays ?? []);
   const [monthDays, setMonthDays] = useState((initial?.recurrenceConfig?.monthDays ?? []).join(", "));
-  const [workAreaId, setWorkAreaId] = useState(initial?.workAreaId ?? (workAreas.find((w) => w.status === "ACTIVE" && w.propertyStatus === "ACTIVE")?.id ?? ""));
+  const [workAreaId, setWorkAreaId] = useState(initial?.workAreaId ?? defaults?.workAreaId ?? (workAreas.find((w) => w.status === "ACTIVE" && w.propertyStatus === "ACTIVE")?.id ?? ""));
   const selectedWorkArea = workAreas.find((w) => w.id === workAreaId);
   const [startLocal, setStartLocal] = useState(initial?.startLocal ?? "");
   const [endDate, setEndDate] = useState(initial?.endDate ?? "");
@@ -191,6 +193,7 @@ export function ScheduleEditor({
         endDate: frequencyType === "RECURRING" ? (endDate || null) : null,
         timezone: selectedWorkArea?.timezone || initial?.timezone || "UTC",
         workAreaId,
+        reportedWorkItemId: initial ? undefined : (defaults?.reportedWorkItemId ?? null),
         tasks: items.map((item, index) => ({
           taskId: item.taskId,
           sequence: index + 1,

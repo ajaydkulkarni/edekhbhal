@@ -6,6 +6,7 @@ import { requireUser } from "@/lib/session";
 import { audit } from "@/lib/audit";
 import { buildOffsets, durationToMinutes, zonedLocalToUtc } from "@/lib/schedule";
 import { reconcileScheduleOccurrences } from "@/lib/occurrenceGenerator";
+import { canAccessProperty } from "@/lib/propertyAccess";
 
 const scheduleTaskSchema = z.object({
   taskId: z.string().min(1),
@@ -29,6 +30,7 @@ const schema = z.object({
   endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
   timezone: z.string().min(1).max(100),
   workAreaId: z.string().min(1),
+  reportedWorkItemId: z.string().min(1).nullable().optional(),
   tasks: z.array(scheduleTaskSchema).min(1)
 });
 
@@ -51,6 +53,13 @@ export async function POST(req: Request) {
     }
     if (workArea.status !== "ACTIVE" || workArea.property.status !== "ACTIVE") {
       return NextResponse.json({ error: "Schedules can only be created for active Work Areas under active Properties." }, { status: 409 });
+    }
+    if (!(await canAccessProperty(membership, workArea.propertyId))) {
+      return NextResponse.json({ error: "Work Area not found in your assigned Properties." }, { status: 404 });
+    }
+    const reportedWorkItem = input.reportedWorkItemId ? await prisma.reportedWorkItem.findFirst({ where: { id: input.reportedWorkItemId, organizationId: membership.organizationId } }) : null;
+    if (input.reportedWorkItemId && (!reportedWorkItem || reportedWorkItem.workAreaId !== workArea.id || reportedWorkItem.propertyId !== workArea.propertyId || reportedWorkItem.linkedScheduleId)) {
+      return NextResponse.json({ error: "Reported work item is unavailable or does not match this Work Area." }, { status: 409 });
     }
 
     const uniqueTaskIds = [...new Set(input.tasks.map((x) => x.taskId))];
@@ -97,6 +106,11 @@ export async function POST(req: Request) {
             randomEvidenceType: item.evidenceRule === "RANDOM" ? item.randomEvidenceType : null
           }
         });
+      }
+
+      if (reportedWorkItem) {
+        await tx.reportedWorkItem.update({ where: { id: reportedWorkItem.id }, data: { status: "SCHEDULE_CREATED", linkedScheduleId: created.id, scheduleLinkedAt: new Date(), scheduleLinkedById: user.id } });
+        await audit({ organizationId: membership.organizationId, userId: user.id, action: "REPORTED_WORK_ITEM_SCHEDULE_LINKED", entityType: "ReportedWorkItem", entityId: reportedWorkItem.id, oldValue: { status: reportedWorkItem.status, dismissedAt: reportedWorkItem.dismissedAt?.toISOString() ?? null }, newValue: { status: "SCHEDULE_CREATED", linkedScheduleId: created.id }, metadata: { propertyId: reportedWorkItem.propertyId, workAreaId: reportedWorkItem.workAreaId } }, tx);
       }
 
       await audit({

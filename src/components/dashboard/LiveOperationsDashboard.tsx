@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type WorkforceItem = {
   userId: string;
@@ -47,6 +47,7 @@ type EvidenceItem = {
 };
 
 type AttentionItem = {
+  kind: "SCHEDULE" | "REPORTED_WORK";
   id: string;
   status: string;
   scheduleName: string;
@@ -55,6 +56,11 @@ type AttentionItem = {
   scheduledStartAt: string;
   scheduledEndAt: string;
   userName: string | null;
+  propertyId: string | null;
+  workAreaId: string;
+  note: string | null;
+  reportedAt: string | null;
+  reportedBy: string | null;
 };
 
 type DashboardData = {
@@ -147,7 +153,8 @@ export function LiveOperationsDashboard() {
   const [error, setError] = useState("");
   const [nowMs, setNowMs] = useState(Date.now());
   const [selectedEvidence, setSelectedEvidence] = useState<EvidenceItem | null>(null);
-  const evidenceRef = useRef<HTMLDivElement | null>(null);
+  const [evidenceIndex, setEvidenceIndex] = useState(0);
+  const [evidenceExpanded, setEvidenceExpanded] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -176,6 +183,13 @@ export function LiveOperationsDashboard() {
     };
   }, []);
 
+  useEffect(() => {
+    const count = data?.evidence.length ?? 0;
+    if (count < 2) return;
+    const timer = setInterval(() => setEvidenceIndex((current) => (current + 1) % count), 30_000);
+    return () => clearInterval(timer);
+  }, [data?.evidence.length]);
+
   const progressTotal = useMemo(() => {
     if (!data) return 0;
     return Object.values(data.progress).reduce((sum, value) => sum + value, 0);
@@ -194,9 +208,6 @@ export function LiveOperationsDashboard() {
     );
   }
 
-  const scrollEvidence = (direction: number) => {
-    evidenceRef.current?.scrollBy({ left: direction * 420, behavior: "smooth" });
-  };
 
   return (
     <div className="dashboardStack">
@@ -212,33 +223,34 @@ export function LiveOperationsDashboard() {
       )}
       {error && <div className="notice warning">Latest refresh failed: {error}. Showing the most recent successful data.</div>}
 
-      <section className="kpiGrid">
-        <article className="kpiCard">
-          <span className="kpiLabel">Users Online</span>
-          <strong>{data.kpis.usersOnline}<small> / {data.kpis.usersTotal}</small></strong>
-          <span className="kpiHint">Active USER-role workers</span>
+      <section className="dashboardOverviewGrid">
+        <article className="dashboardPanel operationalSummary">
+          <div className="panelHeader"><div><span className="eyebrow">Operations snapshot</span><h2>Today at a glance</h2></div></div>
+          <div className="summaryMetricGrid">
+            <div><span>Schedules In Progress</span><strong>{data.kpis.schedulesInProgress}</strong></div>
+            <div><span>Tasks Completed Today</span><strong>{data.kpis.tasksCompletedToday}</strong></div>
+            <div className="attentionMetric"><span>Needs Attention</span><strong>{data.kpis.overdueOrMissed}</strong></div>
+            <div><span>Avg. Deviation Today</span><strong className={data.kpis.averageDeviationSeconds && data.kpis.averageDeviationSeconds > 0 ? "lateMetric" : ""}>{deviationLabel(data.kpis.averageDeviationSeconds)}</strong></div>
+          </div>
         </article>
-        <article className="kpiCard">
-          <span className="kpiLabel">Schedules In Progress</span>
-          <strong>{data.kpis.schedulesInProgress}</strong>
-          <span className="kpiHint">Currently being executed</span>
-        </article>
-        <article className="kpiCard">
-          <span className="kpiLabel">Tasks Completed Today</span>
-          <strong>{data.kpis.tasksCompletedToday}</strong>
-          <span className="kpiHint">Completed occurrence tasks</span>
-        </article>
-        <article className="kpiCard attentionKpi">
-          <span className="kpiLabel">Needs Attention</span>
-          <strong>{data.kpis.overdueOrMissed}</strong>
-          <span className="kpiHint">Overdue, missed or partial</span>
-        </article>
-        <article className="kpiCard">
-          <span className="kpiLabel">Avg. Deviation Today</span>
-          <strong className={data.kpis.averageDeviationSeconds && data.kpis.averageDeviationSeconds > 0 ? "lateMetric" : ""}>
-            {deviationLabel(data.kpis.averageDeviationSeconds)}
-          </strong>
-          <span className="kpiHint">Actual vs planned task time</span>
+        <article className={`dashboardPanel evidenceFeaturePanel${evidenceExpanded ? " expanded" : ""}`}>
+          <div className="panelHeader">
+            <div><span className="eyebrow">Recent evidence</span><h2>Latest photos & videos</h2></div>
+            <div className="evidenceFeatureControls"><span className="panelCount">{data.evidence.length ? `${(evidenceIndex % data.evidence.length) + 1} / ${data.evidence.length}` : "0"}</span><button type="button" onClick={() => setEvidenceExpanded(v => !v)} aria-label={evidenceExpanded ? "Minimize evidence" : "Maximize evidence"}>{evidenceExpanded ? "↙" : "↗"}</button></div>
+          </div>
+          {data.evidence.length ? (() => {
+            const item=data.evidence[evidenceIndex % data.evidence.length];
+            return <div className="featuredEvidence">
+              <button className="featuredEvidenceMedia" type="button" onClick={() => setSelectedEvidence(item)} disabled={!item.signedUrl}>
+                {item.signedUrl && item.type==="PHOTO" ? <img src={item.signedUrl} alt={`${item.taskName} evidence`}/> : null}
+                {item.signedUrl && item.type==="VIDEO" ? <video src={item.signedUrl} muted playsInline preload="metadata"/> : null}
+                {!item.signedUrl ? <span className="evidenceUnavailable">Media unavailable</span> : null}
+                {item.type==="VIDEO" && <span className="videoBadge">▶ Video</span>}
+              </button>
+              <div className="featuredEvidenceDetails"><strong>{item.workAreaName}</strong><span>{item.taskName}</span><small>{item.propertyName} · {item.scheduleName}</small><small>{item.userName} · {formatDateTime(item.capturedAt,data.timeZone)}</small><div className="evidenceNav"><button type="button" onClick={() => setEvidenceIndex(current => (current - 1 + data.evidence.length) % data.evidence.length)}>← Previous</button><button type="button" onClick={() => setEvidenceIndex(current => (current + 1) % data.evidence.length)}>Next →</button></div></div>
+              {evidenceExpanded && <div className="evidenceExpandedStrip">{data.evidence.map((thumb,index)=><button key={thumb.id} className={index===evidenceIndex % data.evidence.length?"active":""} type="button" onClick={() => setEvidenceIndex(index)}>{thumb.signedUrl && thumb.type==="PHOTO"?<img src={thumb.signedUrl} alt=""/>:<span>{thumb.type==="VIDEO"?"▶":"—"}</span>}</button>)}</div>}
+            </div>;
+          })() : <div className="emptyState"><strong>No recent evidence</strong><p className="muted">Captured photos and videos will rotate here every 30 seconds.</p></div>}
         </article>
       </section>
 
@@ -246,7 +258,7 @@ export function LiveOperationsDashboard() {
         <article className="dashboardPanel">
           <div className="panelHeader">
             <div><span className="eyebrow">Live workforce</span><h2>Who is active now</h2></div>
-            <span className="panelCount">{data.workforce.length} users</span>
+            <span className="panelCount"><strong>{data.kpis.usersOnline}</strong> online <small>/ {data.kpis.usersTotal} users</small></span>
           </div>
           <div className="workforceTableWrap">
             <table className="table workforceTable">
@@ -280,15 +292,13 @@ export function LiveOperationsDashboard() {
             <span className="panelCount">{data.attention.length}</span>
           </div>
           <div className="attentionList">
-            {data.attention.map((item) => (
-              <div className="attentionItem" key={item.id}>
-                <div className={`attentionIcon ${item.status.toLowerCase()}`}>!</div>
-                <div>
-                  <strong>{item.scheduleName}</strong>
-                  <span>{item.propertyName} · {item.workAreaName}</span>
-                  <small>{item.status.replaceAll("_", " ")} · scheduled {formatDateTime(item.scheduledStartAt, data.timeZone)}{item.userName ? ` · ${item.userName}` : ""}</small>
-                </div>
+            {data.attention.map((item) => item.kind === "REPORTED_WORK" ? (
+              <div className="attentionItem reportedWorkAttention" key={item.id}>
+                <div className="attentionIcon reported">✎</div><div><strong>Reported Work · {item.workAreaName}</strong><span>{item.propertyName} · {item.reportedBy || "User"} · {formatDateTime(item.reportedAt, data.timeZone)}</span><p>{item.note}</p>
+                <div className="row compact reportedWorkButtons"><a className="button small" href={`/schedules/new?workAreaId=${encodeURIComponent(item.workAreaId)}&reportedWorkItemId=${encodeURIComponent(item.id)}`}>Create Schedule</a><button type="button" className="button secondary small" onClick={async()=>{const response=await fetch(`/api/reported-work/${item.id}/dismiss`,{method:"POST"});if(response.ok)setData(current=>current?{...current,attention:current.attention.filter(row=>row.id!==item.id)}:current);}}>Dismiss</button></div></div>
               </div>
+            ) : (
+              <div className="attentionItem" key={item.id}><div className={`attentionIcon ${item.status.toLowerCase()}`}>!</div><div><strong>{item.scheduleName}</strong><span>{item.propertyName} · {item.workAreaName}</span><small>{item.status.replaceAll("_", " ")} · scheduled {formatDateTime(item.scheduledStartAt, data.timeZone)}{item.userName ? ` · ${item.userName}` : ""}</small></div></div>
             ))}
             {!data.attention.length && <div className="emptyState"><span>✓</span><strong>No immediate exceptions</strong><p className="muted">Overdue, missed and partially completed schedules will appear here.</p></div>}
           </div>
@@ -340,31 +350,6 @@ export function LiveOperationsDashboard() {
             })}
           </div>
         </article>
-      </section>
-
-      <section className="dashboardPanel evidencePanel">
-        <div className="panelHeader">
-          <div><span className="eyebrow">Recent evidence</span><h2>Latest 20 photos & videos</h2></div>
-          <div className="carouselButtons"><button type="button" onClick={() => scrollEvidence(-1)} aria-label="Previous evidence">←</button><button type="button" onClick={() => scrollEvidence(1)} aria-label="Next evidence">→</button></div>
-        </div>
-        <div className="evidenceCarousel" ref={evidenceRef}>
-          {data.evidence.map((item) => (
-            <button className="evidenceCard" type="button" key={item.id} onClick={() => setSelectedEvidence(item)} disabled={!item.signedUrl}>
-              <div className="evidenceMedia">
-                {item.signedUrl && item.type === "PHOTO" ? <img src={item.signedUrl} alt={`${item.taskName} evidence`} /> : null}
-                {item.signedUrl && item.type === "VIDEO" ? <video src={item.signedUrl} muted preload="metadata" /> : null}
-                {!item.signedUrl ? <div className="evidenceUnavailable">Media unavailable</div> : null}
-                {item.type === "VIDEO" && <span className="videoBadge">▶ Video</span>}
-              </div>
-              <div className="evidenceMeta">
-                <strong>{item.workAreaName}</strong>
-                <span>{item.taskName}</span>
-                <small>{item.userName} · {formatTime(item.capturedAt, data.timeZone)}</small>
-              </div>
-            </button>
-          ))}
-          {!data.evidence.length && <div className="emptyState wide"><strong>No evidence uploaded yet</strong><p className="muted">The latest 20 mobile photos and videos will appear here.</p></div>}
-        </div>
       </section>
 
       {selectedEvidence && (

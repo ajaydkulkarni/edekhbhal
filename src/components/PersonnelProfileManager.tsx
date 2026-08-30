@@ -73,7 +73,7 @@ export function PersonnelProfileManager({member,properties,photoUrl,canEditProfi
 
    <div className="card" style={{marginTop:20}}><h2 style={{marginTop:0}}>ID / Verification Documents</h2>
      <div style={{overflowX:"auto"}}><table className="table"><thead><tr><th>Type</th><th>Description</th><th>File</th><th>Expiry</th><th>Uploaded</th></tr></thead><tbody>
-       {member.personnelDocuments.map((d:any)=><tr key={d.id}><td>{d.documentType}</td><td>{d.description}</td><td>{d.signedUrl?<a href={d.signedUrl} target="_blank" rel="noreferrer">{d.fileName}</a>:d.fileName}</td><td>{d.expiryDate?new Date(d.expiryDate).toLocaleDateString():"—"}</td><td>{new Date(d.createdAt).toLocaleString()}</td></tr>)}
+       {member.personnelDocuments.map((d:any)=><tr key={d.id}><td>{d.documentType}</td><td>{d.description}</td><td><div className="personnelDocumentPreview">{d.signedUrl?<a className={`personnelDocumentThumb ${d.mimeType==="application/pdf"?"pdf":d.mimeType?.startsWith("image/")?"":"file"}`} href={d.signedUrl} target="_blank" rel="noreferrer">{d.mimeType?.startsWith("image/")?<img src={d.signedUrl} alt={d.fileName}/>:d.mimeType==="application/pdf"?"PDF":"FILE"}</a>:<span className="personnelDocumentThumb file">FILE</span>}<span>{d.signedUrl?<a href={d.signedUrl} target="_blank" rel="noreferrer">{d.fileName}</a>:d.fileName}</span></div></td><td>{d.expiryDate?new Date(d.expiryDate).toLocaleDateString():"—"}</td><td>{new Date(d.createdAt).toLocaleString()}</td></tr>)}
        {!member.personnelDocuments.length&&<tr><td colSpan={5} className="muted">No verification documents uploaded.</td></tr>}
      </tbody></table></div>
      {canEditProfile&&<form action={uploadDocument} style={{marginTop:18}}>
