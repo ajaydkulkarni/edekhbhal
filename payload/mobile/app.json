@@ -1,0 +1,49 @@
+{
+  "expo": {
+    "name": "eDekhbhal",
+    "slug": "edekhbhal-mobile",
+    "version": "0.9.0-preview.1",
+    "orientation": "portrait",
+    "scheme": "edekhbhal",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.edekhbhal.mobile",
+      "infoPlist": {
+        "NSCameraUsageDescription": "eDekhbhal uses the camera to scan Work Area QR codes and capture required task evidence.",
+        "NSMicrophoneUsageDescription": "eDekhbhal uses the microphone only while recording required task video evidence."
+      }
+    },
+    "android": {
+      "package": "com.edekhbhal.mobile",
+      "permissions": [
+        "CAMERA",
+        "RECORD_AUDIO",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ],
+      "versionCode": 4,
+      "softwareKeyboardLayoutMode": "resize"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow eDekhbhal to scan Work Area QR codes and capture required task evidence.",
+          "microphonePermission": "Allow eDekhbhal to record required video evidence.",
+          "recordAudioAndroid": true
+        }
+      ],
+      "expo-secure-store"
+    ],
+    "extra": {
+      "apiUrl": "https://edekhbhal-staging.vercel.app",
+      "router": {},
+      "eas": {
+        "projectId": "03092aca-28a2-433b-959e-72e3c6e1cccb"
+      }
+    },
+    "owner": "ajayimagine"
+  }
+}

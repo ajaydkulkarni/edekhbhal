@@ -1,17 +1,55 @@
-# Batch 03B — Final Audit E2E locator hotfix
+# eDekhbhal Next Preview 01 — Web + Mobile
 
-E2E Staging #3 passed 21 of 22 tests. The only failure is test-only: the Audit form label's accessible name includes option text, so `getByLabel("Entity Type", exact:true)` cannot match it.
+This is the first deployable test build of the new eDekhbhal experience.
 
-This patch uses stable form selectors by `name` for the three Audit controls. No application logic, database schema, or staging configuration changes.
+Included:
+- redesigned public landing page
+- embedded explainer MP4
+- functional Login / Registration links
+- redesigned Schedule Builder
+- Task Library + Ad-hoc Task selection
+- ad-hoc "use this Schedule only" default
+- optional save-to-Task-Library
+- public QR full latest-service breakdown
+- task performer display name
+- task start/end, scheduled/actual duration, variance and % variance
+- previous two service completions with expandable breakdown
+- future subscription entitlement foundation (feature or limit/user-count style)
+- refreshed mobile design tokens/navigation
+- Android versionCode 4
 
-Upload extracted files preserving paths. Then:
+## Safe deployment
+Use a parallel branch, recommended: `v2-rebuild`.
+Do not replace the known-good staging environment until this preview is validated.
+
+## Database first
+Run `payload/sql/next-preview-01.sql` in Supabase staging SQL Editor.
+
+## Apply
+After uploading extracted files to the selected GitHub branch preserving paths:
+```bash
 git pull
-bash APPLY-batch-03b.sh
-bash CHECK-batch-03b.sh
+bash APPLY-next-preview-01.sh
+bash CHECK-next-preview-01.sh
+```
+Do not commit unless CHECK is green.
 
-If green:
+## Commit
+```bash
 git add -A
-git commit -m "Fix final Batch 03 Audit E2E locator"
+git commit -m "Start eDekhbhal Next preview with ad-hoc work and public QR detail"
 git push
+```
 
-Then run E2E Staging again. Target: 22/22.
+## Mobile
+The included `mobile/app.json` uses Android versionCode 4. It points to the existing staging API URL. If the new web preview uses a different URL, update `mobile/app.json` -> `expo.extra.apiUrl` before building.
+
+```bash
+cd mobile
+npm ci
+npx expo-doctor
+eas build --platform android --profile preview
+```
+Use the existing Expo/EAS project and signing credentials. Do not create a new Expo project or keystore.
+
+RLS is not enabled by this preview.
