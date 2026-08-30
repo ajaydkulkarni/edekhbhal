@@ -2517,3 +2517,16 @@ RLS is deliberately not enabled in this batch. First validate application-level 
 - The sole failure was the Audit test locator for `Entity Type`: the HTML label's accessible name includes its option text, so Playwright `getByLabel(..., exact:true)` could not find it.
 - Test now targets the stable form controls directly by `select[name=entityType]`, `select[name=entityId]`, and `select[name=pageSize]`.
 - No application or database behavior changed.
+
+
+## eDekhbhal Next Preview 01 — Clean-sheet experience transition
+- Product direction changed from continued fine-tuning to a clean-sheet redesign while preserving proven domain rules and the working implementation as reference.
+- Preview 01 introduces a polished public landing page with an embedded product explainer video and functional Login/Register CTAs.
+- Schedule creation now supports Task Library items and ad-hoc Tasks. Ad-hoc Tasks default to Schedule-only hidden definitions and can optionally be saved into the reusable Task Library.
+- Hidden ad-hoc Tasks use `Task.isAdHoc=true`; they remain fully executable and historically snapshot into occurrences without cluttering the Task Library.
+- Public Work Area QR now exposes the latest completed service with task-level Task, completed-by display name, start, end, scheduled duration, actual duration, variance and variance percentage, plus the previous two completion date/times with expandable details.
+- `ScheduleOccurrenceTask.completedById` records the actual mobile user completing each Task for accurate public service attribution.
+- Added entitlement foundation supporting future feature-based and limit-based subscriptions. Billing is intentionally not implemented yet.
+- Web visual system and Schedule Builder receive the first Next-generation design treatment.
+- Mobile design tokens and bottom navigation receive the first Next-generation visual treatment; existing execution/scan/report/profile workflows remain functional.
+- RLS is not enabled by this preview.

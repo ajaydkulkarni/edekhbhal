@@ -33,6 +33,11 @@ enum SubscriptionStatus {
   INCOMPLETE
 }
 
+enum EntitlementType {
+  FEATURE
+  LIMIT
+}
+
 enum ScheduleFrequencyType {
   ONE_TIME
   RECURRING
@@ -170,6 +175,7 @@ model User {
   attachmentsAdded                TaskAttachment[]             @relation("TaskAttachmentAddedBy")
   schedulesCreated                Schedule[]                   @relation("ScheduleCreatedBy")
   occurrenceEvidenceCaptured      ScheduleOccurrenceEvidence[] @relation("OccurrenceEvidenceCapturedBy")
+  occurrenceTasksCompleted        ScheduleOccurrenceTask[]     @relation("OccurrenceTaskCompletedBy")
   occurrencesAssigned             ScheduleOccurrence[]         @relation("OccurrenceAssignedTo")
   occurrenceNotesCreated          ScheduleOccurrenceNote[]     @relation("OccurrenceNoteCreatedBy")
   reportedWorkItemsCreated        ReportedWorkItem[]           @relation("ReportedWorkReportedBy")
@@ -206,7 +212,7 @@ model MagicLinkToken {
 }
 
 model Organization {
-  id                  String               @id @default(cuid())
+  id                  String                    @id @default(cuid())
   name                String
   logoUrl             String?
   addressLine1        String?
@@ -218,9 +224,9 @@ model Organization {
   country             String?
   timezone            String
   workingHours        Json?
-  claimExpiryMinutes  Int                  @default(15)
-  createdAt           DateTime             @default(now())
-  updatedAt           DateTime             @updatedAt
+  claimExpiryMinutes  Int                       @default(15)
+  createdAt           DateTime                  @default(now())
+  updatedAt           DateTime                  @updatedAt
   memberships         OrganizationMember[]
   properties          Property[]
   subscription        Subscription?
@@ -230,6 +236,7 @@ model Organization {
   scheduleOccurrences ScheduleOccurrence[]
   reportedWorkItems   ReportedWorkItem[]
   translations        ContentTranslation[]
+  entitlements        OrganizationEntitlement[]
 }
 
 model OrganizationMember {
@@ -357,6 +364,7 @@ model Task {
   organizationId  String
   name            String                   @db.VarChar(500)
   descriptionHtml String                   @db.Text
+  isAdHoc         Boolean                  @default(false)
   status          Status                   @default(ACTIVE)
   createdById     String
   createdAt       DateTime                 @default(now())
@@ -493,6 +501,8 @@ model ScheduleOccurrenceTask {
   actualEndAt             DateTime?
   actualDurationMinutes   Int?
   actualDurationSeconds   Int?
+  completedById           String?
+  completedBy             User?                        @relation("OccurrenceTaskCompletedBy", fields: [completedById], references: [id], onDelete: SetNull)
   createdAt               DateTime                     @default(now())
   updatedAt               DateTime                     @updatedAt
   occurrence              ScheduleOccurrence           @relation(fields: [occurrenceId], references: [id], onDelete: Cascade)
@@ -501,6 +511,7 @@ model ScheduleOccurrenceTask {
   notes                   ScheduleOccurrenceNote[]
 
   @@unique([occurrenceId, sequence])
+  @@index([completedById])
   @@index([taskId])
   @@index([occurrenceId, status])
 }
@@ -587,6 +598,24 @@ model Plan {
   monthlyPriceCents Int
   active            Boolean        @default(true)
   subscriptions     Subscription[]
+}
+
+model OrganizationEntitlement {
+  id             String          @id @default(cuid())
+  organizationId String
+  code           String          @db.VarChar(120)
+  type           EntitlementType
+  enabled        Boolean         @default(true)
+  limitValue     Int?
+  startsAt       DateTime?
+  endsAt         DateTime?
+  metadata       Json?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, code])
+  @@index([organizationId, type])
 }
 
 model Subscription {
