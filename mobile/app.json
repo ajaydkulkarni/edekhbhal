@@ -38,7 +38,7 @@
       "expo-secure-store"
     ],
     "extra": {
-      "apiUrl": "https://edekhbhal-staging.vercel.app",
+      "apiUrl": "https://edekhbhal.vercel.app",
       "router": {},
       "eas": {
         "projectId": "03092aca-28a2-433b-959e-72e3c6e1cccb"
