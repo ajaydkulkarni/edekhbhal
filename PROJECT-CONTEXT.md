@@ -2509,3 +2509,11 @@ RLS is deliberately not enabled in this batch. First validate application-level 
 - E2E locators were narrowed with exact labels/headings and report-row scoping.
 - GitHub Actions E2E runtime updated to Node 24 and official Node-24-compatible actions (`checkout@v6`, `setup-node@v6`, `upload-artifact@v6`), removing the Node 20/Supabase engine mismatch.
 - Re-run the complete 22-test staging suite after deployment.
+
+
+
+### Batch 03B — Final Audit E2E locator hotfix
+- E2E Staging #3 reached 21/22 passing.
+- The sole failure was the Audit test locator for `Entity Type`: the HTML label's accessible name includes its option text, so Playwright `getByLabel(..., exact:true)` could not find it.
+- Test now targets the stable form controls directly by `select[name=entityType]`, `select[name=entityId]`, and `select[name=pageSize]`.
+- No application or database behavior changed.
