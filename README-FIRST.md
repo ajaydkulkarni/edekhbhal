@@ -1,12 +1,17 @@
-# Batch 03A — E2E locator / Node 24 workflow hotfix
+# Batch 03B — Final Audit E2E locator hotfix
 
-The first full Batch 03 staging E2E run reached all 22 tests: 18 passed and 4 failed because Playwright strict-mode locators were ambiguous. The underlying application assertions around those records/screens were present; this patch only narrows the selectors.
+E2E Staging #3 passed 21 of 22 tests. The only failure is test-only: the Audit form label's accessible name includes option text, so `getByLabel("Entity Type", exact:true)` cannot match it.
 
-It also updates GitHub Actions from Node 20 to Node 24 and uses Node-24-compatible official actions.
+This patch uses stable form selectors by `name` for the three Audit controls. No application logic, database schema, or staging configuration changes.
 
-Upload the extracted files to GitHub preserving paths. Then in Codespaces:
+Upload extracted files preserving paths. Then:
 git pull
-bash APPLY-batch-03a.sh
-bash CHECK-batch-03a.sh
+bash APPLY-batch-03b.sh
+bash CHECK-batch-03b.sh
 
-Commit/push only after CHECK is green. No database SQL is required.
+If green:
+git add -A
+git commit -m "Fix final Batch 03 Audit E2E locator"
+git push
+
+Then run E2E Staging again. Target: 22/22.
