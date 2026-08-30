@@ -2530,3 +2530,13 @@ RLS is deliberately not enabled in this batch. First validate application-level 
 - Web visual system and Schedule Builder receive the first Next-generation design treatment.
 - Mobile design tokens and bottom navigation receive the first Next-generation visual treatment; existing execution/scan/report/profile workflows remain functional.
 - RLS is not enabled by this preview.
+
+## eDekhbhal Next Preview 01A — Mobile QR diagnostics hotfix (2026-08-30)
+
+- Branch: `v2-rebuild`.
+- V2 web URL: `https://edekhbhal.vercel.app`.
+- Mobile preview API configuration is normalized so the hard-coded fallback in `mobile/lib/api.ts` also points to the V2 web URL.
+- Mobile QR validation diagnostics are temporarily improved for staging: an `INVALID_QR` alert shows the backend URL and a bounded preview of the scanned QR payload; the server writes a `MOBILE_QR_INVALID` warning containing only non-secret diagnostic fields.
+- No database schema change is required.
+- Existing QR records must not be regenerated merely for this diagnostic hotfix.
+- Remove/reduce these staging diagnostics after the QR mismatch is resolved.

@@ -2,11 +2,17 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 import { router, useFocusEffect } from "expo-router";
 import React, { useCallback, useState } from "react";
 import { Alert, StyleSheet, Text, View } from "react-native";
-import { apiFetch } from "@/lib/api";
+import { API_URL, ApiError, apiFetch } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { useI18n } from "@/lib/i18n";
 import type { Occurrence } from "@/lib/types";
 import { Card, colors, PrimaryButton, ScreenHeader } from "@/components/Ui";
+
+function scannedPreview(value: string) {
+  const trimmed = value.trim();
+  if (trimmed.length <= 140) return trimmed;
+  return `${trimmed.slice(0, 137)}...`;
+}
 
 export default function ScanScreen() {
   const session = useSession();
@@ -39,7 +45,12 @@ export default function ScanScreen() {
       });
       router.replace(`/execution/${data.occurrence.id}`);
     } catch (error) {
-      Alert.alert("QR Code", error instanceof Error ? error.message : "Unable to validate QR Code.", [
+      const baseMessage = error instanceof Error ? error.message : "Unable to validate QR Code.";
+      const diagnosticMessage =
+        error instanceof ApiError && error.code === "INVALID_QR"
+          ? `${baseMessage}\n\nDiagnostic\nBackend: ${API_URL}\nScanned: ${scannedPreview(value)}`
+          : baseMessage;
+      Alert.alert("QR Code", diagnosticMessage, [
         { text: t("tryAgain"), onPress: () => setScanning(false) }
       ]);
     }
@@ -55,12 +66,7 @@ export default function ScanScreen() {
 
   return <View style={styles.screen}>
     <ScreenHeader organizationName={membership?.organizationName} title={occurrence.workAreaName} subtitle={occurrence.propertyName}/>
-    <CameraView
-      style={styles.camera}
-      facing="back"
-      barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
-      onBarcodeScanned={scanning ? undefined : (event) => scanned(event.data)}
-    />
+    <CameraView style={styles.camera} facing="back" barcodeScannerSettings={{ barcodeTypes: ["qr"] }} onBarcodeScanned={scanning ? undefined : (event) => scanned(event.data)} />
     <View style={styles.overlay}><Text style={styles.scanText}>{scanning ? t("validatingWorkArea") : t("pointCamera")}</Text></View>
   </View>;
 }

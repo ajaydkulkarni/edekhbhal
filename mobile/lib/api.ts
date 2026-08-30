@@ -1,7 +1,7 @@
 import Constants from "expo-constants";
 import * as SecureStore from "expo-secure-store";
 
-const defaultApiUrl = "https://edekhbhal-staging.vercel.app";
+const defaultApiUrl = "https://edekhbhal.vercel.app";
 export const API_URL = (
   process.env.EXPO_PUBLIC_API_URL ||
   Constants.expoConfig?.extra?.apiUrl ||
