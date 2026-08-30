@@ -2500,3 +2500,12 @@ RLS is deliberately not enabled in this batch. First validate application-level 
 - Personnel document display adds image thumbnails and PDF/file placeholders linked to signed files.
 - Automated regression rule: Requirement → implementation → automated test coverage → regression suite update → PROJECT-CONTEXT update.
 - Batch 03 adds automated Reported Work tests. RLS remains deferred and is NOT enabled in this batch.
+
+
+
+### Batch 03A — E2E locator / Node 24 workflow hotfix
+- First 22-test Batch 03 staging run: 18 passed, 4 failed only because Playwright strict locators matched both form options/labels and the intended table/heading elements.
+- No application behavior failure was identified in those four failures.
+- E2E locators were narrowed with exact labels/headings and report-row scoping.
+- GitHub Actions E2E runtime updated to Node 24 and official Node-24-compatible actions (`checkout@v6`, `setup-node@v6`, `upload-artifact@v6`), removing the Node 20/Supabase engine mismatch.
+- Re-run the complete 22-test staging suite after deployment.
