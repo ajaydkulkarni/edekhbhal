@@ -2540,3 +2540,14 @@ RLS is deliberately not enabled in this batch. First validate application-level 
 - No database schema change is required.
 - Existing QR records must not be regenerated merely for this diagnostic hotfix.
 - Remove/reduce these staging diagnostics after the QR mismatch is resolved.
+
+## eDekhbhal Next Preview 01B — Mobile QR diagnostics cleanup (2026-08-30)
+
+- Branch: `v2-rebuild`.
+- V2 mobile smoke testing passed for login, My Work, Work Area QR scan, task execution, evidence capture, occurrence completion, Report, Profile, and public QR verification.
+- Root cause of the mobile QR validation failure was a malformed Vercel `APP_URL` environment variable value that included the literal `APP_URL=` prefix.
+- Correct V2 `APP_URL` value is exactly `https://edekhbhal.vercel.app`.
+- Preview 01A temporary QR diagnostics are removed from the mobile user-facing alert and server warning logs.
+- The corrected mobile fallback API URL in `mobile/lib/api.ts` remains `https://edekhbhal.vercel.app`.
+- No database schema change is required.
+- Next planned work: live V2 E2E regression setup with an explicit allowed-domain guard for the parallel V2 domain and Preview 01-specific coverage.
