@@ -8,6 +8,9 @@ export type Fixtures = {
   unassigned: { id: string; email: string; membershipId: string };
   propertyA: { id: string; name: string };
   propertyB: { id: string; name: string };
+  nextWorkArea: { id: string; name: string };
+  nextSchedule: { id: string; name: string };
+  nextQr: { id: string };
 };
 
 function env(name: string) {

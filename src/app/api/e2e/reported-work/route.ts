@@ -1,10 +1,9 @@
 import {NextResponse} from "next/server";
 import {prisma} from "@/lib/prisma";
-const STAGING_APP_URL="https://edekhbhal-staging.vercel.app";
-function enabled(){return process.env.E2E_TESTING_ENABLED==="true"&&(process.env.APP_URL||"").replace(/\/$/,"")===STAGING_APP_URL;}
+import {isE2ETestingEnabled} from "@/lib/e2e-testing";
 export async function POST(req:Request){
  try{
-  if(!enabled())return NextResponse.json({error:"Not found."},{status:404});
+  if(!isE2ETestingEnabled())return NextResponse.json({error:"Not found."},{status:404});
   if(!process.env.E2E_TEST_SECRET||req.headers.get("x-e2e-secret")!==process.env.E2E_TEST_SECRET)return NextResponse.json({error:"Forbidden."},{status:403});
   const adminEmail=(process.env.E2E_ADMIN_EMAIL||"").toLowerCase(),userEmail=(process.env.E2E_USER_EMAIL||"").toLowerCase();
   const admin=await prisma.user.findUnique({where:{email:adminEmail},include:{memberships:{where:{role:"ADMIN",status:"ACTIVE"}}}});

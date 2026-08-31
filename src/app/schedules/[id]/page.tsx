@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import QRCode from "qrcode";
 import { Nav } from "@/components/Nav";
 import { ScheduleEditor } from "@/components/ScheduleEditor";
 import { getSessionUser } from "@/lib/session";
@@ -27,9 +28,23 @@ export default async function ScheduleDetailPage({ params }: { params: Promise<{
   const schedule = await prisma.schedule.findUnique({
     where: { id },
     include: {
-      workArea: { include: { property: true } },
+      workArea: {
+        include: {
+          property: true,
+          qrCodes: {
+            where: { status: "ACTIVE" },
+            orderBy: { generatedAt: "desc" },
+            take: 1
+          }
+        }
+      },
       scheduleTasks: { include: { task: true }, orderBy: { sequence: "asc" } },
-      occurrences: { where: { scheduledStartAt: { gte: new Date() } }, include: { tasks: true }, orderBy: { scheduledStartAt: "asc" }, take: 20 }
+      occurrences: {
+        where: { scheduledStartAt: { gte: new Date() } },
+        include: { tasks: true },
+        orderBy: { scheduledStartAt: "asc" },
+        take: 20
+      }
     }
   });
   if (!schedule) notFound();
@@ -59,7 +74,7 @@ export default async function ScheduleDetailPage({ params }: { params: Promise<{
     recurrenceConfig: (schedule.recurrenceConfig ?? null) as { weekdays?: number[]; monthDays?: number[] } | null,
     startLocal: localInputValue(schedule.startAt, schedule.timezone),
     timezone: schedule.timezone,
-    endDate: schedule.endDate ? schedule.endDate.toISOString().slice(0,10) : null,
+    endDate: schedule.endDate ? schedule.endDate.toISOString().slice(0, 10) : null,
     workAreaId: schedule.workAreaId,
     status: schedule.status,
     items: schedule.scheduleTasks.map((item) => ({
@@ -83,12 +98,70 @@ export default async function ScheduleDetailPage({ params }: { params: Promise<{
   }));
   const taskOptions = tasks.map((task) => ({ id: task.id, name: task.name, status: task.status }));
 
+  const latestQr = schedule.workArea.qrCodes[0] ?? null;
+  const appUrl = (process.env.APP_URL || "https://edekhbhal.vercel.app").replace(/\/+$/, "");
+  const latestQrUrl = latestQr ? `${appUrl}/qr/${encodeURIComponent(latestQr.id)}` : null;
+  const latestQrDataUrl = latestQrUrl
+    ? await QRCode.toDataURL(latestQrUrl, { width: 220, margin: 1, errorCorrectionLevel: "M" })
+    : null;
+
   return <><Nav/><main className="container">
     <div className="row"><div style={{ marginRight: "auto" }}>
       <h1>{schedule.name}</h1>
       <p className="muted">{schedule.workArea.name} — {schedule.workArea.property.name} · {schedule.status}</p>
     </div></div>
     <p className="muted">First occurrence: {formatInZone(schedule.startAt, schedule.timezone)} ({schedule.timezone})</p>
+
+    <div className="card" style={{ marginBottom: 20 }}>
+      <div className="row" style={{ alignItems: "flex-start", gap: 24, flexWrap: "wrap" }}>
+        <div style={{ flex: "1 1 320px" }}>
+          <h2 style={{ marginTop: 0 }}>Work Area QR Code</h2>
+          <p><strong>{schedule.workArea.name}</strong> — {schedule.workArea.property.name}</p>
+          <p className="muted">
+            Latest active QR Code for this Schedule&apos;s Work Area. Scan it with the mobile app when testing this Schedule.
+          </p>
+          {latestQr ? <>
+            <p className="muted">Generated: {formatInZone(latestQr.generatedAt, schedule.timezone)}</p>
+            <a
+              href={latestQrUrl!}
+              target="_blank"
+              rel="noreferrer"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                border: "1px solid var(--line)",
+                borderRadius: 10,
+                padding: "10px 14px",
+                textDecoration: "none",
+                fontWeight: 700
+              }}
+            >
+              Open public QR page
+            </a>
+          </> : <p className="muted">No active QR Code has been generated for this Work Area yet.</p>}
+        </div>
+        {latestQrDataUrl ? <div style={{ textAlign: "center" }}>
+          <img
+            src={latestQrDataUrl}
+            alt={`Latest QR Code for ${schedule.workArea.name}`}
+            width={220}
+            height={220}
+            style={{
+              display: "block",
+              maxWidth: "100%",
+              height: "auto",
+              border: "1px solid #e5e7eb",
+              borderRadius: 12,
+              padding: 8,
+              background: "#fff"
+            }}
+          />
+          <small className="muted">Latest active QR</small>
+        </div> : null}
+      </div>
+    </div>
+
     <ScheduleEditor canManage={canManage} workAreas={waOptions} tasks={taskOptions} initial={initial as any}/>
     <div style={{marginTop:32}}><h2>Upcoming Generated Occurrences</h2><p className="muted">These rows are pre-generated from the Schedule definition and will be the execution records used by the mobile module and Supervisor dashboard.</p></div>
     <div className="card"><table className="table"><thead><tr><th>Planned Start</th><th>Planned End</th><th>Tasks</th><th>Evidence Checks</th><th>Status</th></tr></thead><tbody>

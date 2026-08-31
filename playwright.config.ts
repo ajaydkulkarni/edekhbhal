@@ -1,6 +1,17 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const baseURL = process.env.E2E_BASE_URL || "https://edekhbhal-staging.vercel.app";
+const allowedBaseURLs = new Set([
+  "https://edekhbhal-staging.vercel.app",
+  "https://edekhbhal.vercel.app"
+]);
+
+const baseURL = (process.env.E2E_BASE_URL || "https://edekhbhal.vercel.app").replace(/\/+$/, "");
+if (!allowedBaseURLs.has(baseURL)) {
+  throw new Error(
+    `Refusing to run E2E against unapproved URL: ${baseURL}. ` +
+    `Allowed targets: ${Array.from(allowedBaseURLs).join(", ")}`
+  );
+}
 
 export default defineConfig({
   testDir: "./e2e",

@@ -2551,3 +2551,18 @@ RLS is deliberately not enabled in this batch. First validate application-level 
 - The corrected mobile fallback API URL in `mobile/lib/api.ts` remains `https://edekhbhal.vercel.app`.
 - No database schema change is required.
 - Next planned work: live V2 E2E regression setup with an explicit allowed-domain guard for the parallel V2 domain and Preview 01-specific coverage.
+
+## eDekhbhal Next Preview 02 — V2 E2E regression + Schedule Work Area QR (2026-08-30)
+
+- Branch: `v2-rebuild`.
+- One combined release replaces the earlier standalone Preview 01C QR convenience patch.
+- Schedule detail displays the latest ACTIVE QR Code for its Work Area, including generation time and a functional public QR link.
+- The QR payload points to `${APP_URL}/qr/{qrCodeId}` and therefore opens the existing public Work Area QR experience.
+- If no active QR exists, the Schedule screen displays a clear empty state; no fabricated QR is generated.
+- E2E support is expanded to the V2 parallel deployment at `https://edekhbhal.vercel.app`.
+- E2E server endpoints remain protected by both `E2E_TESTING_ENABLED=true`, the secret header, and an explicit exact APP_URL allow-list. The original staging URL remains permitted for controlled regression runs.
+- Playwright defaults to the V2 URL and refuses unapproved targets.
+- Existing regression tests remain in place. Three V2-specific tests are added for public landing entry points, latest Schedule Work Area QR rendering/linkage, and public QR privacy.
+- `/api/e2e/setup` now creates deterministic V2 Schedule/Work Area/QR fixtures while retaining its existing account/property fixtures.
+- No database schema change is required.
+- Before live V2 E2E, the V2 Vercel project must contain the existing E2E environment variables and be redeployed after enabling them.

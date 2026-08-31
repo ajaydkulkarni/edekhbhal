@@ -3,20 +3,17 @@ import { cookies } from "next/headers";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { randomToken, sha256 } from "@/lib/security";
+import { isE2ETestingEnabled } from "@/lib/e2e-testing";
 
 const bodySchema = z.object({ email: z.string().email() });
-const STAGING_APP_URL = "https://edekhbhal-staging.vercel.app";
 
-function enabled() {
-  const appUrl = (process.env.APP_URL || "").replace(/\/$/, "");
-  return process.env.E2E_TESTING_ENABLED === "true" && appUrl === STAGING_APP_URL;
-}
 function allowedEmails() {
   return [process.env.E2E_ADMIN_EMAIL, process.env.E2E_PM_EMAIL, process.env.E2E_USER_EMAIL, process.env.E2E_UNASSIGNED_EMAIL]
     .filter(Boolean).map(x => x!.toLowerCase());
 }
+
 export async function POST(req: Request) {
-  if (!enabled()) return NextResponse.json({ error: "Not found." }, { status: 404 });
+  if (!isE2ETestingEnabled()) return NextResponse.json({ error: "Not found." }, { status: 404 });
   const expected = process.env.E2E_TEST_SECRET;
   const supplied = req.headers.get("x-e2e-secret");
   if (!expected || supplied !== expected) return NextResponse.json({ error: "Forbidden." }, { status: 403 });

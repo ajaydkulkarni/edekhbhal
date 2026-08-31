@@ -1,20 +1,17 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { sha256 } from "@/lib/security";
+import { isE2ETestingEnabled } from "@/lib/e2e-testing";
 
-const STAGING_APP_URL = "https://edekhbhal-staging.vercel.app";
-
-function enabled() {
-  const appUrl = (process.env.APP_URL || "").replace(/\/$/, "");
-  return process.env.E2E_TESTING_ENABLED === "true" && appUrl === STAGING_APP_URL;
-}
 function required(name: string) {
   const value = process.env[name];
   if (!value) throw new Error(`Missing ${name}`);
   return value.toLowerCase();
 }
+
 export async function POST(req: Request) {
   try {
-    if (!enabled()) return NextResponse.json({ error: "Not found." }, { status: 404 });
+    if (!isE2ETestingEnabled()) return NextResponse.json({ error: "Not found." }, { status: 404 });
     const expected = process.env.E2E_TEST_SECRET;
     if (!expected || req.headers.get("x-e2e-secret") !== expected) {
       return NextResponse.json({ error: "Forbidden." }, { status: 403 });
@@ -55,11 +52,23 @@ export async function POST(req: Request) {
       if (existing) return prisma.property.update({ where: { id: existing.id }, data: { status: "ACTIVE" } });
       return prisma.property.create({
         data: {
-          organizationId, name, addressLine1: "100 E2E Test Way", city: "Salt Lake City",
-          state: "UT", postalCode: "84101", country: "USA",
-          timezone: "America/Denver", status: "ACTIVE"
+          organizationId,
+          name,
+          addressLine1: "100 E2E Test Way",
+          city: "Salt Lake City",
+          state: "UT",
+          postalCode: "84101",
+          country: "USA",
+          timezone: "America/Denver",
+          status: "ACTIVE"
         }
       });
+    }
+
+    async function ensureWorkArea(propertyId: string, name: string) {
+      const existing = await prisma.workArea.findFirst({ where: { propertyId, name } });
+      if (existing) return prisma.workArea.update({ where: { id: existing.id }, data: { status: "ACTIVE" } });
+      return prisma.workArea.create({ data: { propertyId, name, status: "ACTIVE" } });
     }
 
     const pm = await ensureUser(pmEmail, "E2E Property Manager", "PROPERTY_MANAGER");
@@ -79,6 +88,105 @@ export async function POST(req: Request) {
       skipDuplicates: true
     });
 
+    const nextWorkArea = await ensureWorkArea(propertyA.id, "E2E Next Work Area");
+
+    let nextTask = await prisma.task.findFirst({
+      where: { organizationId, name: "E2E Next Schedule Task" }
+    });
+    nextTask = nextTask
+      ? await prisma.task.update({
+          where: { id: nextTask.id },
+          data: { status: "ACTIVE", isAdHoc: false, descriptionHtml: "<p>E2E Next deterministic Task.</p>" }
+        })
+      : await prisma.task.create({
+          data: {
+            organizationId,
+            name: "E2E Next Schedule Task",
+            descriptionHtml: "<p>E2E Next deterministic Task.</p>",
+            isAdHoc: false,
+            status: "ACTIVE",
+            createdById: admin.id
+          }
+        });
+
+    let nextSchedule = await prisma.schedule.findFirst({
+      where: { organizationId, name: "E2E Next QR Schedule" }
+    });
+    const nextStart = new Date(Date.now() + 60 * 60 * 1000);
+    nextSchedule = nextSchedule
+      ? await prisma.schedule.update({
+          where: { id: nextSchedule.id },
+          data: {
+            frequencyType: "ONE_TIME",
+            recurrenceUnit: null,
+            recurrenceInterval: null,
+            recurrenceConfig: undefined,
+            startAt: nextStart,
+            endDate: null,
+            timezone: "America/Denver",
+            workAreaId: nextWorkArea.id,
+            status: "ACTIVE"
+          }
+        })
+      : await prisma.schedule.create({
+          data: {
+            organizationId,
+            name: "E2E Next QR Schedule",
+            frequencyType: "ONE_TIME",
+            startAt: nextStart,
+            timezone: "America/Denver",
+            workAreaId: nextWorkArea.id,
+            status: "ACTIVE",
+            createdById: admin.id
+          }
+        });
+
+    await prisma.scheduleTask.upsert({
+      where: { scheduleId_sequence: { scheduleId: nextSchedule.id, sequence: 1 } },
+      update: {
+        taskId: nextTask.id,
+        durationMinutes: 30,
+        plannedStartOffsetMinutes: 0,
+        plannedEndOffsetMinutes: 30,
+        evidenceRule: "NONE",
+        randomEveryN: null,
+        randomEvidenceType: null
+      },
+      create: {
+        scheduleId: nextSchedule.id,
+        taskId: nextTask.id,
+        sequence: 1,
+        durationMinutes: 30,
+        plannedStartOffsetMinutes: 0,
+        plannedEndOffsetMinutes: 30,
+        evidenceRule: "NONE"
+      }
+    });
+
+    const qrTokenHash = sha256(`e2e-next-work-area:${nextWorkArea.id}`);
+    const existingQrByHash = await prisma.qrCode.findUnique({ where: { tokenHash: qrTokenHash } });
+    const nextQr = existingQrByHash
+      ? await prisma.qrCode.update({
+          where: { id: existingQrByHash.id },
+          data: {
+            workAreaId: nextWorkArea.id,
+            status: "ACTIVE",
+            generatedAt: new Date(),
+            generatedById: admin.id,
+            revokedAt: null,
+            revokedById: null
+          }
+        })
+      : await prisma.qrCode.create({
+          data: {
+            workAreaId: nextWorkArea.id,
+            tokenHash: qrTokenHash,
+            tokenPreview: "E2E-NEXT",
+            status: "ACTIVE",
+            generatedById: admin.id
+          }
+        });
+
     return NextResponse.json({
       organizationId,
       admin: { id: admin.id, email: admin.email, membershipId: adminMembership.id },
@@ -86,9 +194,15 @@ export async function POST(req: Request) {
       user: { id: user.user.id, email: user.user.email, membershipId: user.membership.id },
       unassigned: { id: unassigned.user.id, email: unassigned.user.email, membershipId: unassigned.membership.id },
       propertyA: { id: propertyA.id, name: propertyA.name },
-      propertyB: { id: propertyB.id, name: propertyB.name }
+      propertyB: { id: propertyB.id, name: propertyB.name },
+      nextWorkArea: { id: nextWorkArea.id, name: nextWorkArea.name },
+      nextSchedule: { id: nextSchedule.id, name: nextSchedule.name },
+      nextQr: { id: nextQr.id }
     });
   } catch (e) {
-    return NextResponse.json({ error: e instanceof Error ? e.message : "Unable to prepare E2E fixtures." }, { status: 400 });
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : "Unable to prepare E2E fixtures." },
+      { status: 400 }
+    );
   }
 }
