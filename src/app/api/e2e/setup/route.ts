@@ -187,6 +187,139 @@ export async function POST(req: Request) {
           }
         });
 
+    // Cross-tenant security fixture. No E2E test identity receives membership
+    // in this Organization. Existing sessions must therefore be denied.
+    const foreignOrganizationName = "E2E Foreign Organization";
+    let foreignOrganization = await prisma.organization.findFirst({
+      where: { name: foreignOrganizationName }
+    });
+    foreignOrganization = foreignOrganization
+      ? await prisma.organization.update({
+          where: { id: foreignOrganization.id },
+          data: { timezone: "America/Denver" }
+        })
+      : await prisma.organization.create({
+          data: { name: foreignOrganizationName, timezone: "America/Denver" }
+        });
+
+    const foreignPropertyName = "E2E Foreign Property";
+    let foreignProperty = await prisma.property.findFirst({
+      where: { organizationId: foreignOrganization.id, name: foreignPropertyName }
+    });
+    foreignProperty = foreignProperty
+      ? await prisma.property.update({
+          where: { id: foreignProperty.id },
+          data: { status: "ACTIVE", timezone: "America/Denver" }
+        })
+      : await prisma.property.create({
+          data: {
+            organizationId: foreignOrganization.id,
+            name: foreignPropertyName,
+            addressLine1: "200 Foreign Test Way",
+            city: "Salt Lake City",
+            state: "UT",
+            postalCode: "84101",
+            country: "USA",
+            timezone: "America/Denver",
+            status: "ACTIVE"
+          }
+        });
+
+    const foreignWorkAreaName = "E2E Foreign Work Area";
+    let foreignWorkArea = await prisma.workArea.findFirst({
+      where: { propertyId: foreignProperty.id, name: foreignWorkAreaName }
+    });
+    foreignWorkArea = foreignWorkArea
+      ? await prisma.workArea.update({
+          where: { id: foreignWorkArea.id },
+          data: { status: "ACTIVE" }
+        })
+      : await prisma.workArea.create({
+          data: {
+            propertyId: foreignProperty.id,
+            name: foreignWorkAreaName,
+            status: "ACTIVE"
+          }
+        });
+
+    const foreignTaskName = "E2E Foreign Task";
+    let foreignTask = await prisma.task.findFirst({
+      where: { organizationId: foreignOrganization.id, name: foreignTaskName }
+    });
+    foreignTask = foreignTask
+      ? await prisma.task.update({
+          where: { id: foreignTask.id },
+          data: {
+            status: "ACTIVE",
+            isAdHoc: false,
+            descriptionHtml: "<p>Cross-tenant E2E Task.</p>"
+          }
+        })
+      : await prisma.task.create({
+          data: {
+            organizationId: foreignOrganization.id,
+            name: foreignTaskName,
+            descriptionHtml: "<p>Cross-tenant E2E Task.</p>",
+            isAdHoc: false,
+            status: "ACTIVE",
+            createdById: admin.id
+          }
+        });
+
+    const foreignScheduleName = "E2E Foreign Schedule";
+    let foreignSchedule = await prisma.schedule.findFirst({
+      where: { organizationId: foreignOrganization.id, name: foreignScheduleName }
+    });
+    const foreignStart = new Date(Date.now() + 2 * 60 * 60 * 1000);
+    foreignSchedule = foreignSchedule
+      ? await prisma.schedule.update({
+          where: { id: foreignSchedule.id },
+          data: {
+            frequencyType: "ONE_TIME",
+            recurrenceUnit: null,
+            recurrenceInterval: null,
+            startAt: foreignStart,
+            endDate: null,
+            timezone: "America/Denver",
+            workAreaId: foreignWorkArea.id,
+            status: "ACTIVE"
+          }
+        })
+      : await prisma.schedule.create({
+          data: {
+            organizationId: foreignOrganization.id,
+            name: foreignScheduleName,
+            frequencyType: "ONE_TIME",
+            startAt: foreignStart,
+            timezone: "America/Denver",
+            workAreaId: foreignWorkArea.id,
+            status: "ACTIVE",
+            createdById: admin.id
+          }
+        });
+
+    await prisma.scheduleTask.upsert({
+      where: { scheduleId_sequence: { scheduleId: foreignSchedule.id, sequence: 1 } },
+      update: {
+        taskId: foreignTask.id,
+        durationMinutes: 15,
+        plannedStartOffsetMinutes: 0,
+        plannedEndOffsetMinutes: 15,
+        evidenceRule: "NONE",
+        randomEveryN: null,
+        randomEvidenceType: null
+      },
+      create: {
+        scheduleId: foreignSchedule.id,
+        taskId: foreignTask.id,
+        sequence: 1,
+        durationMinutes: 15,
+        plannedStartOffsetMinutes: 0,
+        plannedEndOffsetMinutes: 15,
+        evidenceRule: "NONE"
+      }
+    });
+
     return NextResponse.json({
       organizationId,
       admin: { id: admin.id, email: admin.email, membershipId: adminMembership.id },
@@ -197,7 +330,15 @@ export async function POST(req: Request) {
       propertyB: { id: propertyB.id, name: propertyB.name },
       nextWorkArea: { id: nextWorkArea.id, name: nextWorkArea.name },
       nextSchedule: { id: nextSchedule.id, name: nextSchedule.name },
-      nextQr: { id: nextQr.id }
+      nextQr: { id: nextQr.id },
+      foreignOrganization: {
+        id: foreignOrganization.id,
+        name: foreignOrganization.name,
+        property: { id: foreignProperty.id, name: foreignProperty.name },
+        workArea: { id: foreignWorkArea.id, name: foreignWorkArea.name },
+        task: { id: foreignTask.id, name: foreignTask.name },
+        schedule: { id: foreignSchedule.id, name: foreignSchedule.name }
+      }
     });
   } catch (e) {
     return NextResponse.json(
