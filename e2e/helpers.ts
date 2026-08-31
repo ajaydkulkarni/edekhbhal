@@ -11,6 +11,14 @@ export type Fixtures = {
   nextWorkArea: { id: string; name: string };
   nextSchedule: { id: string; name: string };
   nextQr: { id: string };
+  foreignOrganization: {
+    id: string;
+    name: string;
+    property: { id: string; name: string };
+    workArea: { id: string; name: string };
+    task: { id: string; name: string };
+    schedule: { id: string; name: string };
+  };
 };
 
 function env(name: string) {
