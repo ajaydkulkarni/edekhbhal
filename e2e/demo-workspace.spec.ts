@@ -11,7 +11,11 @@ test.describe("Demo Workspace", () => {
     await expect(page).toHaveURL(/\/demo\/dashboard$/);
     await expect(page.getByText("DEMO WORKSPACE — Sample data", { exact: true })).toBeVisible();
     await expect(page.getByRole("heading", { name: "eDekhbhal Best Practice Demo" })).toBeVisible();
-    await expect(page.getByText("Butter Chicken Bowl — Lot Production", { exact: true })).toBeVisible();
+
+    const progressTable = page.locator("table").first();
+    await expect(
+      progressTable.getByRole("cell", { name: "Butter Chicken Bowl — Lot Production", exact: true })
+    ).toBeVisible();
   });
 
   test("Demo Reports contain deterministic real-life exceptions", async ({ page, request }) => {
