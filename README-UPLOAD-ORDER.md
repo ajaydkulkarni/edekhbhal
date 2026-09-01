@@ -1,56 +1,72 @@
-# RLS Runtime Foundation 01 — Upload / Test Order
+# Demo Workspace Batch 01 — Upload and Validation
 
-This batch does **not** enable Row Level Security on any business table.
+## Important sequencing
 
-## Files
+If `Tenant Context Migration 01A — Task Create` has not yet been uploaded/tested, upload that earlier batch first because the Demo Task template eventually saves through the normal Task creation API.
 
-Upload to `v2-rebuild`:
+Demo Workspace Batch 01 itself does **not** enable RLS and does not add database migrations.
 
-1. `supabase-rls-runtime-foundation-01.sql` → repository root
-2. `src/lib/tenantDbContext.ts`
-3. `src/app/api/e2e/rls-context/route.ts`
-4. `e2e/rls-context.spec.ts`
+## Replace existing files
 
-## Database step
+1. `src/components/Nav.tsx`
+2. `src/app/tasks/new/page.tsx`
 
-Before testing the new endpoint, run the complete contents of:
+## Add new files
 
-`supabase-rls-runtime-foundation-01.sql`
+3. `src/lib/demoWorkspace.ts`
+4. `src/components/WorkspaceSwitcher.tsx`
+5. `src/components/DemoRoleSimulator.tsx`
+6. `src/components/DemoWorkspaceNav.tsx`
+7. `src/app/demo/layout.tsx`
+8. `src/app/demo/page.tsx`
+9. `src/app/demo/dashboard/page.tsx`
+10. `src/app/demo/[section]/page.tsx`
+11. `src/app/demo/demo-workspace.css`
+12. `src/app/demo-qr/[id]/page.tsx`
+13. `e2e/demo-workspace.spec.ts`
+14. `DEMO-WORKSPACE-ARCHITECTURE.md`
 
-in the Supabase SQL Editor for the database used by the V2 deployment.
+## What Batch 01 delivers
 
-The final SELECT should return NULL for all four context columns.
+- Header workspace selector.
+- Distinct Demo theme and persistent `DEMO WORKSPACE — Sample data` banner.
+- One universal static best-practice dataset; no Demo tenant DB rows.
+- Hospitality, Food Manufacturing, Maintenance and Corporate Office examples.
+- Butter Chicken Bowl and Delight Cookies lot-production examples.
+- Preventive and breakdown maintenance examples.
+- Deterministic synthetic Dashboard activity including late/missed/incomplete exceptions.
+- Synthetic 30-day Demo Reports.
+- Demo role simulator.
+- Public fake Demo QR pages with synthetic recent exception history.
+- `Use this Task as a template` opens the real Add Task screen prefilled.
+- No Schedule copy.
+- No Demo mobile execution.
+- Standing Demo parity architecture documented.
 
-## Deploy
+## Deploy / test
 
-Deploy `v2-rebuild` to the V2 web project.
-
-## Tests
-
-First:
+After uploading all files, deploy `v2-rebuild`, then:
 
 ```bash
-npx playwright test e2e/rls-context.spec.ts
+git pull origin v2-rebuild
+npx playwright test e2e/demo-workspace.spec.ts
 ```
 
 Expected:
 
 ```text
-3 passed
+5 passed
 ```
 
-Then:
+Then run the complete suite:
 
 ```bash
 npm run test:e2e
 ```
 
-Expected full suite:
+Expected total depends on whether Tenant Context Migration 01A was already added:
 
-```text
-36 passed
-```
+- If the prior 3 Task-context tests are present: **44 passed**
+- If not: **41 passed**
 
-## Stop condition
-
-If the context test fails, do not enable RLS and do not migrate business routes yet.
+Do not enable RLS as part of this batch.
