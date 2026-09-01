@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { DemoWorkspaceNav } from "@/components/DemoWorkspaceNav";
+import { getDemoViewRole } from "@/lib/demoRole";
 
 export default async function DemoLayout({
   children,
@@ -14,13 +15,15 @@ export default async function DemoLayout({
     where: { userId: user.id, status: "ACTIVE" },
     include: { organization: true },
   });
-  if (!membership) redirect("/onboarding");
+
+  const demoRole = await getDemoViewRole();
 
   return (
     <div className="demoWorkspaceTheme">
       <DemoWorkspaceNav
-        realOrganizationName={membership.organization.name}
+        realOrganizationName={membership?.organization.name ?? null}
         userLabel={user.name ?? user.email}
+        demoRole={demoRole}
       />
       {children}
     </div>

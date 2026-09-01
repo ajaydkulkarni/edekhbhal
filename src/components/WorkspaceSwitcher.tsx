@@ -7,10 +7,11 @@ export function WorkspaceSwitcher({
   realOrganizationName,
   current,
 }: {
-  realOrganizationName: string;
+  realOrganizationName?: string | null;
   current: "REAL" | "DEMO";
 }) {
   const router = useRouter();
+  const hasRealOrganization = Boolean(realOrganizationName);
 
   return (
     <label className="workspaceSwitcher">
@@ -19,10 +20,14 @@ export function WorkspaceSwitcher({
         aria-label="Workspace"
         value={current}
         onChange={(event) => {
-          router.push(event.target.value === "DEMO" ? "/demo/dashboard" : "/dashboard");
+          if (event.target.value === "DEMO") {
+            router.push("/demo/dashboard");
+          } else {
+            router.push(hasRealOrganization ? "/dashboard" : "/onboarding");
+          }
         }}
       >
-        <option value="REAL">{realOrganizationName}</option>
+        <option value="REAL">{realOrganizationName || "Create Organization"}</option>
         <option value="DEMO">{DEMO_WORKSPACE.displayName}</option>
       </select>
     </label>

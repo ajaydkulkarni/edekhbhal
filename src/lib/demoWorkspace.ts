@@ -13,6 +13,8 @@ export type DemoTask = {
   category: string;
   description: string;
   evidence: "NONE" | "PHOTO" | "VIDEO" | "RANDOM";
+  status: "ACTIVE";
+  attachmentCount: number;
 };
 
 export type DemoWorkArea = {
@@ -20,6 +22,8 @@ export type DemoWorkArea = {
   propertyId: string;
   name: string;
   description: string;
+  locationIdentifier: string;
+  status: "ACTIVE";
 };
 
 export type DemoProperty = {
@@ -27,6 +31,10 @@ export type DemoProperty = {
   name: string;
   industry: string;
   description: string;
+  city: string;
+  state: string;
+  timezone: string;
+  status: "ACTIVE";
   workAreas: DemoWorkArea[];
 };
 
@@ -38,6 +46,9 @@ export type DemoSchedule = {
   taskIds: string[];
   cadence: string;
   purpose: string;
+  frequencyType: "ONE_TIME" | "RECURRING";
+  status: "ACTIVE";
+  timezone: string;
 };
 
 export type DemoTeamMember = {
@@ -55,17 +66,22 @@ export const DEMO_WORKSPACE = {
   banner: "DEMO WORKSPACE — Sample data",
 } as const;
 
+const wa = (propertyId: string, id: string, name: string, description: string, locationIdentifier: string): DemoWorkArea => ({
+  id, propertyId, name, description, locationIdentifier, status: "ACTIVE"
+});
+
 export const demoProperties: DemoProperty[] = [
   {
     id: "grand-vista-hotel",
     name: "Grand Vista Hotel",
     industry: "Hospitality",
     description: "Guest-room, public-area, kitchen and safety operations.",
+    city: "Denver", state: "CO", timezone: "America/Denver", status: "ACTIVE",
     workAreas: [
-      { id: "hotel-lobby", propertyId: "grand-vista-hotel", name: "Main Lobby", description: "Guest-facing lobby and reception zone." },
-      { id: "hotel-rooms-floor-4", propertyId: "grand-vista-hotel", name: "Guest Rooms — Floor 4", description: "Guest room housekeeping and room-readiness checks." },
-      { id: "hotel-kitchen", propertyId: "grand-vista-hotel", name: "Main Kitchen", description: "Food preparation, sanitation and closing controls." },
-      { id: "hotel-pool", propertyId: "grand-vista-hotel", name: "Pool & Fitness", description: "Guest amenity inspection and sanitation." },
+      wa("grand-vista-hotel","hotel-lobby","Main Lobby","Guest-facing lobby and reception zone.","Ground Floor"),
+      wa("grand-vista-hotel","hotel-rooms-floor-4","Guest Rooms — Floor 4","Guest room housekeeping and room-readiness checks.","Floor 4"),
+      wa("grand-vista-hotel","hotel-kitchen","Main Kitchen","Food preparation, sanitation and closing controls.","Back of House"),
+      wa("grand-vista-hotel","hotel-pool","Pool & Fitness","Guest amenity inspection and sanitation.","Level 2"),
     ],
   },
   {
@@ -73,11 +89,12 @@ export const demoProperties: DemoProperty[] = [
     name: "FreshBite Foods Manufacturing Plant",
     industry: "Food Manufacturing",
     description: "Lot-controlled production, sanitation, quality and packaging operations.",
+    city: "Aurora", state: "CO", timezone: "America/Denver", status: "ACTIVE",
     workAreas: [
-      { id: "line-1-bowls", propertyId: "freshbite-foods", name: "Line 1 — Prepared Meals", description: "Butter Chicken Bowl production line." },
-      { id: "line-2-cookies", propertyId: "freshbite-foods", name: "Line 2 — Bakery", description: "Delight Cookies production line." },
-      { id: "food-qc-lab", propertyId: "freshbite-foods", name: "Quality Lab", description: "In-process and finished-goods quality verification." },
-      { id: "food-sanitation", propertyId: "freshbite-foods", name: "Sanitation Zone", description: "Pre-op and post-op sanitation controls." },
+      wa("freshbite-foods","line-1-bowls","Line 1 — Prepared Meals","Butter Chicken Bowl production line.","Production Hall A"),
+      wa("freshbite-foods","line-2-cookies","Line 2 — Bakery","Delight Cookies production line.","Production Hall B"),
+      wa("freshbite-foods","food-qc-lab","Quality Lab","In-process and finished-goods quality verification.","QC Wing"),
+      wa("freshbite-foods","food-sanitation","Sanitation Zone","Pre-op and post-op sanitation controls.","Hygiene Entry"),
     ],
   },
   {
@@ -85,10 +102,11 @@ export const demoProperties: DemoProperty[] = [
     name: "Industrial Maintenance Facility",
     industry: "Maintenance",
     description: "Preventive maintenance, inspections and breakdown-response practices.",
+    city: "Lakewood", state: "CO", timezone: "America/Denver", status: "ACTIVE",
     workAreas: [
-      { id: "maint-boiler", propertyId: "industrial-maintenance", name: "Boiler Room", description: "Boilers, pumps and steam-system assets." },
-      { id: "maint-compressor", propertyId: "industrial-maintenance", name: "Compressor Bay", description: "Compressed-air system and dryers." },
-      { id: "maint-packaging", propertyId: "industrial-maintenance", name: "Packaging Machine Cell", description: "Conveyors, sealers, motors and sensors." },
+      wa("industrial-maintenance","maint-boiler","Boiler Room","Boilers, pumps and steam-system assets.","Utility Building"),
+      wa("industrial-maintenance","maint-compressor","Compressor Bay","Compressed-air system and dryers.","Utility Building"),
+      wa("industrial-maintenance","maint-packaging","Packaging Machine Cell","Conveyors, sealers, motors and sensors.","Line Support Area"),
     ],
   },
   {
@@ -96,58 +114,61 @@ export const demoProperties: DemoProperty[] = [
     name: "Corporate Headquarters",
     industry: "Corporate Office",
     description: "Facilities, meeting-room, pantry and workplace readiness routines.",
+    city: "Denver", state: "CO", timezone: "America/Denver", status: "ACTIVE",
     workAreas: [
-      { id: "hq-reception", propertyId: "corporate-hq", name: "Reception & Visitor Area", description: "Front-of-house readiness and safety." },
-      { id: "hq-meeting", propertyId: "corporate-hq", name: "Meeting Rooms", description: "Room reset, AV and consumables." },
-      { id: "hq-pantry", propertyId: "corporate-hq", name: "Pantry & Break Area", description: "Cleanliness, replenishment and equipment checks." },
+      wa("corporate-hq","hq-reception","Reception & Visitor Area","Front-of-house readiness and safety.","Lobby"),
+      wa("corporate-hq","hq-meeting","Meeting Rooms","Room reset, AV and consumables.","Floors 2–4"),
+      wa("corporate-hq","hq-pantry","Pantry & Break Area","Cleanliness, replenishment and equipment checks.","Floor 3"),
     ],
   },
 ];
 
+const t = (id:string,name:string,category:string,description:string,evidence:DemoTask["evidence"],attachmentCount=0):DemoTask => ({
+  id,name,category,description,evidence,status:"ACTIVE",attachmentCount
+});
+
 export const demoTasks: DemoTask[] = [
-  { id: "guest-room-readiness", name: "Guest Room Readiness Inspection", category: "Hospitality", description: "Verify linen, amenities, cleanliness, minibar, bathroom and maintenance exceptions before room release.", evidence: "RANDOM" },
-  { id: "lobby-opening", name: "Lobby Opening Readiness", category: "Hospitality", description: "Inspect floors, glass, furniture, lighting, scent, signage and guest-facing supplies.", evidence: "PHOTO" },
-  { id: "kitchen-closing", name: "Kitchen Closing Sanitation", category: "Hospitality", description: "Complete food-contact sanitation, waste removal, temperature checks and close-down verification.", evidence: "PHOTO" },
-  { id: "pool-safety", name: "Pool & Fitness Safety Inspection", category: "Hospitality", description: "Inspect water-area safety, equipment condition, towels, sanitation and signage.", evidence: "PHOTO" },
-
-  { id: "bc-preop", name: "Butter Chicken Bowl — Pre-Op Sanitation & Line Clearance", category: "Food Manufacturing", description: "Verify pre-operation sanitation release, allergen clearance, prior-lot material removal and line readiness.", evidence: "PHOTO" },
-  { id: "bc-material", name: "Butter Chicken Bowl — Material & Lot Verification", category: "Food Manufacturing", description: "Verify approved ingredients, lot codes, expiry status and staged quantities against batch requirements.", evidence: "NONE" },
-  { id: "bc-cook", name: "Butter Chicken Bowl — Cooking & Critical Temperature Check", category: "Food Manufacturing", description: "Control cook sequence and verify critical product temperature before filling.", evidence: "PHOTO" },
-  { id: "bc-fill", name: "Butter Chicken Bowl — Fill, Seal & Weight Verification", category: "Food Manufacturing", description: "Verify component fill weights, seal integrity and check-weight conformance.", evidence: "RANDOM" },
-  { id: "bc-metal", name: "Butter Chicken Bowl — Metal Detection & Label Verification", category: "Food Manufacturing", description: "Complete detector challenge checks and verify product, allergen, lot and date coding.", evidence: "PHOTO" },
-  { id: "bc-close", name: "Butter Chicken Bowl — Lot Closeout", category: "Food Manufacturing", description: "Reconcile output, scrap, retained samples, labels and lot documentation.", evidence: "NONE" },
-
-  { id: "cookie-preop", name: "Delight Cookies — Pre-Op Sanitation & Allergen Clearance", category: "Food Manufacturing", description: "Confirm bakery line release, allergen changeover, utensils and contact surfaces.", evidence: "PHOTO" },
-  { id: "cookie-weigh", name: "Delight Cookies — Ingredient Weighing & Verification", category: "Food Manufacturing", description: "Verify ingredient identity, lot numbers and weighed quantities before mixing.", evidence: "NONE" },
-  { id: "cookie-mix", name: "Delight Cookies — Mixing & Dough Check", category: "Food Manufacturing", description: "Control mixing parameters and verify dough appearance and temperature.", evidence: "RANDOM" },
-  { id: "cookie-bake", name: "Delight Cookies — Bake Profile & Quality Check", category: "Food Manufacturing", description: "Verify oven settings, bake time, color, dimensions and finished product condition.", evidence: "PHOTO" },
-  { id: "cookie-pack", name: "Delight Cookies — Metal Detection, Packaging & Coding", category: "Food Manufacturing", description: "Challenge metal detector and verify package seal, count, date and lot coding.", evidence: "PHOTO" },
-  { id: "cookie-close", name: "Delight Cookies — Lot Closeout", category: "Food Manufacturing", description: "Reconcile finished cases, scrap, labels, samples and batch documentation.", evidence: "NONE" },
-
-  { id: "boiler-pm", name: "Boiler Preventive Maintenance", category: "Maintenance", description: "Inspect burner, pressure controls, safety devices, water level, leaks and combustion condition.", evidence: "PHOTO" },
-  { id: "compressor-pm", name: "Air Compressor Preventive Maintenance", category: "Maintenance", description: "Inspect oil, filters, belts, drains, temperature, vibration and operating pressure.", evidence: "RANDOM" },
-  { id: "breakdown-triage", name: "Breakdown Maintenance — Safe Triage", category: "Maintenance", description: "Isolate equipment, capture fault condition, assess risk and document initial diagnosis.", evidence: "PHOTO" },
-  { id: "breakdown-close", name: "Breakdown Maintenance — Repair Closeout", category: "Maintenance", description: "Record repair, replaced parts, test run, root-cause notes and return-to-service approval.", evidence: "PHOTO" },
-
-  { id: "meeting-room", name: "Meeting Room Readiness", category: "Corporate Office", description: "Reset room, test display/AV, inspect furniture and replenish supplies.", evidence: "RANDOM" },
-  { id: "pantry-check", name: "Pantry Replenishment & Hygiene Check", category: "Corporate Office", description: "Inspect cleanliness, consumables, appliances, refrigerator and waste areas.", evidence: "PHOTO" },
-  { id: "reception-check", name: "Reception Opening Check", category: "Corporate Office", description: "Verify reception appearance, visitor supplies, signage and safety access.", evidence: "NONE" },
+  t("guest-room-readiness","Guest Room Readiness Inspection","Hospitality","Verify linen, amenities, cleanliness, minibar, bathroom and maintenance exceptions before room release.","RANDOM",2),
+  t("lobby-opening","Lobby Opening Readiness","Hospitality","Inspect floors, glass, furniture, lighting, scent, signage and guest-facing supplies.","PHOTO",1),
+  t("kitchen-closing","Kitchen Closing Sanitation","Hospitality","Complete food-contact sanitation, waste removal, temperature checks and close-down verification.","PHOTO",2),
+  t("pool-safety","Pool & Fitness Safety Inspection","Hospitality","Inspect water-area safety, equipment condition, towels, sanitation and signage.","PHOTO",1),
+  t("bc-preop","Butter Chicken Bowl — Pre-Op Sanitation & Line Clearance","Food Manufacturing","Verify pre-operation sanitation release, allergen clearance, prior-lot material removal and line readiness.","PHOTO",2),
+  t("bc-material","Butter Chicken Bowl — Material & Lot Verification","Food Manufacturing","Verify approved ingredients, lot codes, expiry status and staged quantities against batch requirements.","NONE",1),
+  t("bc-cook","Butter Chicken Bowl — Cooking & Critical Temperature Check","Food Manufacturing","Control cook sequence and verify critical product temperature before filling.","PHOTO",2),
+  t("bc-fill","Butter Chicken Bowl — Fill, Seal & Weight Verification","Food Manufacturing","Verify component fill weights, seal integrity and check-weight conformance.","RANDOM",1),
+  t("bc-metal","Butter Chicken Bowl — Metal Detection & Label Verification","Food Manufacturing","Complete detector challenge checks and verify product, allergen, lot and date coding.","PHOTO",2),
+  t("bc-close","Butter Chicken Bowl — Lot Closeout","Food Manufacturing","Reconcile output, scrap, retained samples, labels and lot documentation.","NONE",1),
+  t("cookie-preop","Delight Cookies — Pre-Op Sanitation & Allergen Clearance","Food Manufacturing","Confirm bakery line release, allergen changeover, utensils and contact surfaces.","PHOTO",2),
+  t("cookie-weigh","Delight Cookies — Ingredient Weighing & Verification","Food Manufacturing","Verify ingredient identity, lot numbers and weighed quantities before mixing.","NONE",1),
+  t("cookie-mix","Delight Cookies — Mixing & Dough Check","Food Manufacturing","Control mixing parameters and verify dough appearance and temperature.","RANDOM",1),
+  t("cookie-bake","Delight Cookies — Bake Profile & Quality Check","Food Manufacturing","Verify oven settings, bake time, color, dimensions and finished product condition.","PHOTO",2),
+  t("cookie-pack","Delight Cookies — Metal Detection, Packaging & Coding","Food Manufacturing","Challenge metal detector and verify package seal, count, date and lot coding.","PHOTO",2),
+  t("cookie-close","Delight Cookies — Lot Closeout","Food Manufacturing","Reconcile finished cases, scrap, labels, samples and batch documentation.","NONE",1),
+  t("boiler-pm","Boiler Preventive Maintenance","Maintenance","Inspect burner, pressure controls, safety devices, water level, leaks and combustion condition.","PHOTO",2),
+  t("compressor-pm","Air Compressor Preventive Maintenance","Maintenance","Inspect oil, filters, belts, drains, temperature, vibration and operating pressure.","RANDOM",1),
+  t("breakdown-triage","Breakdown Maintenance — Safe Triage","Maintenance","Isolate equipment, capture fault condition, assess risk and document initial diagnosis.","PHOTO",1),
+  t("breakdown-close","Breakdown Maintenance — Repair Closeout","Maintenance","Record repair, replaced parts, test run, root-cause notes and return-to-service approval.","PHOTO",2),
+  t("meeting-room","Meeting Room Readiness","Corporate Office","Reset room, test display/AV, inspect furniture and replenish supplies.","RANDOM",1),
+  t("pantry-check","Pantry Replenishment & Hygiene Check","Corporate Office","Inspect cleanliness, consumables, appliances, refrigerator and waste areas.","PHOTO",1),
+  t("reception-check","Reception Opening Check","Corporate Office","Verify reception appearance, visitor supplies, signage and safety access.","NONE",0),
 ];
 
+const s = (
+  id:string,name:string,propertyId:string,workAreaId:string,taskIds:string[],
+  cadence:string,purpose:string,frequencyType:DemoSchedule["frequencyType"]="RECURRING"
+):DemoSchedule => ({id,name,propertyId,workAreaId,taskIds,cadence,purpose,frequencyType,status:"ACTIVE",timezone:"America/Denver"});
+
 export const demoSchedules: DemoSchedule[] = [
-  { id: "hotel-room-turn", name: "Daily Guest Room Readiness — Floor 4", propertyId: "grand-vista-hotel", workAreaId: "hotel-rooms-floor-4", taskIds: ["guest-room-readiness"], cadence: "Daily, 10:00 AM", purpose: "Room-readiness verification before peak check-in." },
-  { id: "hotel-lobby-open", name: "Lobby Opening Readiness", propertyId: "grand-vista-hotel", workAreaId: "hotel-lobby", taskIds: ["lobby-opening"], cadence: "Daily, 6:00 AM", purpose: "Front-of-house readiness before morning guest traffic." },
-  { id: "hotel-kitchen-close", name: "Kitchen Closing Controls", propertyId: "grand-vista-hotel", workAreaId: "hotel-kitchen", taskIds: ["kitchen-closing"], cadence: "Daily, 11:00 PM", purpose: "Sanitation and close-down verification." },
-
-  { id: "lot-butter-chicken", name: "Butter Chicken Bowl — Lot Production", propertyId: "freshbite-foods", workAreaId: "line-1-bowls", taskIds: ["bc-preop","bc-material","bc-cook","bc-fill","bc-metal","bc-close"], cadence: "Per production lot", purpose: "End-to-end lot production control from line release through lot closeout." },
-  { id: "lot-delight-cookies", name: "Delight Cookies — Lot Production", propertyId: "freshbite-foods", workAreaId: "line-2-cookies", taskIds: ["cookie-preop","cookie-weigh","cookie-mix","cookie-bake","cookie-pack","cookie-close"], cadence: "Per production lot", purpose: "End-to-end bakery lot control with allergen, process and packaging checks." },
-
-  { id: "boiler-pm-weekly", name: "Boiler PM — Weekly", propertyId: "industrial-maintenance", workAreaId: "maint-boiler", taskIds: ["boiler-pm"], cadence: "Weekly, Monday 7:00 AM", purpose: "Preventive inspection before production week." },
-  { id: "compressor-pm-monthly", name: "Air Compressor PM — Monthly", propertyId: "industrial-maintenance", workAreaId: "maint-compressor", taskIds: ["compressor-pm"], cadence: "Monthly, first Tuesday", purpose: "Condition-based preventive maintenance." },
-  { id: "packaging-breakdown", name: "Packaging Machine Breakdown Response", propertyId: "industrial-maintenance", workAreaId: "maint-packaging", taskIds: ["breakdown-triage","breakdown-close"], cadence: "Event-driven template", purpose: "Safe, auditable response to unplanned equipment breakdown." },
-
-  { id: "hq-meeting-readiness", name: "Meeting Room Morning Readiness", propertyId: "corporate-hq", workAreaId: "hq-meeting", taskIds: ["meeting-room"], cadence: "Weekdays, 7:30 AM", purpose: "Prepare shared meeting spaces before office hours." },
-  { id: "hq-pantry", name: "Pantry Midday Check", propertyId: "corporate-hq", workAreaId: "hq-pantry", taskIds: ["pantry-check"], cadence: "Weekdays, 11:30 AM", purpose: "Maintain hygiene and replenishment through peak use." },
+  s("hotel-room-turn","Daily Guest Room Readiness — Floor 4","grand-vista-hotel","hotel-rooms-floor-4",["guest-room-readiness"],"Daily, 10:00 AM","Room-readiness verification before peak check-in."),
+  s("hotel-lobby-open","Lobby Opening Readiness","grand-vista-hotel","hotel-lobby",["lobby-opening"],"Daily, 6:00 AM","Front-of-house readiness before morning guest traffic."),
+  s("hotel-kitchen-close","Kitchen Closing Controls","grand-vista-hotel","hotel-kitchen",["kitchen-closing"],"Daily, 11:00 PM","Sanitation and close-down verification."),
+  s("lot-butter-chicken","Butter Chicken Bowl — Lot Production","freshbite-foods","line-1-bowls",["bc-preop","bc-material","bc-cook","bc-fill","bc-metal","bc-close"],"Per production lot","End-to-end lot production control from line release through lot closeout.","ONE_TIME"),
+  s("lot-delight-cookies","Delight Cookies — Lot Production","freshbite-foods","line-2-cookies",["cookie-preop","cookie-weigh","cookie-mix","cookie-bake","cookie-pack","cookie-close"],"Per production lot","End-to-end bakery lot control with allergen, process and packaging checks.","ONE_TIME"),
+  s("boiler-pm-weekly","Boiler PM — Weekly","industrial-maintenance","maint-boiler",["boiler-pm"],"Weekly, Monday 7:00 AM","Preventive inspection before production week."),
+  s("compressor-pm-monthly","Air Compressor PM — Monthly","industrial-maintenance","maint-compressor",["compressor-pm"],"Monthly, first Tuesday","Condition-based preventive maintenance."),
+  s("packaging-breakdown","Packaging Machine Breakdown Response","industrial-maintenance","maint-packaging",["breakdown-triage","breakdown-close"],"Event-driven template","Safe, auditable response to unplanned equipment breakdown.","ONE_TIME"),
+  s("hq-meeting-readiness","Meeting Room Morning Readiness","corporate-hq","hq-meeting",["meeting-room"],"Weekdays, 7:30 AM","Prepare shared meeting spaces before office hours."),
+  s("hq-pantry","Pantry Midday Check","corporate-hq","hq-pantry",["pantry-check"],"Weekdays, 11:30 AM","Maintain hygiene and replenishment through peak use."),
 ];
 
 export const demoTeam: DemoTeamMember[] = [
@@ -173,23 +194,13 @@ function hashText(text: string) {
 function demoDayKey(date: Date) {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: DEMO_WORKSPACE.timezone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
+    year: "numeric", month: "2-digit", day: "2-digit",
   }).format(date);
 }
 
 const statusPattern: DemoEventStatus[] = [
-  "COMPLETED_ON_TIME",
-  "COMPLETED_LATE",
-  "COMPLETED_ON_TIME",
-  "IN_PROGRESS",
-  "UPCOMING",
-  "MISSED",
-  "INCOMPLETE",
-  "COMPLETED_ON_TIME",
-  "COMPLETED_LATE",
-  "UPCOMING",
+  "COMPLETED_ON_TIME","COMPLETED_LATE","COMPLETED_ON_TIME","IN_PROGRESS","UPCOMING",
+  "MISSED","INCOMPLETE","COMPLETED_ON_TIME","COMPLETED_LATE","UPCOMING",
 ];
 
 export type DemoOperationalEvent = {
@@ -199,6 +210,7 @@ export type DemoOperationalEvent = {
   scheduleName: string;
   propertyId: string;
   propertyName: string;
+  workAreaId: string;
   workAreaName: string;
   status: DemoEventStatus;
   plannedMinutes: number;
@@ -217,7 +229,7 @@ export function getDemoEventsForDate(date: Date): DemoOperationalEvent[] {
     const workArea = property.workAreas.find((w) => w.id === schedule.workAreaId)!;
     const candidates = demoTeam.filter((m) => m.assignedPropertyIds.includes(schedule.propertyId));
     const assignee = candidates[seed % Math.max(1, candidates.length)]?.name ?? "Demo Operator";
-    const plannedMinutes = 30 + (seed % 7) * 10;
+    const plannedMinutes = getDemoScheduleTotalMinutes(schedule.id);
     let actualMinutes: number | null = plannedMinutes;
     let delayMinutes = 0;
     let exception: string | null = null;
@@ -249,25 +261,17 @@ export function getDemoEventsForDate(date: Date): DemoOperationalEvent[] {
     }
 
     return {
-      id: `${dateKey}:${schedule.id}`,
-      dateKey,
-      scheduleId: schedule.id,
-      scheduleName: schedule.name,
-      propertyId: property.id,
-      propertyName: property.name,
-      workAreaName: workArea.name,
-      status: shifted,
-      plannedMinutes,
-      actualMinutes,
-      delayMinutes,
-      assignee,
-      exception,
+      id: `${dateKey}:${schedule.id}`, dateKey, scheduleId: schedule.id, scheduleName: schedule.name,
+      propertyId: property.id, propertyName: property.name, workAreaId: workArea.id, workAreaName: workArea.name,
+      status: shifted, plannedMinutes, actualMinutes, delayMinutes, assignee, exception,
     };
   });
 }
 
-export function getDemoDashboard(date = new Date()) {
-  const events = getDemoEventsForDate(date);
+export function getDemoDashboard(date = new Date(), role: DemoRole = "ADMIN") {
+  let events = getDemoEventsForDate(date);
+  if (role === "PROPERTY_MANAGER") events = events.filter((e) => e.propertyId === "freshbite-foods");
+  if (role === "USER") events = events.filter((e) => e.propertyId === "freshbite-foods");
   const counts = {
     total: events.length,
     completed: events.filter((e) => e.status === "COMPLETED_ON_TIME" || e.status === "COMPLETED_LATE").length,
@@ -278,33 +282,19 @@ export function getDemoDashboard(date = new Date()) {
     missed: events.filter((e) => e.status === "MISSED").length,
     incomplete: events.filter((e) => e.status === "INCOMPLETE").length,
   };
-  return {
-    dateKey: demoDayKey(date),
-    events,
-    counts,
-    exceptions: events.filter((e) => e.exception),
-  };
+  return { dateKey: demoDayKey(date), events, counts, exceptions: events.filter((e) => e.exception) };
 }
 
-export function getDemoReport(days = 30, anchor = new Date()) {
-  const daily: Array<{
-    dateKey: string;
-    total: number;
-    completed: number;
-    onTime: number;
-    late: number;
-    missed: number;
-    incomplete: number;
-  }> = [];
+export function getDemoReport(days = 30, anchor = new Date(), role: DemoRole = "ADMIN") {
+  const daily: Array<{dateKey:string;total:number;completed:number;onTime:number;late:number;missed:number;incomplete:number}> = [];
   const aggregate = { total: 0, completed: 0, onTime: 0, late: 0, missed: 0, incomplete: 0 };
   const exceptions: DemoOperationalEvent[] = [];
-
   for (let offset = days - 1; offset >= 0; offset--) {
     const d = new Date(anchor.getTime() - offset * 86400000);
-    const events = getDemoEventsForDate(d);
+    let events = getDemoEventsForDate(d);
+    if (role !== "ADMIN") events = events.filter((e) => e.propertyId === "freshbite-foods");
     const row = {
-      dateKey: demoDayKey(d),
-      total: events.length,
+      dateKey: demoDayKey(d), total: events.length,
       completed: events.filter((e) => e.status === "COMPLETED_ON_TIME" || e.status === "COMPLETED_LATE").length,
       onTime: events.filter((e) => e.status === "COMPLETED_ON_TIME").length,
       late: events.filter((e) => e.status === "COMPLETED_LATE").length,
@@ -312,30 +302,24 @@ export function getDemoReport(days = 30, anchor = new Date()) {
       incomplete: events.filter((e) => e.status === "INCOMPLETE").length,
     };
     daily.push(row);
-    aggregate.total += row.total;
-    aggregate.completed += row.completed;
-    aggregate.onTime += row.onTime;
-    aggregate.late += row.late;
-    aggregate.missed += row.missed;
-    aggregate.incomplete += row.incomplete;
+    Object.keys(aggregate).forEach((key) => { aggregate[key as keyof typeof aggregate] += row[key as keyof typeof row] as number; });
     exceptions.push(...events.filter((e) => e.exception));
   }
-
   const performancePct = aggregate.total ? Math.round((aggregate.completed / aggregate.total) * 1000) / 10 : 0;
   const onTimePct = aggregate.completed ? Math.round((aggregate.onTime / aggregate.completed) * 1000) / 10 : 0;
-
-  return {
-    days,
-    daily,
-    aggregate,
-    performancePct,
-    onTimePct,
-    exceptions: exceptions.slice(-20).reverse(),
-  };
+  return { days, daily, aggregate, performancePct, onTimePct, exceptions: exceptions.slice(-20).reverse() };
 }
 
 export function findDemoTask(id: string) {
   return demoTasks.find((task) => task.id === id) ?? null;
+}
+
+export function findDemoProperty(id: string) {
+  return demoProperties.find((property) => property.id === id) ?? null;
+}
+
+export function findDemoSchedule(id: string) {
+  return demoSchedules.find((schedule) => schedule.id === id) ?? null;
 }
 
 export function findDemoWorkArea(id: string) {
@@ -344,4 +328,73 @@ export function findDemoWorkArea(id: string) {
     if (workArea) return { property, workArea };
   }
   return null;
+}
+
+export function visibleDemoProperties(role: DemoRole) {
+  return role === "ADMIN" ? demoProperties : demoProperties.filter((p) => p.id === "freshbite-foods");
+}
+
+export function visibleDemoSchedules(role: DemoRole) {
+  const ids = new Set(visibleDemoProperties(role).map((p) => p.id));
+  return demoSchedules.filter((schedule) => ids.has(schedule.propertyId));
+}
+
+export function visibleDemoTasks(role: DemoRole) {
+  if (role === "ADMIN") return demoTasks;
+  const scheduleTaskIds = new Set(visibleDemoSchedules(role).flatMap((s) => s.taskIds));
+  return demoTasks.filter((task) => scheduleTaskIds.has(task.id));
+}
+
+export function getDemoTaskDurationMinutes(taskId: string) {
+  const fixed: Record<string, number> = {
+    "bc-preop": 20, "bc-material": 15, "bc-cook": 55, "bc-fill": 35, "bc-metal": 20, "bc-close": 15,
+    "cookie-preop": 20, "cookie-weigh": 25, "cookie-mix": 20, "cookie-bake": 45, "cookie-pack": 30, "cookie-close": 15,
+    "breakdown-triage": 30, "breakdown-close": 45, "boiler-pm": 60, "compressor-pm": 50,
+  };
+  return fixed[taskId] ?? 30;
+}
+
+export function getDemoScheduleTotalMinutes(scheduleId: string) {
+  const schedule = findDemoSchedule(scheduleId);
+  if (!schedule) return 0;
+  return schedule.taskIds.reduce((sum, id) => sum + getDemoTaskDurationMinutes(id), 0);
+}
+
+export function minutesToDemoDuration(minutes: number) {
+  const h = Math.floor(minutes / 60).toString().padStart(2, "0");
+  const m = (minutes % 60).toString().padStart(2, "0");
+  return `${h}:${m}`;
+}
+
+export function getDemoScheduleRows(scheduleId: string) {
+  const schedule = findDemoSchedule(scheduleId);
+  if (!schedule) return [];
+  let offset = 0;
+  return schedule.taskIds.map((taskId, index) => {
+    const task = findDemoTask(taskId)!;
+    const durationMinutes = getDemoTaskDurationMinutes(taskId);
+    const row = {
+      sequence: index + 1,
+      task,
+      durationMinutes,
+      startOffsetMinutes: offset,
+      endOffsetMinutes: offset + durationMinutes,
+    };
+    offset += durationMinutes;
+    return row;
+  });
+}
+
+export function getDemoScheduleOccurrences(scheduleId: string, anchor = new Date()) {
+  const rows = [];
+  for (let offset = -1; offset <= 4; offset++) {
+    const d = new Date(anchor.getTime() + offset * 86400000);
+    const event = getDemoEventsForDate(d).find((e) => e.scheduleId === scheduleId);
+    if (event) rows.push(event);
+  }
+  return rows;
+}
+
+export function demoTaskUsageCount(taskId: string) {
+  return demoSchedules.filter((s) => s.taskIds.includes(taskId)).length;
 }

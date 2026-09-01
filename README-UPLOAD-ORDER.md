@@ -1,72 +1,55 @@
-# Demo Workspace Batch 01 — Upload and Validation
+# eDekhbhal Demo Workspace Batch 02 — UI & Drill-down Parity
 
-## Important sequencing
+Branch: `v2-rebuild`
 
-If `Tenant Context Migration 01A — Task Create` has not yet been uploaded/tested, upload that earlier batch first because the Demo Task template eventually saves through the normal Task creation API.
+This batch changes Demo Workspace from summary/brochure-style pages into a read-only product demonstration that closely follows the real Organization Workspace structure.
 
-Demo Workspace Batch 01 itself does **not** enable RLS and does not add database migrations.
+## Upload / replace these files
 
-## Replace existing files
+### Replacements
+1. `src/lib/demoWorkspace.ts`
+2. `src/components/DemoRoleSimulator.tsx`
+3. `src/components/WorkspaceSwitcher.tsx`
+4. `src/components/DemoWorkspaceNav.tsx`
+5. `src/app/demo/layout.tsx`
+6. `src/app/demo/dashboard/page.tsx`
+7. `src/app/demo/[section]/page.tsx`
+8. `src/app/demo/demo-workspace.css`
+9. `e2e/demo-workspace.spec.ts`
 
-1. `src/components/Nav.tsx`
-2. `src/app/tasks/new/page.tsx`
+### New files
+10. `src/lib/demoRole.ts`
+11. `src/app/demo/properties/[id]/page.tsx`
+12. `src/app/demo/work-areas/[id]/page.tsx`
+13. `src/app/demo/tasks/[id]/page.tsx`
+14. `src/app/demo/schedules/[id]/page.tsx`
 
-## Add new files
+## Important behavior
 
-3. `src/lib/demoWorkspace.ts`
-4. `src/components/WorkspaceSwitcher.tsx`
-5. `src/components/DemoRoleSimulator.tsx`
-6. `src/components/DemoWorkspaceNav.tsx`
-7. `src/app/demo/layout.tsx`
-8. `src/app/demo/page.tsx`
-9. `src/app/demo/dashboard/page.tsx`
-10. `src/app/demo/[section]/page.tsx`
-11. `src/app/demo/demo-workspace.css`
-12. `src/app/demo-qr/[id]/page.tsx`
-13. `e2e/demo-workspace.spec.ts`
-14. `DEMO-WORKSPACE-ARCHITECTURE.md`
+- Demo remains a separate synthetic/read-only data source.
+- No Demo master/activity rows are written to PostgreSQL.
+- Demo Property, Work Area, Task and Schedule lists now look structurally like the real workspace.
+- Property, Work Area, Task and Schedule rows are clickable.
+- Schedule detail shows ordered Tasks, planned durations/times, evidence rules, Demo QR and synthetic occurrences.
+- Task detail shows definition/instructions, sample attachment count, usage and safe "Use this Task as a template".
+- Role simulator now uses a harmless Demo-only cookie and server refresh so the displayed scope actually changes.
+- Authenticated users without a real Organization membership can enter Demo; switching to REAL sends them to onboarding.
+- RLS remains disabled.
 
-## What Batch 01 delivers
+## Test expectation
 
-- Header workspace selector.
-- Distinct Demo theme and persistent `DEMO WORKSPACE — Sample data` banner.
-- One universal static best-practice dataset; no Demo tenant DB rows.
-- Hospitality, Food Manufacturing, Maintenance and Corporate Office examples.
-- Butter Chicken Bowl and Delight Cookies lot-production examples.
-- Preventive and breakdown maintenance examples.
-- Deterministic synthetic Dashboard activity including late/missed/incomplete exceptions.
-- Synthetic 30-day Demo Reports.
-- Demo role simulator.
-- Public fake Demo QR pages with synthetic recent exception history.
-- `Use this Task as a template` opens the real Add Task screen prefilled.
-- No Schedule copy.
-- No Demo mobile execution.
-- Standing Demo parity architecture documented.
+The focused Demo suite increases from 5 tests to 8 tests.
 
-## Deploy / test
-
-After uploading all files, deploy `v2-rebuild`, then:
+After upload and V2 deployment:
 
 ```bash
-git pull origin v2-rebuild
-npx playwright test e2e/demo-workspace.spec.ts
+npm run db:generate
+npm run typecheck
+npm run build
 ```
 
-Expected:
+Then run **E2E V2** GitHub Actions against `v2-rebuild`.
 
-```text
-5 passed
-```
+Expected focused Demo suite: `8 passed`.
 
-Then run the complete suite:
-
-```bash
-npm run test:e2e
-```
-
-Expected total depends on whether Tenant Context Migration 01A was already added:
-
-- If the prior 3 Task-context tests are present: **44 passed**
-- If not: **41 passed**
-
-Do not enable RLS as part of this batch.
+The previous full suite was 41 tests. Replacing 5 Demo tests with 8 Demo tests should make the expected full-suite count **44 passed**, assuming no other E2E files changed.

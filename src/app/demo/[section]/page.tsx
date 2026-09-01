@@ -1,128 +1,92 @@
 import Link from "next/link";
 import {
   DEMO_WORKSPACE,
-  demoProperties,
-  demoSchedules,
-  demoTasks,
   demoTeam,
+  demoTaskUsageCount,
   getDemoReport,
+  getDemoScheduleTotalMinutes,
+  minutesToDemoDuration,
+  visibleDemoProperties,
+  visibleDemoSchedules,
+  visibleDemoTasks,
 } from "@/lib/demoWorkspace";
+import { getDemoViewRole } from "@/lib/demoRole";
 
 function statusLabel(value: string) {
   return value.replaceAll("_", " ").toLowerCase().replace(/\b\w/g, (m) => m.toUpperCase());
 }
 
-export default async function DemoSectionPage({
-  params,
-}: {
-  params: Promise<{ section: string }>;
-}) {
+export default async function DemoSectionPage({ params }: { params: Promise<{ section: string }> }) {
   const { section } = await params;
+  const role = await getDemoViewRole();
+  const properties = visibleDemoProperties(role);
+  const schedules = visibleDemoSchedules(role);
+  const tasks = visibleDemoTasks(role);
 
   if (section === "properties") {
-    return (
-      <main className="container demoPage">
-        <header className="demoPageHeader"><span className="eyebrow">Demo master data</span><h1>Properties</h1><p>Four different operating environments under one reference Organization.</p></header>
-        <div className="demoPropertyGrid">
-          {demoProperties.map((p) => <article key={p.id}><span>{p.industry}</span><h3>{p.name}</h3><p>{p.description}</p><small>{p.workAreas.length} Work Areas</small></article>)}
-        </div>
-      </main>
-    );
+    return <main className="container">
+      <div className="row"><div style={{marginRight:"auto"}}><h1>Properties</h1><p className="muted">{DEMO_WORKSPACE.displayName}</p></div><span className="demoReadOnlyBadge">Read-only</span></div>
+      <div className="card" style={{overflowX:"auto"}}><table className="table">
+        <thead><tr><th>Name</th><th>City</th><th>Status</th><th>Work Areas</th><th>Industry</th><th></th></tr></thead>
+        <tbody>{properties.map((p)=><tr key={p.id}><td><strong>{p.name}</strong></td><td>{p.city}</td><td>{p.status}</td><td>{p.workAreas.length}</td><td>{p.industry}</td><td><Link className="button small secondary" href={`/demo/properties/${p.id}`}>Open</Link></td></tr>)}</tbody>
+      </table></div>
+    </main>;
   }
 
   if (section === "work-areas") {
-    const rows = demoProperties.flatMap((p) => p.workAreas.map((w) => ({ ...w, propertyName: p.name, industry: p.industry })));
-    return (
-      <main className="container demoPage">
-        <header className="demoPageHeader"><span className="eyebrow">Demo master data</span><h1>Work Areas & QR</h1><p>Sample operational areas with web-only public demo QR experiences.</p></header>
-        <div className="demoCardList">
-          {rows.map((w) => <article key={w.id}><div><small>{w.industry} · {w.propertyName}</small><h3>{w.name}</h3><p>{w.description}</p></div><Link className="demoButton" href={`/demo-qr/${w.id}`} target="_blank">Open Demo QR</Link></article>)}
-        </div>
-      </main>
-    );
+    const rows = properties.flatMap((p)=>p.workAreas.map((w)=>({...w,propertyName:p.name})));
+    return <main className="container">
+      <div className="row"><div style={{marginRight:"auto"}}><h1>Work Areas</h1><p className="muted">Parent Property, Service Status and Demo QR follow the real workspace pattern.</p></div><span className="demoReadOnlyBadge">Read-only</span></div>
+      <div className="card" style={{overflowX:"auto"}}><table className="table">
+        <thead><tr><th>Work Area</th><th>Parent Property</th><th>Location</th><th>Status</th><th>Service Status</th><th>Public QR</th></tr></thead>
+        <tbody>{rows.map((w)=><tr key={w.id}><td><strong>{w.name}</strong></td><td>{w.propertyName}</td><td>{w.locationIdentifier}</td><td>{w.status}</td><td><Link href={`/demo/work-areas/${w.id}`}>View</Link></td><td><Link href={`/demo-qr/${w.id}`} target="_blank">Open</Link></td></tr>)}</tbody>
+      </table></div>
+    </main>;
   }
 
   if (section === "tasks") {
-    return (
-      <main className="container demoPage">
-        <header className="demoPageHeader"><span className="eyebrow">Best-practice templates</span><h1>Tasks</h1><p>Reusable examples across Hospitality, Food Manufacturing, Maintenance and Corporate Office operations.</p></header>
-        <div className="demoCardList">
-          {demoTasks.map((task) => <article key={task.id}><div><small>{task.category} · Evidence example: {task.evidence}</small><h3>{task.name}</h3><p>{task.description}</p></div><Link className="demoButton" href={`/tasks/new?demoTask=${encodeURIComponent(task.id)}`}>Use this Task as a template</Link></article>)}
-        </div>
-        <p className="demoNote">The template action opens the normal real-workspace Add Task screen with the selected Task prefilled. Nothing is written until the authorized user saves it.</p>
-      </main>
-    );
+    return <main className="container nextPage">
+      <div className="pageIntro row"><div style={{marginRight:"auto"}}><span className="eyebrow">Reusable definitions</span><h1>Task Library</h1><p className="muted">Open any Task to see how it is defined, then optionally use it as a template in your real Organization.</p></div><span className="demoReadOnlyBadge">Read-only</span></div>
+      <div className="card"><table className="table">
+        <thead><tr><th>Task</th><th>Description</th><th>Used in schedules</th><th>Attachments</th><th>Status</th><th></th></tr></thead>
+        <tbody>{tasks.map((task)=><tr key={task.id}><td><strong>{task.name}</strong></td><td>{task.description.length>120?`${task.description.slice(0,120)}…`:task.description}</td><td>{demoTaskUsageCount(task.id)}</td><td>{task.attachmentCount}</td><td>{task.status}</td><td><Link className="button small secondary" href={`/demo/tasks/${task.id}`}>View</Link></td></tr>)}</tbody>
+      </table></div>
+    </main>;
   }
 
   if (section === "schedules") {
-    return (
-      <main className="container demoPage">
-        <header className="demoPageHeader"><span className="eyebrow">Reference scheduling</span><h1>Schedules</h1><p>Includes production lots, hospitality routines, preventive maintenance and breakdown response. Demo Schedules are read-only and are not copied to real workspaces.</p></header>
-        <div className="demoCardList">
-          {demoSchedules.map((schedule) => {
-            const property = demoProperties.find((p) => p.id === schedule.propertyId)!;
-            const workArea = property.workAreas.find((w) => w.id === schedule.workAreaId)!;
-            return <article key={schedule.id}><div><small>{property.name} · {workArea.name}</small><h3>{schedule.name}</h3><p>{schedule.purpose}</p><p><strong>{schedule.cadence}</strong> · {schedule.taskIds.length} Task{schedule.taskIds.length === 1 ? "" : "s"}</p></div><span className="demoReadOnlyBadge">Read-only</span></article>;
-          })}
-        </div>
-      </main>
-    );
+    return <main className="container">
+      <div className="row"><div style={{marginRight:"auto"}}><h1>Schedules</h1><p className="muted">Open a Schedule to inspect Work Area, cadence, ordered Tasks, planned duration, evidence rules and synthetic occurrences.</p></div><span className="demoReadOnlyBadge">Read-only</span></div>
+      <div className="card"><table className="table">
+        <thead><tr><th>Schedule</th><th>Frequency</th><th>Work Area / Property</th><th>Tasks</th><th>Planned Duration</th><th>Status</th><th></th></tr></thead>
+        <tbody>{schedules.map((schedule)=>{
+          const property=properties.find((p)=>p.id===schedule.propertyId)!;
+          const workArea=property.workAreas.find((w)=>w.id===schedule.workAreaId)!;
+          return <tr key={schedule.id}><td><strong>{schedule.name}</strong></td><td>{schedule.cadence}</td><td><strong>{workArea.name}</strong><br/><span className="muted">{property.name}</span></td><td>{schedule.taskIds.length}</td><td>{minutesToDemoDuration(getDemoScheduleTotalMinutes(schedule.id))}</td><td>{schedule.status}</td><td><Link className="button small secondary" href={`/demo/schedules/${schedule.id}`}>View</Link></td></tr>;
+        })}</tbody>
+      </table></div>
+    </main>;
   }
 
   if (section === "team") {
-    return (
-      <main className="container demoPage">
-        <header className="demoPageHeader"><span className="eyebrow">Reference staffing</span><h1>Team</h1><p>Sample Admin, Property Manager and User assignments across industries.</p></header>
-        <div className="demoCardList">
-          {demoTeam.map((m) => <article key={m.id}><div><small>{statusLabel(m.role)}</small><h3>{m.name}</h3><p>{m.title}</p></div><span>{m.assignedPropertyIds.length} assigned Propert{m.assignedPropertyIds.length === 1 ? "y" : "ies"}</span></article>)}
-        </div>
-      </main>
-    );
+    const allowedPropertyIds = new Set(properties.map((p)=>p.id));
+    const members = role==="ADMIN" ? demoTeam : demoTeam.filter((m)=>m.assignedPropertyIds.some((id)=>allowedPropertyIds.has(id)));
+    return <main className="container"><div className="row"><div style={{marginRight:"auto"}}><h1>Team</h1><p className="muted">Sample personnel and assignment perspective.</p></div><span className="demoReadOnlyBadge">Read-only</span></div><div className="card"><table className="table"><thead><tr><th>Name</th><th>Role</th><th>Title</th><th>Assigned Properties</th></tr></thead><tbody>{members.map((m)=><tr key={m.id}><td><strong>{m.name}</strong></td><td>{statusLabel(m.role)}</td><td>{m.title}</td><td>{m.assignedPropertyIds.length}</td></tr>)}</tbody></table></div></main>;
   }
 
   if (section === "organization") {
-    return (
-      <main className="container demoPage">
-        <header className="demoPageHeader"><span className="eyebrow">Reference configuration</span><h1>{DEMO_WORKSPACE.displayName}</h1><p>This is a logical demo workspace, not a tenant Organization row.</p></header>
-        <section className="demoPanel"><h2>Configuration principles</h2><ul className="demoPrinciples"><li>One universal demo for every customer organization.</li><li>Read-only master data and deterministic synthetic activity.</li><li>No synthetic ScheduleOccurrence, AuditLog, evidence or Report rows written to PostgreSQL.</li><li>Public web-only demo QR pages.</li><li>Role simulator is educational and never modifies real permissions.</li></ul></section>
-      </main>
-    );
+    return <main className="container"><div className="row"><div style={{marginRight:"auto"}}><h1>{DEMO_WORKSPACE.displayName}</h1><p className="muted">Reference Organization configuration — logical Demo workspace, not a tenant row.</p></div><span className="demoReadOnlyBadge">Read-only</span></div><div className="card"><h2>Organization Settings</h2><p><strong>Timezone:</strong> {DEMO_WORKSPACE.timezone}</p><p><strong>Operating model:</strong> Multi-industry best-practice reference</p><p><strong>Working hours:</strong> Demonstrates inherited and operationally appropriate schedules</p><p className="muted">Demo never writes Organization settings to PostgreSQL.</p></div></main>;
   }
 
   if (section === "reports") {
-    const report = getDemoReport(30);
-    return (
-      <main className="container demoPage">
-        <header className="demoPageHeader"><span className="eyebrow">Synthetic operational reporting</span><h1>Demo Reports — Last 30 Days</h1><p>Generated deterministically from the same synthetic activity engine used by the Demo Dashboard, including realistic late, missed and incomplete work.</p></header>
-        <section className="demoMetricGrid">
-          <article><span>Schedule performance</span><strong>{report.performancePct}%</strong></article>
-          <article><span>On-time completion</span><strong>{report.onTimePct}%</strong></article>
-          <article><span>Late</span><strong>{report.aggregate.late}</strong></article>
-          <article><span>Missed</span><strong>{report.aggregate.missed}</strong></article>
-          <article><span>Incomplete</span><strong>{report.aggregate.incomplete}</strong></article>
-          <article><span>Total sampled events</span><strong>{report.aggregate.total}</strong></article>
-        </section>
-        <section className="demoPanel">
-          <div className="demoSectionHeading"><div><span className="eyebrow">Real-life exceptions</span><h2>Recent exception samples</h2></div></div>
-          <div className="demoTableWrap">
-            <table className="demoTable">
-              <thead><tr><th>Date</th><th>Schedule</th><th>Property</th><th>Status</th><th>Exception</th></tr></thead>
-              <tbody>{report.exceptions.map((e) => <tr key={e.id}><td>{e.dateKey}</td><td>{e.scheduleName}</td><td>{e.propertyName}</td><td>{statusLabel(e.status)}</td><td>{e.exception}</td></tr>)}</tbody>
-            </table>
-          </div>
-        </section>
-        <section className="demoPanel">
-          <div className="demoSectionHeading"><div><span className="eyebrow">Daily trend</span><h2>Recent 14 days</h2></div></div>
-          <div className="demoTableWrap">
-            <table className="demoTable">
-              <thead><tr><th>Date</th><th>Total</th><th>Completed</th><th>On Time</th><th>Late</th><th>Missed</th><th>Incomplete</th></tr></thead>
-              <tbody>{report.daily.slice(-14).reverse().map((d) => <tr key={d.dateKey}><td>{d.dateKey}</td><td>{d.total}</td><td>{d.completed}</td><td>{d.onTime}</td><td>{d.late}</td><td>{d.missed}</td><td>{d.incomplete}</td></tr>)}</tbody>
-            </table>
-          </div>
-        </section>
-      </main>
-    );
+    const report = getDemoReport(30, new Date(), role);
+    return <main className="container">
+      <div className="row"><div style={{marginRight:"auto"}}><span className="eyebrow">Synthetic operational reporting</span><h1>Demo Reports — Last 30 Days</h1><p className="muted">Same operational concepts as real reporting, backed by deterministic sample activity.</p></div><span className="demoReadOnlyBadge">Read-only</span></div>
+      <div className="demoMetricGrid"><article><span>Schedule performance</span><strong>{report.performancePct}%</strong></article><article><span>On-time completion</span><strong>{report.onTimePct}%</strong></article><article><span>Late</span><strong>{report.aggregate.late}</strong></article><article><span>Missed</span><strong>{report.aggregate.missed}</strong></article><article><span>Incomplete</span><strong>{report.aggregate.incomplete}</strong></article><article><span>Total sampled events</span><strong>{report.aggregate.total}</strong></article></div>
+      <div className="card"><h2>Recent exception samples</h2><table className="table"><thead><tr><th>Date</th><th>Schedule</th><th>Property</th><th>Status</th><th>Exception</th><th></th></tr></thead><tbody>{report.exceptions.map((e)=><tr key={e.id}><td>{e.dateKey}</td><td>{e.scheduleName}</td><td>{e.propertyName}</td><td>{statusLabel(e.status)}</td><td>{e.exception}</td><td><Link href={`/demo/schedules/${e.scheduleId}`}>Open</Link></td></tr>)}</tbody></table></div>
+      <div className="card" style={{marginTop:20}}><h2>Recent 14 days</h2><table className="table"><thead><tr><th>Date</th><th>Total</th><th>Completed</th><th>On Time</th><th>Late</th><th>Missed</th><th>Incomplete</th></tr></thead><tbody>{report.daily.slice(-14).reverse().map((d)=><tr key={d.dateKey}><td>{d.dateKey}</td><td>{d.total}</td><td>{d.completed}</td><td>{d.onTime}</td><td>{d.late}</td><td>{d.missed}</td><td>{d.incomplete}</td></tr>)}</tbody></table></div>
+    </main>;
   }
 
-  return <main className="container demoPage"><header className="demoPageHeader"><h1>Demo section not found</h1><Link href="/demo/dashboard">Return to Demo Dashboard</Link></header></main>;
+  return <main className="container"><h1>Demo section not found</h1><Link href="/demo/dashboard">Return to Demo Dashboard</Link></main>;
 }

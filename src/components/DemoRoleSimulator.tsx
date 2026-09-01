@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { DemoRole } from "@/lib/demoWorkspace";
 
 const labels: Record<DemoRole, string> = {
@@ -12,20 +12,16 @@ const labels: Record<DemoRole, string> = {
 const descriptions: Record<DemoRole, string> = {
   ADMIN: "Organization-wide management perspective",
   PROPERTY_MANAGER: "Assigned-Property management perspective",
-  USER: "Field-user/read-only management perspective",
+  USER: "Field-user / read-only perspective",
 };
 
-export function DemoRoleSimulator() {
-  const [role, setRole] = useState<DemoRole>("ADMIN");
-
-  useEffect(() => {
-    const saved = window.localStorage.getItem("demo-view-as") as DemoRole | null;
-    if (saved && labels[saved]) setRole(saved);
-  }, []);
+export function DemoRoleSimulator({ initialRole }: { initialRole: DemoRole }) {
+  const router = useRouter();
 
   function choose(next: DemoRole) {
-    setRole(next);
+    document.cookie = `demo-view-as=${next}; Path=/; Max-Age=31536000; SameSite=Lax`;
     window.localStorage.setItem("demo-view-as", next);
+    router.refresh();
   }
 
   return (
@@ -36,15 +32,15 @@ export function DemoRoleSimulator() {
           <button
             key={item}
             type="button"
-            className={role === item ? "active" : ""}
+            className={initialRole === item ? "active" : ""}
             onClick={() => choose(item)}
-            title="Role simulator only — your real account permissions do not change."
+            title="Demo perspective only — your real account permissions do not change."
           >
             {labels[item]}
           </button>
         ))}
       </div>
-      <small>{descriptions[role]}</small>
+      <small>{descriptions[initialRole]}</small>
     </div>
   );
 }
