@@ -3,7 +3,6 @@ import {getSessionUser} from "@/lib/session";
 import {prisma} from "@/lib/prisma";
 import {isDemoDataEnabled} from "@/lib/demoDataAccess";
 import {LogoutButton} from "@/components/LogoutButton";
-import {WorkspaceSwitcher} from "@/components/WorkspaceSwitcher";
 
 export async function Nav(){
  const user=await getSessionUser();
@@ -14,7 +13,6 @@ export async function Nav(){
  const brandHref=isManager?"/dashboard":"/tasks";
  return <header className="nav"><div className="navShell">
   <Link className="brand navBrand" href={brandHref}><span className="brandMark">eD</span><span className="brandText">eDekhbhal</span></Link>
-  {membership&&<WorkspaceSwitcher realOrganizationName={membership.organization.name} current="REAL"/>}
   <nav className="navPrimary" aria-label="Primary navigation">
    {isManager&&<Link className="navLink" href="/dashboard">Dashboard</Link>}
    <details className="navMenu"><summary>Operations <span aria-hidden="true">⌄</span></summary><div className="navDropdown">
