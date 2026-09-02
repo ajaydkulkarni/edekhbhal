@@ -22,8 +22,6 @@ const scheduleTaskSchema=z.object({
 
 const schema=z.object({
  name:z.string().trim().min(2).max(500),
- documentReference:z.string().trim().max(150).nullable().optional(),
- documentRevision:z.string().trim().max(100).nullable().optional(),
  frequencyType:z.enum(["ONE_TIME","RECURRING"]),
  recurrenceUnit:z.enum(["MINUTE","HOUR","DAY","WEEK","MONTH","YEAR"]).nullable().optional(),
  recurrenceInterval:z.number().int().min(1).max(100000).nullable().optional(),
@@ -65,7 +63,7 @@ export async function POST(req:Request){
   if(endDate&&input.endDate!<input.startLocal.slice(0,10))return NextResponse.json({error:"Schedule End Date cannot be before the Start Date."},{status:400});
 
   const schedule=await prisma.$transaction(async tx=>{
-   const created=await tx.schedule.create({data:{organizationId:membership.organizationId,name:input.name,documentReference:input.documentReference||null,documentRevision:input.documentRevision||null,frequencyType:input.frequencyType,recurrenceUnit:input.frequencyType==="RECURRING"?input.recurrenceUnit:null,recurrenceInterval:input.frequencyType==="RECURRING"?input.recurrenceInterval:null,recurrenceConfig:input.frequencyType==="RECURRING"&&input.recurrenceConfig?input.recurrenceConfig:Prisma.JsonNull,startAt,endDate,timezone:input.timezone,workAreaId:input.workAreaId,createdById:user.id}});
+   const created=await tx.schedule.create({data:{organizationId:membership.organizationId,name:input.name,frequencyType:input.frequencyType,recurrenceUnit:input.frequencyType==="RECURRING"?input.recurrenceUnit:null,recurrenceInterval:input.frequencyType==="RECURRING"?input.recurrenceInterval:null,recurrenceConfig:input.frequencyType==="RECURRING"&&input.recurrenceConfig?input.recurrenceConfig:Prisma.JsonNull,startAt,endDate,timezone:input.timezone,workAreaId:input.workAreaId,createdById:user.id}});
    const taskAudit:any[]=[];
    for(let i=0;i<input.tasks.length;i+=1){
     const item=input.tasks[i];
@@ -84,7 +82,7 @@ export async function POST(req:Request){
     await audit({organizationId:membership.organizationId,userId:user.id,action:"REPORTED_WORK_ITEM_SCHEDULE_LINKED",entityType:"ReportedWorkItem",entityId:reportedWorkItem.id,oldValue:{status:reportedWorkItem.status,dismissedAt:reportedWorkItem.dismissedAt?.toISOString()??null},newValue:{status:"SCHEDULE_CREATED",linkedScheduleId:created.id},metadata:{propertyId:reportedWorkItem.propertyId,workAreaId:reportedWorkItem.workAreaId}},tx);
    }
 
-   await audit({organizationId:membership.organizationId,userId:user.id,action:"SCHEDULE_CREATED",entityType:"Schedule",entityId:created.id,newValue:{name:created.name,documentReference:created.documentReference,documentRevision:created.documentRevision,frequencyType:created.frequencyType,recurrenceUnit:created.recurrenceUnit,recurrenceInterval:created.recurrenceInterval,recurrenceConfig:input.recurrenceConfig??null,startAt:created.startAt.toISOString(),endDate:created.endDate?.toISOString().slice(0,10)??null,timezone:created.timezone,workAreaId:created.workAreaId,status:created.status,tasks:input.tasks.map((x,i)=>({taskId:x.taskId??null,adHocName:x.adHocName??null,saveToLibrary:x.saveToLibrary,durationMinutes:offsets[i].durationMinutes,evidenceRule:x.evidenceRule})),adHocTasksCreated:taskAudit}},tx);
+   await audit({organizationId:membership.organizationId,userId:user.id,action:"SCHEDULE_CREATED",entityType:"Schedule",entityId:created.id,newValue:{name:created.name,frequencyType:created.frequencyType,recurrenceUnit:created.recurrenceUnit,recurrenceInterval:created.recurrenceInterval,recurrenceConfig:input.recurrenceConfig??null,startAt:created.startAt.toISOString(),endDate:created.endDate?.toISOString().slice(0,10)??null,timezone:created.timezone,workAreaId:created.workAreaId,status:created.status,tasks:input.tasks.map((x,i)=>({taskId:x.taskId??null,adHocName:x.adHocName??null,saveToLibrary:x.saveToLibrary,durationMinutes:offsets[i].durationMinutes,evidenceRule:x.evidenceRule})),adHocTasksCreated:taskAudit}},tx);
    return created;
   });
 

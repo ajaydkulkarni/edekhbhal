@@ -9,7 +9,6 @@ import {
   getDemoScheduleTotalMinutes,
   minutesToDemoDuration,
 } from "@/lib/demoWorkspace";
-import { getDemoDocumentControl } from "@/lib/demoDocumentControl";
 
 function offsetLabel(minutes:number) {
   const base = 8*60 + minutes;
@@ -27,7 +26,6 @@ export default async function DemoScheduleDetail({params}:{params:Promise<{id:st
   const rows=getDemoScheduleRows(schedule.id);
   const occurrences=getDemoScheduleOccurrences(schedule.id);
   const total=getDemoScheduleTotalMinutes(schedule.id);
-  const document=getDemoDocumentControl(schedule.id);
 
   return <main className="container">
     <div className="breadcrumbs"><Link href="/demo/schedules">Schedules</Link> / {schedule.name}</div>
@@ -36,17 +34,15 @@ export default async function DemoScheduleDetail({params}:{params:Promise<{id:st
 
     <div className="card" style={{marginBottom:20}}>
       <div className="row" style={{alignItems:"flex-start",gap:24,flexWrap:"wrap"}}>
-        <div style={{flex:"1 1 320px"}}><h2 style={{marginTop:0}}>Work Area QR Code</h2><p><strong>{waFound.workArea.name}</strong> — {property.name}</p><p className="muted">Demo equivalent of the latest active Work Area QR displayed on a real Schedule.</p><div className="row wrap"><Link className="button secondary" href={`/demo-qr/${waFound.workArea.id}`} target="_blank">Open public Demo QR page</Link><Link className="button secondary" href={`/demo/work-areas/${waFound.workArea.id}/qr-label`}>Preview 4 × 6 QR Label</Link></div></div>
+        <div style={{flex:"1 1 320px"}}><h2 style={{marginTop:0}}>Work Area QR Code</h2><p><strong>{waFound.workArea.name}</strong> — {property.name}</p><p className="muted">Demo equivalent of the latest active Work Area QR displayed on a real Schedule.</p><Link className="button secondary" href={`/demo-qr/${waFound.workArea.id}`} target="_blank">Open public Demo QR page</Link></div>
         <div className="demoQrPlaceholder"><strong>DEMO QR</strong><span>{waFound.workArea.name}</span></div>
       </div>
     </div>
 
     <div className="card">
-      <div className="row"><div style={{marginRight:"auto"}}><h2 style={{marginBottom:4}}>Schedule Definition</h2><p className="muted">Presented in the same concepts as the real Schedule editor, including controlled-document identification, without write controls.</p></div><span className="statusPill active">{schedule.status}</span></div>
+      <div className="row"><div style={{marginRight:"auto"}}><h2 style={{marginBottom:4}}>Schedule Definition</h2><p className="muted">Presented in the same concepts as the real Schedule editor, without write controls.</p></div><span className="statusPill active">{schedule.status}</span></div>
       <div className="formGrid">
         <label>Schedule Name<input value={schedule.name} readOnly/></label>
-        <label>Document / SOP Reference No.<input value={document.documentReference} readOnly/></label>
-        <label>Revision / Version<input value={document.documentRevision} readOnly/></label>
         <label>Schedule Frequency<input value={schedule.frequencyType} readOnly/></label>
         <label>Recurrence / Timing<input value={schedule.cadence} readOnly/></label>
         <label>Timezone<input value={schedule.timezone} readOnly/></label>
@@ -60,9 +56,9 @@ export default async function DemoScheduleDetail({params}:{params:Promise<{id:st
       </tbody></table></div>
     </div>
 
-    <div style={{marginTop:32}}><h2>Generated / Recent Occurrences</h2><p className="muted">Synthetic occurrence rows demonstrate immutable checklist document-reference snapshots alongside execution history.</p></div>
-    <div className="card" style={{overflowX:"auto"}}><table className="table"><thead><tr><th>Date</th><th>Document Ref.</th><th>Revision</th><th>Planned Duration</th><th>Actual Duration</th><th>User</th><th>Status</th><th>Exception</th></tr></thead><tbody>
-      {occurrences.map((o)=><tr key={o.id}><td>{o.dateKey}</td><td>{document.documentReference}</td><td>{document.documentRevision}</td><td>{o.plannedMinutes} min</td><td>{o.actualMinutes==null?"—":`${o.actualMinutes} min`}</td><td>{o.assignee}</td><td>{o.status.replaceAll("_"," ")}</td><td>{o.exception??"—"}</td></tr>)}
+    <div style={{marginTop:32}}><h2>Generated / Recent Occurrences</h2><p className="muted">Synthetic occurrence rows demonstrate the execution records used by mobile and management reporting.</p></div>
+    <div className="card"><table className="table"><thead><tr><th>Date</th><th>Planned Duration</th><th>Actual Duration</th><th>User</th><th>Status</th><th>Exception</th></tr></thead><tbody>
+      {occurrences.map((o)=><tr key={o.id}><td>{o.dateKey}</td><td>{o.plannedMinutes} min</td><td>{o.actualMinutes==null?"—":`${o.actualMinutes} min`}</td><td>{o.assignee}</td><td>{o.status.replaceAll("_"," ")}</td><td>{o.exception??"—"}</td></tr>)}
     </tbody></table></div>
   </main>;
 }

@@ -1,7 +1,153 @@
 "use client";
-import {useMemo,useState} from "react";
-export type ServiceLogRow={id:string;property:string;workArea:string;taskList:string;documentReference:string;documentRevision:string;sequence:number;taskPerformed:string;actualTimeTaken:string;actualSeconds:number|null;scheduledTime:string;scheduledSeconds:number;deviation:string;deviationSeconds:number|null;user:string;date:string;startTime:string;endTime:string;actualStartAtEpoch:number|null;actualEndAtEpoch:number|null};
-type SortKey=keyof Pick<ServiceLogRow,"property"|"workArea"|"taskList"|"documentReference"|"documentRevision"|"sequence"|"taskPerformed"|"actualSeconds"|"scheduledSeconds"|"deviationSeconds"|"user"|"date"|"startTime"|"endTime">;type Dir="asc"|"desc";
-const headers:{label:string;key:SortKey}[]=[["Property","property"],["Work Area","workArea"],["Task List","taskList"],["Document Ref.","documentReference"],["Revision","documentRevision"],["Sr. No.","sequence"],["Task Performed","taskPerformed"],["Actual Time Taken","actualSeconds"],["Scheduled Time","scheduledSeconds"],["Deviation","deviationSeconds"],["User","user"],["Date","date"],["Start Time","startTime"],["End Time","endTime"]].map(([label,key])=>({label,key:key as SortKey}));
-function val(r:ServiceLogRow,k:SortKey):string|number|null{if(k==="date"||k==="startTime")return r.actualStartAtEpoch;if(k==="endTime")return r.actualEndAtEpoch;return r[k] as any}function cmp(a:any,b:any){if(a==null&&b==null)return 0;if(a==null)return 1;if(b==null)return-1;if(typeof a==="number"&&typeof b==="number")return a-b;return String(a).localeCompare(String(b),undefined,{numeric:true,sensitivity:"base"})}
-export function SortableServiceLogTable({rows}:{rows:ServiceLogRow[]}){const[k,setK]=useState<SortKey>("date"),[d,setD]=useState<Dir>("desc");const sorted=useMemo(()=>[...rows].sort((a,b)=>(d==="asc"?1:-1)*cmp(val(a,k),val(b,k))),[rows,k,d]);return <div className="card" style={{padding:0}}><div style={{overflowX:"auto"}}><table className="table" style={{minWidth:1750}}><thead><tr>{headers.map(h=><th key={h.key}><button type="button" onClick={()=>{if(h.key===k)setD(x=>x==="asc"?"desc":"asc");else{setK(h.key);setD("asc")}}} style={{border:0,background:"transparent",padding:0,color:"inherit",font:"inherit",fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>{h.label}{k===h.key?(d==="asc"?" ▲":" ▼"):""}</button></th>)}</tr></thead><tbody>{sorted.map(r=><tr key={r.id}><td>{r.property}</td><td>{r.workArea}</td><td>{r.taskList}</td><td>{r.documentReference}</td><td>{r.documentRevision}</td><td>{r.sequence}</td><td><strong>{r.taskPerformed}</strong></td><td>{r.actualTimeTaken}</td><td>{r.scheduledTime}</td><td>{r.deviation}</td><td>{r.user}</td><td>{r.date}</td><td>{r.startTime}</td><td>{r.endTime}</td></tr>)}{!sorted.length&&<tr><td colSpan={14} className="muted">No completed Task performances match the current filters.</td></tr>}</tbody></table></div></div>}
+
+import { useMemo, useState } from "react";
+
+export type ServiceLogRow = {
+  id: string;
+  property: string;
+  workArea: string;
+  taskList: string;
+  sequence: number;
+  taskPerformed: string;
+  actualTimeTaken: string;
+  actualSeconds: number | null;
+  scheduledTime: string;
+  scheduledSeconds: number;
+  deviation: string;
+  deviationSeconds: number | null;
+  user: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  actualStartAtEpoch: number | null;
+  actualEndAtEpoch: number | null;
+};
+
+type SortKey =
+  | "property"
+  | "workArea"
+  | "taskList"
+  | "sequence"
+  | "taskPerformed"
+  | "actualSeconds"
+  | "scheduledSeconds"
+  | "deviationSeconds"
+  | "user"
+  | "date"
+  | "startTime"
+  | "endTime";
+
+type SortDirection = "asc" | "desc";
+
+const headers: { label: string; key: SortKey }[] = [
+  { label: "Property", key: "property" },
+  { label: "Work Area", key: "workArea" },
+  { label: "Task List", key: "taskList" },
+  { label: "Sr. No.", key: "sequence" },
+  { label: "Task Performed", key: "taskPerformed" },
+  { label: "Actual Time Taken", key: "actualSeconds" },
+  { label: "Scheduled Time", key: "scheduledSeconds" },
+  { label: "Deviation", key: "deviationSeconds" },
+  { label: "User", key: "user" },
+  { label: "Date", key: "date" },
+  { label: "Start Time", key: "startTime" },
+  { label: "End Time", key: "endTime" },
+];
+
+function sortValue(row: ServiceLogRow, key: SortKey): string | number | null {
+  if (key === "date" || key === "startTime") return row.actualStartAtEpoch;
+  if (key === "endTime") return row.actualEndAtEpoch;
+  return row[key];
+}
+
+function compareValues(a: string | number | null, b: string | number | null) {
+  if (a == null && b == null) return 0;
+  if (a == null) return 1;
+  if (b == null) return -1;
+  if (typeof a === "number" && typeof b === "number") return a - b;
+  return String(a).localeCompare(String(b), undefined, { numeric: true, sensitivity: "base" });
+}
+
+export function SortableServiceLogTable({ rows }: { rows: ServiceLogRow[] }) {
+  const [sortKey, setSortKey] = useState<SortKey>("date");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+
+  function changeSort(key: SortKey) {
+    if (key === sortKey) {
+      setSortDirection((current) => (current === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDirection("asc");
+    }
+  }
+
+  const sortedRows = useMemo(() => {
+    const copy = [...rows];
+    copy.sort((left, right) => {
+      const result = compareValues(sortValue(left, sortKey), sortValue(right, sortKey));
+      return sortDirection === "asc" ? result : -result;
+    });
+    return copy;
+  }, [rows, sortKey, sortDirection]);
+
+  return (
+    <div className="card" style={{ padding: 0 }}>
+      <div style={{ overflowX: "auto" }}>
+        <table className="table" style={{ minWidth: 1500 }}>
+          <thead>
+            <tr>
+              {headers.map((header) => {
+                const active = sortKey === header.key;
+                const arrow = active ? (sortDirection === "asc" ? " ▲" : " ▼") : "";
+                return (
+                  <th key={header.key}>
+                    <button
+                      type="button"
+                      onClick={() => changeSort(header.key)}
+                      title={`Sort by ${header.label}`}
+                      style={{
+                        border: 0,
+                        background: "transparent",
+                        padding: 0,
+                        color: "inherit",
+                        font: "inherit",
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {header.label}{arrow}
+                    </button>
+                  </th>
+                );
+              })}
+            </tr>
+          </thead>
+          <tbody>
+            {sortedRows.map((row) => (
+              <tr key={row.id}>
+                <td>{row.property}</td>
+                <td>{row.workArea}</td>
+                <td>{row.taskList}</td>
+                <td>{row.sequence}</td>
+                <td><strong>{row.taskPerformed}</strong></td>
+                <td>{row.actualTimeTaken}</td>
+                <td>{row.scheduledTime}</td>
+                <td>{row.deviation}</td>
+                <td>{row.user}</td>
+                <td>{row.date}</td>
+                <td>{row.startTime}</td>
+                <td>{row.endTime}</td>
+              </tr>
+            ))}
+            {!sortedRows.length && (
+              <tr>
+                <td colSpan={12} className="muted">No completed Task performances match the current filters.</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
