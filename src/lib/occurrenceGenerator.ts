@@ -155,7 +155,10 @@ export async function reconcileScheduleOccurrences(scheduleId: string, opts?: { 
       const occurrence = await tx.scheduleOccurrence.create({ data: {
         organizationId: schedule.organizationId, scheduleId: schedule.id, workAreaId: schedule.workAreaId,
         scheduledStartAt, scheduledEndAt, timezone: schedule.timezone,
-        scheduleNameSnapshot: schedule.name, workAreaNameSnapshot: schedule.workArea.name,
+        scheduleNameSnapshot: schedule.name,
+        documentReferenceSnapshot: schedule.documentReference,
+        documentRevisionSnapshot: schedule.documentRevision,
+        workAreaNameSnapshot: schedule.workArea.name,
         propertyNameSnapshot: schedule.workArea.property.name, plannedDurationMinutes: totalDuration
       }});
       for (const st of schedule.scheduleTasks) {

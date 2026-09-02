@@ -1,172 +1,28 @@
-import { notFound, redirect } from "next/navigation";
+import {notFound,redirect} from "next/navigation";
 import QRCode from "qrcode";
-import { Nav } from "@/components/Nav";
-import { ScheduleEditor } from "@/components/ScheduleEditor";
-import { getSessionUser } from "@/lib/session";
-import { prisma } from "@/lib/prisma";
-import { minutesToDuration, formatInZone } from "@/lib/schedule";
+import {Nav} from "@/components/Nav";
+import {ScheduleEditor} from "@/components/ScheduleEditor";
+import {getSessionUser} from "@/lib/session";
+import {prisma} from "@/lib/prisma";
+import {minutesToDuration,formatInZone} from "@/lib/schedule";
 
-function localInputValue(date: Date, timeZone: string) {
-  const formatter = new Intl.DateTimeFormat("en-CA", {
-    timeZone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23"
-  });
-  const parts = Object.fromEntries(formatter.formatToParts(date).map((p) => [p.type, p.value]));
-  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
-}
-
-export default async function ScheduleDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const user = await getSessionUser();
-  if (!user) redirect("/login");
-
-  const schedule = await prisma.schedule.findUnique({
-    where: { id },
-    include: {
-      workArea: {
-        include: {
-          property: true,
-          qrCodes: {
-            where: { status: "ACTIVE" },
-            orderBy: { generatedAt: "desc" },
-            take: 1
-          }
-        }
-      },
-      scheduleTasks: { include: { task: true }, orderBy: { sequence: "asc" } },
-      occurrences: {
-        where: { scheduledStartAt: { gte: new Date() } },
-        include: { tasks: true },
-        orderBy: { scheduledStartAt: "asc" },
-        take: 20
-      }
-    }
-  });
-  if (!schedule) notFound();
-
-  const membership = await prisma.organizationMember.findUnique({
-    where: { organizationId_userId: { organizationId: schedule.organizationId, userId: user.id } },
-    include: { organization: true }
-  });
-  if (!membership || membership.status !== "ACTIVE") notFound();
-
-  const [workAreas, tasks] = await Promise.all([
-    prisma.workArea.findMany({
-      where: { property: { organizationId: schedule.organizationId } },
-      include: { property: true },
-      orderBy: [{ property: { name: "asc" } }, { name: "asc" }]
-    }),
-    prisma.task.findMany({ where: { organizationId: schedule.organizationId }, orderBy: { name: "asc" } })
-  ]);
-
-  const canManage = ["ADMIN", "PROPERTY_MANAGER"].includes(membership.role);
-  const initial = {
-    id: schedule.id,
-    name: schedule.name,
-    frequencyType: schedule.frequencyType,
-    recurrenceUnit: schedule.recurrenceUnit,
-    recurrenceInterval: schedule.recurrenceInterval,
-    recurrenceConfig: (schedule.recurrenceConfig ?? null) as { weekdays?: number[]; monthDays?: number[] } | null,
-    startLocal: localInputValue(schedule.startAt, schedule.timezone),
-    timezone: schedule.timezone,
-    endDate: schedule.endDate ? schedule.endDate.toISOString().slice(0, 10) : null,
-    workAreaId: schedule.workAreaId,
-    status: schedule.status,
-    items: schedule.scheduleTasks.map((item) => ({
-      id: item.id,
-      taskId: item.taskId,
-      taskName: item.task.name,
-      duration: minutesToDuration(item.durationMinutes),
-      evidenceRule: item.evidenceRule,
-      randomEveryN: item.randomEveryN ?? 3,
-      randomEvidenceType: item.randomEvidenceType ?? "EITHER"
-    }))
-  };
-
-  const waOptions = workAreas.map((wa) => ({
-    id: wa.id,
-    name: wa.name,
-    propertyName: wa.property.name,
-    timezone: wa.property.timezone || membership.organization.timezone,
-    status: wa.status,
-    propertyStatus: wa.property.status
-  }));
-  const taskOptions = tasks.map((task) => ({ id: task.id, name: task.name, status: task.status }));
-
-  const latestQr = schedule.workArea.qrCodes[0] ?? null;
-  const appUrl = (process.env.APP_URL || "https://edekhbhal.vercel.app").replace(/\/+$/, "");
-  const latestQrUrl = latestQr ? `${appUrl}/qr/${encodeURIComponent(latestQr.id)}` : null;
-  const latestQrDataUrl = latestQrUrl
-    ? await QRCode.toDataURL(latestQrUrl, { width: 220, margin: 1, errorCorrectionLevel: "M" })
-    : null;
-
-  return <><Nav/><main className="container">
-    <div className="row"><div style={{ marginRight: "auto" }}>
-      <h1>{schedule.name}</h1>
-      <p className="muted">{schedule.workArea.name} — {schedule.workArea.property.name} · {schedule.status}</p>
-    </div></div>
-    <p className="muted">First occurrence: {formatInZone(schedule.startAt, schedule.timezone)} ({schedule.timezone})</p>
-
-    <div className="card" style={{ marginBottom: 20 }}>
-      <div className="row" style={{ alignItems: "flex-start", gap: 24, flexWrap: "wrap" }}>
-        <div style={{ flex: "1 1 320px" }}>
-          <h2 style={{ marginTop: 0 }}>Work Area QR Code</h2>
-          <p><strong>{schedule.workArea.name}</strong> — {schedule.workArea.property.name}</p>
-          <p className="muted">
-            Latest active QR Code for this Schedule&apos;s Work Area. Scan it with the mobile app when testing this Schedule.
-          </p>
-          {latestQr ? <>
-            <p className="muted">Generated: {formatInZone(latestQr.generatedAt, schedule.timezone)}</p>
-            <a
-              href={latestQrUrl!}
-              target="_blank"
-              rel="noreferrer"
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                border: "1px solid var(--line)",
-                borderRadius: 10,
-                padding: "10px 14px",
-                textDecoration: "none",
-                fontWeight: 700
-              }}
-            >
-              Open public QR page
-            </a>
-          </> : <p className="muted">No active QR Code has been generated for this Work Area yet.</p>}
-        </div>
-        {latestQrDataUrl ? <div style={{ textAlign: "center" }}>
-          <img
-            src={latestQrDataUrl}
-            alt={`Latest QR Code for ${schedule.workArea.name}`}
-            width={220}
-            height={220}
-            style={{
-              display: "block",
-              maxWidth: "100%",
-              height: "auto",
-              border: "1px solid #e5e7eb",
-              borderRadius: 12,
-              padding: 8,
-              background: "#fff"
-            }}
-          />
-          <small className="muted">Latest active QR</small>
-        </div> : null}
-      </div>
-    </div>
-
-    <ScheduleEditor canManage={canManage} workAreas={waOptions} tasks={taskOptions} initial={initial as any}/>
-    <div style={{marginTop:32}}><h2>Upcoming Generated Occurrences</h2><p className="muted">These rows are pre-generated from the Schedule definition and will be the execution records used by the mobile module and Supervisor dashboard.</p></div>
-    <div className="card"><table className="table"><thead><tr><th>Planned Start</th><th>Planned End</th><th>Tasks</th><th>Evidence Checks</th><th>Status</th></tr></thead><tbody>
-      {schedule.occurrences.map(o=><tr key={o.id}><td>{formatInZone(o.scheduledStartAt,o.timezone)}</td><td>{formatInZone(o.scheduledEndAt,o.timezone)}</td><td>{o.tasks.length}</td><td>{o.tasks.filter(t=>t.evidenceRequired).length}</td><td>{o.status}</td></tr>)}
-      {!schedule.occurrences.length&&<tr><td colSpan={5} className="muted">No upcoming occurrences have been generated. Check the Schedule dates, effective working hours, and occurrence-generator setup.</td></tr>}
-    </tbody></table></div>
-  </main></>;
+function localInputValue(date:Date,timeZone:string){const f=new Intl.DateTimeFormat("en-CA",{timeZone,year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",hourCycle:"h23"}),p=Object.fromEntries(f.formatToParts(date).map(x=>[x.type,x.value]));return`${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`}
+export default async function ScheduleDetailPage({params}:{params:Promise<{id:string}>}){
+ const{id}=await params,user=await getSessionUser();if(!user)redirect("/login");
+ const schedule=await prisma.schedule.findUnique({where:{id},include:{workArea:{include:{property:true,qrCodes:{where:{status:"ACTIVE"},orderBy:{generatedAt:"desc"},take:1}}},scheduleTasks:{include:{task:true},orderBy:{sequence:"asc"}},occurrences:{where:{scheduledStartAt:{gte:new Date()}},include:{tasks:true},orderBy:{scheduledStartAt:"asc"},take:20}}});if(!schedule)notFound();
+ const membership=await prisma.organizationMember.findUnique({where:{organizationId_userId:{organizationId:schedule.organizationId,userId:user.id}},include:{organization:true}});if(!membership||membership.status!=="ACTIVE")notFound();
+ const[workAreas,tasks]=await Promise.all([prisma.workArea.findMany({where:{property:{organizationId:schedule.organizationId}},include:{property:true},orderBy:[{property:{name:"asc"}},{name:"asc"}]}),prisma.task.findMany({where:{organizationId:schedule.organizationId},orderBy:{name:"asc"}})]);
+ const canManage=["ADMIN","PROPERTY_MANAGER"].includes(membership.role);
+ const initial={id:schedule.id,name:schedule.name,documentReference:schedule.documentReference,documentRevision:schedule.documentRevision,frequencyType:schedule.frequencyType,recurrenceUnit:schedule.recurrenceUnit,recurrenceInterval:schedule.recurrenceInterval,recurrenceConfig:(schedule.recurrenceConfig??null) as {weekdays?:number[];monthDays?:number[]}|null,startLocal:localInputValue(schedule.startAt,schedule.timezone),timezone:schedule.timezone,endDate:schedule.endDate?schedule.endDate.toISOString().slice(0,10):null,workAreaId:schedule.workAreaId,status:schedule.status,items:schedule.scheduleTasks.map(item=>({id:item.id,taskId:item.taskId,taskName:item.task.name,duration:minutesToDuration(item.durationMinutes),evidenceRule:item.evidenceRule,randomEveryN:item.randomEveryN??3,randomEvidenceType:item.randomEvidenceType??"EITHER"}))};
+ const waOptions=workAreas.map(wa=>({id:wa.id,name:wa.name,propertyName:wa.property.name,timezone:wa.property.timezone||membership.organization.timezone,status:wa.status,propertyStatus:wa.property.status})),taskOptions=tasks.map(t=>({id:t.id,name:t.name,status:t.status}));
+ const latestQr=schedule.workArea.qrCodes[0]??null,appUrl=(process.env.APP_URL||"https://edekhbhal.vercel.app").replace(/\/+$/,""),latestQrUrl=latestQr?`${appUrl}/qr/${encodeURIComponent(latestQr.id)}`:null,latestQrDataUrl=latestQrUrl?await QRCode.toDataURL(latestQrUrl,{width:220,margin:1,errorCorrectionLevel:"M"}):null;
+ return <><Nav/><main className="container">
+  <div className="row"><div style={{marginRight:"auto"}}><h1>{schedule.name}</h1><p className="muted">{schedule.workArea.name} — {schedule.workArea.property.name} · {schedule.status}</p></div></div>
+  <div className="row wrap" style={{marginBottom:12}}>{schedule.documentReference?<span className="statusPill active">Document: {schedule.documentReference}</span>:null}{schedule.documentRevision?<span className="statusPill">Revision: {schedule.documentRevision}</span>:null}</div>
+  <p className="muted">First occurrence: {formatInZone(schedule.startAt,schedule.timezone)} ({schedule.timezone})</p>
+  <div className="card" style={{marginBottom:20}}><div className="row" style={{alignItems:"flex-start",gap:24,flexWrap:"wrap"}}><div style={{flex:"1 1 320px"}}><h2 style={{marginTop:0}}>Work Area QR Code</h2><p><strong>{schedule.workArea.name}</strong> — {schedule.workArea.property.name}</p><p className="muted">Latest active QR for this Work Area. The standard printed label is 4 × 6 in and intentionally shows no internal QR ID.</p>{latestQr?<><p className="muted">Generated: {formatInZone(latestQr.generatedAt,schedule.timezone)}</p><a className="button secondary" href={latestQrUrl!} target="_blank" rel="noreferrer">Open public QR page</a></>:<p className="muted">No active QR Code has been generated for this Work Area yet.</p>}</div>{latestQrDataUrl?<div style={{textAlign:"center"}}><img src={latestQrDataUrl} alt={`Latest QR Code for ${schedule.workArea.name}`} width={220} height={220} style={{display:"block",maxWidth:"100%",height:"auto",border:"1px solid #e5e7eb",borderRadius:12,padding:8,background:"#fff"}}/><small className="muted">Latest active QR</small></div>:null}</div></div>
+  <ScheduleEditor canManage={canManage} workAreas={waOptions} tasks={taskOptions} initial={initial as any}/>
+  <div style={{marginTop:32}}><h2>Upcoming Generated Occurrences</h2><p className="muted">Document reference and revision are snapshotted into each occurrence, so historical records retain the version in force when they were generated.</p></div>
+  <div className="card"><table className="table"><thead><tr><th>Planned Start</th><th>Planned End</th><th>Document Ref.</th><th>Revision</th><th>Tasks</th><th>Evidence Checks</th><th>Status</th></tr></thead><tbody>{schedule.occurrences.map(o=><tr key={o.id}><td>{formatInZone(o.scheduledStartAt,o.timezone)}</td><td>{formatInZone(o.scheduledEndAt,o.timezone)}</td><td>{o.documentReferenceSnapshot??"—"}</td><td>{o.documentRevisionSnapshot??"—"}</td><td>{o.tasks.length}</td><td>{o.tasks.filter(t=>t.evidenceRequired).length}</td><td>{o.status}</td></tr>)}{!schedule.occurrences.length&&<tr><td colSpan={7} className="muted">No upcoming occurrences have been generated.</td></tr>}</tbody></table></div>
+ </main></>;
 }
