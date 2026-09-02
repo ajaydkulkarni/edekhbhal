@@ -7,7 +7,7 @@ type WorkAreaOption={id:string;name:string;propertyName:string;timezone:string;s
 type TaskOption={id:string;name:string;status:string};
 type EvidenceRule="NONE"|"PHOTO"|"VIDEO"|"RANDOM";
 type ScheduleItem={id?:string;taskId:string;taskName:string;adHocDescription?:string;source?:"LIBRARY"|"ADHOC";saveToLibrary?:boolean;duration:string;evidenceRule:EvidenceRule;randomEveryN:number;randomEvidenceType:"PHOTO"|"VIDEO"|"EITHER"};
-type InitialSchedule={id:string;name:string;frequencyType:"ONE_TIME"|"RECURRING";recurrenceUnit:"MINUTE"|"HOUR"|"DAY"|"WEEK"|"MONTH"|"YEAR"|null;recurrenceInterval:number|null;recurrenceConfig:{weekdays?:number[];monthDays?:number[]}|null;startLocal:string;timezone:string;endDate:string|null;workAreaId:string;status:string;items:ScheduleItem[]};
+type InitialSchedule={id:string;name:string;documentReference:string|null;documentRevision:string|null;frequencyType:"ONE_TIME"|"RECURRING";recurrenceUnit:"MINUTE"|"HOUR"|"DAY"|"WEEK"|"MONTH"|"YEAR"|null;recurrenceInterval:number|null;recurrenceConfig:{weekdays?:number[];monthDays?:number[]}|null;startLocal:string;timezone:string;endDate:string|null;workAreaId:string;status:string;items:ScheduleItem[]};
 
 function durationMinutes(value:string){if(!/^\d{2}:[0-5]\d$/.test(value))return null;const[h,m]=value.split(":").map(Number);const total=h*60+m;return total>0?total:null}
 function addMinutes(local:string,minutes:number){if(!local)return"";const m=/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(local);if(!m)return"";const[,y,mo,d,h,mi]=m;const value=new Date(Date.UTC(+y,+mo-1,+d,+h,+mi+minutes));return new Intl.DateTimeFormat("en-US",{timeZone:"UTC",month:"short",day:"2-digit",hour:"2-digit",minute:"2-digit"}).format(value)}
@@ -16,6 +16,8 @@ const DAYS=[["Sun",0],["Mon",1],["Tue",2],["Wed",3],["Thu",4],["Fri",5],["Sat",6
 export function ScheduleEditor({canManage,workAreas,tasks,initial,defaults}:{canManage:boolean;workAreas:WorkAreaOption[];tasks:TaskOption[];initial?:InitialSchedule;defaults?:{workAreaId?:string;reportedWorkItemId?:string;suggestedName?:string}}){
  const router=useRouter();
  const [name,setName]=useState(initial?.name??defaults?.suggestedName??"");
+ const [documentReference,setDocumentReference]=useState(initial?.documentReference??"");
+ const [documentRevision,setDocumentRevision]=useState(initial?.documentRevision??"");
  const [frequencyType,setFrequencyType]=useState<"ONE_TIME"|"RECURRING">(initial?.frequencyType??"ONE_TIME");
  const [recurrenceUnit,setRecurrenceUnit]=useState<"MINUTE"|"HOUR"|"DAY"|"WEEK"|"MONTH"|"YEAR">(initial?.recurrenceUnit??"DAY");
  const [recurrenceInterval,setRecurrenceInterval]=useState(initial?.recurrenceInterval??1);
@@ -57,7 +59,7 @@ export function ScheduleEditor({canManage,workAreas,tasks,initial,defaults}:{can
    let recurrenceConfig:{weekdays?:number[];monthDays?:number[]}|null=null;
    if(frequencyType==="RECURRING"&&recurrenceUnit==="WEEK")recurrenceConfig={weekdays};
    if(frequencyType==="RECURRING"&&recurrenceUnit==="MONTH"){const p=monthDays.split(",").map(x=>Number(x.trim())).filter(x=>Number.isInteger(x)&&x>=1&&x<=31);if(!p.length)throw new Error("Enter at least one valid monthly day (1-31).");recurrenceConfig={monthDays:Array.from(new Set(p)).sort((a,b)=>a-b)}}
-   const payload={name:name.trim(),frequencyType,recurrenceUnit:frequencyType==="RECURRING"?recurrenceUnit:null,recurrenceInterval:frequencyType==="RECURRING"?Number(recurrenceInterval):null,recurrenceConfig,startLocal,endDate:frequencyType==="RECURRING"?(endDate||null):null,timezone:selectedWorkArea?.timezone||initial?.timezone||"UTC",workAreaId,reportedWorkItemId:initial?undefined:(defaults?.reportedWorkItemId??null),tasks:items.map((item,index)=>({taskId:item.taskId||null,adHocName:item.source==="ADHOC"?item.taskName:null,adHocDescription:item.source==="ADHOC"?(item.adHocDescription||null):null,saveToLibrary:item.source==="ADHOC"?Boolean(item.saveToLibrary):false,sequence:index+1,duration:item.duration,evidenceRule:item.evidenceRule,randomEveryN:item.evidenceRule==="RANDOM"?item.randomEveryN:null,randomEvidenceType:item.evidenceRule==="RANDOM"?item.randomEvidenceType:null}))};
+   const payload={name:name.trim(),documentReference:documentReference.trim()||null,documentRevision:documentRevision.trim()||null,frequencyType,recurrenceUnit:frequencyType==="RECURRING"?recurrenceUnit:null,recurrenceInterval:frequencyType==="RECURRING"?Number(recurrenceInterval):null,recurrenceConfig,startLocal,endDate:frequencyType==="RECURRING"?(endDate||null):null,timezone:selectedWorkArea?.timezone||initial?.timezone||"UTC",workAreaId,reportedWorkItemId:initial?undefined:(defaults?.reportedWorkItemId??null),tasks:items.map((item,index)=>({taskId:item.taskId||null,adHocName:item.source==="ADHOC"?item.taskName:null,adHocDescription:item.source==="ADHOC"?(item.adHocDescription||null):null,saveToLibrary:item.source==="ADHOC"?Boolean(item.saveToLibrary):false,sequence:index+1,duration:item.duration,evidenceRule:item.evidenceRule,randomEveryN:item.evidenceRule==="RANDOM"?item.randomEveryN:null,randomEvidenceType:item.evidenceRule==="RANDOM"?item.randomEvidenceType:null}))};
    const r=await fetch(initial?`/api/schedules/${initial.id}`:"/api/schedules",{method:initial?"PATCH":"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
    const data=await r.json();if(!r.ok)throw new Error(data.error||"Unable to save Schedule.");
    if(initial)router.refresh();else router.push(`/schedules/${data.schedule.id}`);
@@ -69,10 +71,12 @@ export function ScheduleEditor({canManage,workAreas,tasks,initial,defaults}:{can
 
  return <div className="scheduleEditor nextScheduleEditor">
   <section className="nextBuilderCard">
-   <div className="builderStep"><span>1</span><div><strong>Where</strong><small>Choose the location where this work will happen.</small></div></div>
+   <div className="builderStep"><span>1</span><div><strong>Where & document control</strong><small>Choose the location and, when applicable, identify the controlled checklist / SOP.</small></div></div>
    <div className="formGrid">
     <label>Schedule Name<textarea rows={2} maxLength={500} value={name} onChange={e=>setName(e.target.value)} disabled={!canManage}/></label>
     <label>Work Area<select value={workAreaId} onChange={e=>setWorkAreaId(e.target.value)} disabled={!canManage}><option value="">Select Work Area</option>{workAreas.map(wa=>{const selectable=wa.status==="ACTIVE"&&wa.propertyStatus==="ACTIVE";const retained=initial?.workAreaId===wa.id;if(!selectable&&!retained)return null;return <option key={wa.id} value={wa.id}>{wa.name} — {wa.propertyName}{selectable?"":" (Inactive)"}</option>})}</select><small className="muted">Property context is shown with every Work Area.</small></label>
+    <label>Document / SOP Reference No.<input maxLength={150} value={documentReference} onChange={e=>setDocumentReference(e.target.value)} disabled={!canManage} placeholder="e.g. QMS-PRD-017"/><small className="muted">Optional controlled-document or checklist reference shown in operational reports.</small></label>
+    <label>Revision / Version<input maxLength={100} value={documentRevision} onChange={e=>setDocumentRevision(e.target.value)} disabled={!canManage} placeholder="e.g. Rev 03"/><small className="muted">Snapshotted into generated occurrences so historical reports keep the version actually used.</small></label>
    </div>
   </section>
 

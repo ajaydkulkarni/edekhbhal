@@ -313,6 +313,8 @@ export default async function CompliancePage({
                 <th>Property</th>
                 <th>Work Area</th>
                 <th>Schedule</th>
+                <th>Document Ref.</th>
+                <th>Revision</th>
                 <th>Status</th>
                 <th>User</th>
                 <th>Reason</th>
@@ -326,6 +328,8 @@ export default async function CompliancePage({
                   <td>{o.propertyNameSnapshot}</td>
                   <td>{o.workAreaNameSnapshot}</td>
                   <td>{o.scheduleNameSnapshot}</td>
+                  <td>{o.documentReferenceSnapshot ?? "—"}</td>
+                  <td>{o.documentRevisionSnapshot ?? "—"}</td>
                   <td>{o.status.replaceAll("_", " ")}</td>
                   <td>{o.assignedUser?.name ?? o.assignedUser?.email ?? "—"}</td>
                   <td>{o.missedReason ?? "—"}</td>
@@ -336,7 +340,7 @@ export default async function CompliancePage({
               ))}
               {!occurrences.length ? (
                 <tr>
-                  <td colSpan={8} className="muted">
+                  <td colSpan={10} className="muted">
                     No finalized occurrences match these filters.
                   </td>
                 </tr>

@@ -34,6 +34,8 @@ export async function POST(_: Request, { params }: { params: Promise<{ id: strin
         data: {
           organizationId: source.organizationId,
           name: `${source.name} — Copy`,
+          documentReference: source.documentReference,
+          documentRevision: source.documentRevision,
           frequencyType: source.frequencyType,
           recurrenceUnit: source.recurrenceUnit,
           recurrenceInterval: source.recurrenceInterval,
@@ -67,7 +69,7 @@ export async function POST(_: Request, { params }: { params: Promise<{ id: strin
         entityType: "Schedule",
         entityId: schedule.id,
         metadata: { sourceScheduleId: source.id, sourceScheduleName: source.name },
-        newValue: { name: schedule.name, workAreaId: schedule.workAreaId, frequencyType: schedule.frequencyType }
+        newValue: { name: schedule.name, documentReference: schedule.documentReference, documentRevision: schedule.documentRevision, workAreaId: schedule.workAreaId, frequencyType: schedule.frequencyType }
       }, tx);
       return schedule;
     });

@@ -267,7 +267,7 @@ function buildEvidence(anchorMs: number): EvidenceItem[] {
       id: "evidence-food-line",
       type: "PHOTO",
       capturedAt: isoBefore(anchorMs, 8),
-      signedUrl: "/demo/evidence/food-line.svg",
+      signedUrl: "https://images.pexels.com/photos/5953831/pexels-photo-5953831.jpeg?auto=compress&cs=tinysrgb&w=1200",
       taskName: "Butter Chicken Bowl — Cooking & Critical Temperature Check",
       scheduleName: "Butter Chicken Bowl — Lot Production",
       propertyName: "FreshBite Foods Manufacturing Plant",
@@ -279,7 +279,7 @@ function buildEvidence(anchorMs: number): EvidenceItem[] {
       id: "evidence-hotel-room",
       type: "PHOTO",
       capturedAt: isoBefore(anchorMs, 19),
-      signedUrl: "/demo/evidence/hotel-room.svg",
+      signedUrl: "https://images.pexels.com/photos/9462786/pexels-photo-9462786.jpeg?auto=compress&cs=tinysrgb&w=1200",
       taskName: "Guest Room Readiness Inspection",
       scheduleName: "Daily Guest Room Readiness — Floor 4",
       propertyName: "Grand Vista Hotel",
@@ -291,7 +291,7 @@ function buildEvidence(anchorMs: number): EvidenceItem[] {
       id: "evidence-maintenance",
       type: "PHOTO",
       capturedAt: isoBefore(anchorMs, 36),
-      signedUrl: "/demo/evidence/maintenance.svg",
+      signedUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2b/US_Navy_080225-N-5484G-002_Hull_Maintenance_Technician_2nd_Class_William_Clark_performs_a_braze_qualification_test_in_the_machine_shop_of_the_aircraft_carrier_USS_Nimitz_%28CVN_68%29.jpg/960px-US_Navy_080225-N-5484G-002_Hull_Maintenance_Technician_2nd_Class_William_Clark_performs_a_braze_qualification_test_in_the_machine_shop_of_the_aircraft_carrier_USS_Nimitz_%28CVN_68%29.jpg",
       taskName: "Breakdown Maintenance — Safe Triage",
       scheduleName: "Packaging Machine Breakdown Response",
       propertyName: "Industrial Maintenance Facility",
@@ -303,7 +303,7 @@ function buildEvidence(anchorMs: number): EvidenceItem[] {
       id: "evidence-office",
       type: "PHOTO",
       capturedAt: isoBefore(anchorMs, 72),
-      signedUrl: "/demo/evidence/office.svg",
+      signedUrl: "https://images.pexels.com/photos/26834971/pexels-photo-26834971.jpeg?auto=compress&cs=tinysrgb&w=1200",
       taskName: "Meeting Room Readiness",
       scheduleName: "Meeting Room Morning Readiness",
       propertyName: "Corporate Headquarters",
@@ -480,7 +480,7 @@ export function DemoLiveOperationsDashboard({
         <article className={`dashboardPanel evidenceFeaturePanel${evidenceExpanded ? " expanded" : ""}`}>
           <div className="panelHeader">
             <div>
-              <span className="eyebrow">Recent evidence</span>
+              <span className="eyebrow">Sample evidence · real-world reference photos</span>
               <h2>Latest photos & videos</h2>
             </div>
             <div className="evidenceFeatureControls">

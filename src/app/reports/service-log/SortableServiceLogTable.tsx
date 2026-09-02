@@ -7,6 +7,8 @@ export type ServiceLogRow = {
   property: string;
   workArea: string;
   taskList: string;
+  documentReference: string;
+  documentRevision: string;
   sequence: number;
   taskPerformed: string;
   actualTimeTaken: string;
@@ -27,6 +29,8 @@ type SortKey =
   | "property"
   | "workArea"
   | "taskList"
+  | "documentReference"
+  | "documentRevision"
   | "sequence"
   | "taskPerformed"
   | "actualSeconds"
@@ -43,6 +47,8 @@ const headers: { label: string; key: SortKey }[] = [
   { label: "Property", key: "property" },
   { label: "Work Area", key: "workArea" },
   { label: "Task List", key: "taskList" },
+  { label: "Document Ref.", key: "documentReference" },
+  { label: "Revision", key: "documentRevision" },
   { label: "Sr. No.", key: "sequence" },
   { label: "Task Performed", key: "taskPerformed" },
   { label: "Actual Time Taken", key: "actualSeconds" },
@@ -93,7 +99,7 @@ export function SortableServiceLogTable({ rows }: { rows: ServiceLogRow[] }) {
   return (
     <div className="card" style={{ padding: 0 }}>
       <div style={{ overflowX: "auto" }}>
-        <table className="table" style={{ minWidth: 1500 }}>
+        <table className="table" style={{ minWidth: 1750 }}>
           <thead>
             <tr>
               {headers.map((header) => {
@@ -129,6 +135,8 @@ export function SortableServiceLogTable({ rows }: { rows: ServiceLogRow[] }) {
                 <td>{row.property}</td>
                 <td>{row.workArea}</td>
                 <td>{row.taskList}</td>
+                <td>{row.documentReference}</td>
+                <td>{row.documentRevision}</td>
                 <td>{row.sequence}</td>
                 <td><strong>{row.taskPerformed}</strong></td>
                 <td>{row.actualTimeTaken}</td>
@@ -142,7 +150,7 @@ export function SortableServiceLogTable({ rows }: { rows: ServiceLogRow[] }) {
             ))}
             {!sortedRows.length && (
               <tr>
-                <td colSpan={12} className="muted">No completed Task performances match the current filters.</td>
+                <td colSpan={14} className="muted">No completed Task performances match the current filters.</td>
               </tr>
             )}
           </tbody>

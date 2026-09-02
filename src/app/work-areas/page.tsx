@@ -11,7 +11,8 @@ export default async function WorkAreasPage() {
   if (!user) redirect("/login");
 
   const membership = await prisma.organizationMember.findFirst({
-    where: { userId: user.id, status: "ACTIVE" }
+    where: { userId: user.id, status: "ACTIVE" },
+    include: { organization: true }
   });
   if (!membership) redirect("/onboarding");
 
@@ -97,7 +98,7 @@ export default async function WorkAreasPage() {
                     <td>
                       {canManage ? (
                         <div className="row compact">
-                          <WorkAreaRowActions workArea={wa} />
+                          <WorkAreaRowActions workArea={wa} organizationName={membership.organization.name} />
                         </div>
                       ) : null}
                     </td>

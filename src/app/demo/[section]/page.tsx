@@ -11,6 +11,7 @@ import {
   visibleDemoTasks,
 } from "@/lib/demoWorkspace";
 import { getDemoViewRole } from "@/lib/demoRole";
+import { getDemoDocumentControl } from "@/lib/demoDocumentControl";
 
 function statusLabel(value: string) {
   return value.replaceAll("_", " ").toLowerCase().replace(/\b\w/g, (m) => m.toUpperCase());
@@ -58,11 +59,11 @@ export default async function DemoSectionPage({ params }: { params: Promise<{ se
     return <main className="container">
       <div className="row"><div style={{marginRight:"auto"}}><h1>Schedules</h1><p className="muted">Open a Schedule to inspect Work Area, cadence, ordered Tasks, planned duration, evidence rules and synthetic occurrences.</p></div><span className="demoReadOnlyBadge">Read-only</span></div>
       <div className="card"><table className="table">
-        <thead><tr><th>Schedule</th><th>Frequency</th><th>Work Area / Property</th><th>Tasks</th><th>Planned Duration</th><th>Status</th><th></th></tr></thead>
+        <thead><tr><th>Schedule</th><th>Document Ref.</th><th>Revision</th><th>Frequency</th><th>Work Area / Property</th><th>Tasks</th><th>Planned Duration</th><th>Status</th><th></th></tr></thead>
         <tbody>{schedules.map((schedule)=>{
           const property=properties.find((p)=>p.id===schedule.propertyId)!;
           const workArea=property.workAreas.find((w)=>w.id===schedule.workAreaId)!;
-          return <tr key={schedule.id}><td><strong>{schedule.name}</strong></td><td>{schedule.cadence}</td><td><strong>{workArea.name}</strong><br/><span className="muted">{property.name}</span></td><td>{schedule.taskIds.length}</td><td>{minutesToDemoDuration(getDemoScheduleTotalMinutes(schedule.id))}</td><td>{schedule.status}</td><td><Link className="button small secondary" href={`/demo/schedules/${schedule.id}`}>View</Link></td></tr>;
+          const document=getDemoDocumentControl(schedule.id); return <tr key={schedule.id}><td><strong>{schedule.name}</strong></td><td>{document.documentReference}</td><td>{document.documentRevision}</td><td>{schedule.cadence}</td><td><strong>{workArea.name}</strong><br/><span className="muted">{property.name}</span></td><td>{schedule.taskIds.length}</td><td>{minutesToDemoDuration(getDemoScheduleTotalMinutes(schedule.id))}</td><td>{schedule.status}</td><td><Link className="button small secondary" href={`/demo/schedules/${schedule.id}`}>View</Link></td></tr>;
         })}</tbody>
       </table></div>
     </main>;
@@ -83,7 +84,7 @@ export default async function DemoSectionPage({ params }: { params: Promise<{ se
     return <main className="container">
       <div className="row"><div style={{marginRight:"auto"}}><span className="eyebrow">Synthetic operational reporting</span><h1>Demo Reports — Last 30 Days</h1><p className="muted">Same operational concepts as real reporting, backed by deterministic sample activity.</p></div><span className="demoReadOnlyBadge">Read-only</span></div>
       <div className="demoMetricGrid"><article><span>Schedule performance</span><strong>{report.performancePct}%</strong></article><article><span>On-time completion</span><strong>{report.onTimePct}%</strong></article><article><span>Late</span><strong>{report.aggregate.late}</strong></article><article><span>Missed</span><strong>{report.aggregate.missed}</strong></article><article><span>Incomplete</span><strong>{report.aggregate.incomplete}</strong></article><article><span>Total sampled events</span><strong>{report.aggregate.total}</strong></article></div>
-      <div className="card"><h2>Recent exception samples</h2><table className="table"><thead><tr><th>Date</th><th>Schedule</th><th>Property</th><th>Status</th><th>Exception</th><th></th></tr></thead><tbody>{report.exceptions.map((e)=><tr key={e.id}><td>{e.dateKey}</td><td>{e.scheduleName}</td><td>{e.propertyName}</td><td>{statusLabel(e.status)}</td><td>{e.exception}</td><td><Link href={`/demo/schedules/${e.scheduleId}`}>Open</Link></td></tr>)}</tbody></table></div>
+      <div className="card"><h2>Recent exception samples</h2><table className="table"><thead><tr><th>Date</th><th>Schedule</th><th>Document Ref.</th><th>Revision</th><th>Property</th><th>Status</th><th>Exception</th><th></th></tr></thead><tbody>{report.exceptions.map((e)=>{const document=getDemoDocumentControl(e.scheduleId);return <tr key={e.id}><td>{e.dateKey}</td><td>{e.scheduleName}</td><td>{document.documentReference}</td><td>{document.documentRevision}</td><td>{e.propertyName}</td><td>{statusLabel(e.status)}</td><td>{e.exception}</td><td><Link href={`/demo/schedules/${e.scheduleId}`}>Open</Link></td></tr>})}</tbody></table></div>
       <div className="card" style={{marginTop:20}}><h2>Recent 14 days</h2><table className="table"><thead><tr><th>Date</th><th>Total</th><th>Completed</th><th>On Time</th><th>Late</th><th>Missed</th><th>Incomplete</th></tr></thead><tbody>{report.daily.slice(-14).reverse().map((d)=><tr key={d.dateKey}><td>{d.dateKey}</td><td>{d.total}</td><td>{d.completed}</td><td>{d.onTime}</td><td>{d.late}</td><td>{d.missed}</td><td>{d.incomplete}</td></tr>)}</tbody></table></div>
     </main>;
   }

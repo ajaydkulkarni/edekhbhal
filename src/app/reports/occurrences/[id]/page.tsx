@@ -97,6 +97,8 @@ export default async function OccurrenceDetail({
         <div className="card" style={{ marginBottom: 16 }}>
           <div className="formGrid">
             <Fact label="Status" value={occurrence.status.replaceAll("_", " ")} />
+            <Fact label="Document / SOP Reference No." value={occurrence.documentReferenceSnapshot ?? "—"} />
+            <Fact label="Revision / Version" value={occurrence.documentRevisionSnapshot ?? "—"} />
             <Fact
               label="Scheduled"
               value={fmt(occurrence.scheduledStartAt, occurrence.timezone)}

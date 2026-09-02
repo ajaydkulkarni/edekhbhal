@@ -176,10 +176,18 @@ export function LiveOperationsDashboard() {
     void load();
     const poll = setInterval(() => void load(), POLL_MS);
     const clock = setInterval(() => setNowMs(Date.now()), 1000);
+    const resume = () => void load();
+    const visibility = () => { if (document.visibilityState === "visible") void load(); };
+    window.addEventListener("focus", resume);
+    window.addEventListener("pageshow", resume);
+    document.addEventListener("visibilitychange", visibility);
     return () => {
       cancelled = true;
       clearInterval(poll);
       clearInterval(clock);
+      window.removeEventListener("focus", resume);
+      window.removeEventListener("pageshow", resume);
+      document.removeEventListener("visibilitychange", visibility);
     };
   }, []);
 

@@ -68,6 +68,8 @@ export default async function ScheduleDetailPage({ params }: { params: Promise<{
   const initial = {
     id: schedule.id,
     name: schedule.name,
+    documentReference: schedule.documentReference,
+    documentRevision: schedule.documentRevision,
     frequencyType: schedule.frequencyType,
     recurrenceUnit: schedule.recurrenceUnit,
     recurrenceInterval: schedule.recurrenceInterval,
@@ -111,6 +113,7 @@ export default async function ScheduleDetailPage({ params }: { params: Promise<{
       <p className="muted">{schedule.workArea.name} — {schedule.workArea.property.name} · {schedule.status}</p>
     </div></div>
     <p className="muted">First occurrence: {formatInZone(schedule.startAt, schedule.timezone)} ({schedule.timezone})</p>
+    {(schedule.documentReference || schedule.documentRevision) && <p><strong>Controlled document:</strong> {schedule.documentReference || "—"} · {schedule.documentRevision || "—"}</p>}
 
     <div className="card" style={{ marginBottom: 20 }}>
       <div className="row" style={{ alignItems: "flex-start", gap: 24, flexWrap: "wrap" }}>

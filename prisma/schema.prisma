@@ -398,6 +398,8 @@ model Schedule {
   id                         String                  @id @default(cuid())
   organizationId             String
   name                       String                  @db.VarChar(500)
+  documentReference          String?                 @db.VarChar(150)
+  documentRevision           String?                 @db.VarChar(100)
   frequencyType              ScheduleFrequencyType
   recurrenceUnit             ScheduleRecurrenceUnit?
   recurrenceInterval         Int?
@@ -452,8 +454,10 @@ model ScheduleOccurrence {
   scheduledStartAt       DateTime
   scheduledEndAt         DateTime
   timezone               String                   @db.VarChar(100)
-  scheduleNameSnapshot   String                   @db.VarChar(500)
-  workAreaNameSnapshot   String                   @db.VarChar(500)
+  scheduleNameSnapshot        String                   @db.VarChar(500)
+  documentReferenceSnapshot String?                  @db.VarChar(150)
+  documentRevisionSnapshot  String?                  @db.VarChar(100)
+  workAreaNameSnapshot       String                   @db.VarChar(500)
   propertyNameSnapshot   String                   @db.VarChar(500)
   plannedDurationMinutes Int
   status                 ScheduleOccurrenceStatus @default(PENDING)

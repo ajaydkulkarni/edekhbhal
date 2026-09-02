@@ -18,6 +18,8 @@ const taskSchema = z.object({
 
 const fullSchema = z.object({
   name: z.string().trim().min(2).max(500),
+  documentReference: z.string().trim().max(150).nullable().optional(),
+  documentRevision: z.string().trim().max(100).nullable().optional(),
   frequencyType: z.enum(["ONE_TIME", "RECURRING"]),
   recurrenceUnit: z.enum(["MINUTE", "HOUR", "DAY", "WEEK", "MONTH", "YEAR"]).nullable().optional(),
   recurrenceInterval: z.number().int().min(1).max(100000).nullable().optional(),
@@ -37,6 +39,8 @@ const statusSchema = z.object({ status: z.enum(["ACTIVE", "INACTIVE"]) });
 function snapshot(schedule: any) {
   return {
     name: schedule.name,
+    documentReference: schedule.documentReference,
+    documentRevision: schedule.documentRevision,
     frequencyType: schedule.frequencyType,
     recurrenceUnit: schedule.recurrenceUnit,
     recurrenceInterval: schedule.recurrenceInterval,
@@ -129,6 +133,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         where: { id },
         data: {
           name: input.name,
+          documentReference: input.documentReference || null,
+          documentRevision: input.documentRevision || null,
           frequencyType: input.frequencyType,
           recurrenceUnit: input.frequencyType === "RECURRING" ? input.recurrenceUnit : null,
           recurrenceInterval: input.frequencyType === "RECURRING" ? input.recurrenceInterval : null,

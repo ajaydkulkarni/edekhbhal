@@ -181,6 +181,8 @@ export default async function ServiceLogPage({
       property: occurrence.propertyNameSnapshot,
       workArea: occurrence.workAreaNameSnapshot,
       taskList: occurrence.scheduleNameSnapshot,
+      documentReference: occurrence.documentReferenceSnapshot ?? "—",
+      documentRevision: occurrence.documentRevisionSnapshot ?? "—",
       sequence: row.sequence,
       taskPerformed: row.taskNameSnapshot,
       actualTimeTaken: durationFromSeconds(effectiveActualSeconds),
@@ -205,7 +207,7 @@ export default async function ServiceLogPage({
         <div className="breadcrumbs"><Link href="/reports">Reports</Link> / Service Log</div>
         <h1>Service Log</h1>
         <p className="muted">
-          One row per completed Task performance. Times are shown in the Schedule occurrence timezone.
+          One row per completed Task performance. Document / SOP reference and revision come from the occurrence snapshot. Times are shown in the Schedule occurrence timezone.
           Date filters use the Organization timezone ({membership.organization.timezone}). Showing the latest 500 matching rows.
         </p>
 

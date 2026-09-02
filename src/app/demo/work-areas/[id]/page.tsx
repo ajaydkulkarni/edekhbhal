@@ -19,7 +19,7 @@ export default async function DemoWorkAreaDetail({params}:{params:Promise<{id:st
 
     <div className="card"><div className="row" style={{alignItems:"flex-start",gap:24,flexWrap:"wrap"}}>
       <div style={{flex:"1 1 340px"}}><h2 style={{marginTop:0}}>Service Status</h2><p>{workArea.description}</p><p><strong>Status:</strong> {workArea.status}</p><p><strong>Parent Property:</strong> <Link href={`/demo/properties/${property.id}`}>{property.name}</Link></p><p className="muted">The real workspace uses the same Work Area concept with a database-backed active QR and service history.</p></div>
-      <div><Link className="button secondary" href={`/demo-qr/${workArea.id}`} target="_blank">Open Demo Public QR</Link></div>
+      <div className="row wrap"><Link className="button secondary" href={`/demo-qr/${workArea.id}`} target="_blank">Open Demo Public QR</Link><Link className="button secondary" href={`/demo/work-areas/${workArea.id}/qr-label`}>Preview 4 × 6 QR Label</Link></div>
     </div></div>
 
     <div className="card" style={{marginTop:20}}><h2>Recent Service History</h2><table className="table"><thead><tr><th>Date</th><th>Schedule</th><th>User</th><th>Status</th><th>Planned</th><th>Actual</th><th>Exception</th></tr></thead><tbody>
