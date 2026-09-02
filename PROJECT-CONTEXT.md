@@ -10,9 +10,9 @@
 **Current application version:** v0.9.1 base with eDekhbhal Next previews / fine-tuning / Demo Workspace increments  
 **Primary development branch:** `v2-rebuild`  
 **V2 Web URL:** `https://edekhbhal.vercel.app`  
-**Latest validated V2 commit used by E2E:** `dd02d76449f658a9bd40bbf60792fc19b946871c`  
-**Current verified Web/API E2E baseline:** **41/41 PASS**  
-**Demo Workspace focused E2E:** **5/5 PASS**  
+**Latest validated V2 commit used by E2E:** `fe1ea082d8e2f2c71bc5a695d9b8b063134f71ac`  
+**Current verified Web/API E2E baseline:** **44/44 PASS**  
+**Demo Workspace focused E2E:** **8/8 PASS**  
 **RLS status:** runtime context foundation is implemented and tested, but **RLS is NOT enabled on business tables**.
 
 **Current Android field build:** v0.8.1, versionCode 3, EAS build `55db02b1-76dd-4e86-9f73-db97be2a17c7`, source commit `ad4ea3bf21658583c07843d6569b09e174459316`.
@@ -662,27 +662,49 @@ Maintenance examples include Preventive Maintenance and Breakdown Maintenance.
 
 ---
 
-## 23. Demo Workspace Batch 01 — VERIFIED GREEN
+## 23. Demo Workspace Batches 01 & 02 — VERIFIED GREEN
 
-Demo Workspace Batch 01 is deployed on V2 and validated.
+Demo Workspace Batch 01 established the universal read-only Demo Workspace and its synthetic data architecture.
 
-Implemented:
+Demo Workspace Batch 02 changed the Demo from a summary/brochure-style experience into a much closer read-only representation of the real Organization Workspace.
+
+### Current Demo behavior
+
+Implemented and validated:
 
 - real/Demo Workspace switcher;
 - persistent Demo branding/banner;
-- Demo navigation;
-- Demo Dashboard;
-- Demo Properties;
-- Demo Work Areas;
-- Demo Tasks;
-- Demo Schedules;
-- Demo Team;
-- Demo Organization;
-- Demo Reports;
-- deterministic synthetic activity;
+- Demo navigation aligned with the real workspace concepts;
+- Dashboard presentation and operational tables closer to the real management Dashboard;
+- clickable Property list and Property detail pages;
+- Property detail tabs for Property Details, Work Areas and Team Assignments;
+- clickable Work Area list and read-only Service Status detail;
 - public fake Demo QR;
-- role simulator UI;
-- safe Demo Task → real Task template-prefill flow.
+- clickable Task Library and detailed Task definition pages;
+- Task definition displays description/guidance, evidence example, attachment count and Schedule usage;
+- safe Demo Task → real Task template-prefill flow;
+- clickable Schedule list and detailed Schedule definition pages;
+- Schedule detail shows Property, Work Area, cadence/frequency, timezone, ordered Tasks, sequence, planned duration/timing, evidence rules, Demo QR and synthetic occurrences;
+- Demo Reports linked back to Schedule detail;
+- deterministic synthetic activity across Dashboard, Work Area history, Schedule occurrences and Reports;
+- role simulator materially changes the server-rendered Demo perspective;
+- authenticated users with no real Organization membership may enter Demo;
+- switching from Demo to REAL without a real Organization routes the user to onboarding;
+- Demo remains read-only and separate from tenant database records.
+
+### Demo parity presentation rule
+
+The Demo should visually and functionally demonstrate **the real eDekhbhal product with synthetic data**, not a separate marketing-summary UI.
+
+Where practical, real and Demo experiences should use the same presentation concepts/components and differ mainly in data source and write capability.
+
+Conceptually:
+
+`Real Organization → database-backed view model → real/shared presentation`
+
+`Demo Workspace → synthetic view model → same/parallel presentation`
+
+Future real UI changes must therefore be evaluated not only for feature parity but also for visual/drill-down parity in Demo.
 
 ### Task template bridge
 
@@ -716,26 +738,23 @@ Public route:
 
 ---
 
-## 24. Known Demo Batch 01 Limitations
+## 24. Remaining Demo Follow-Up Items
 
-These are known follow-up items, not regressions:
+These are known follow-up opportunities, not regressions:
 
-1. **Zero-real-Organization access**
-   - Current Demo protected layout still requires an authenticated user with an active real membership.
-   - A user with no real Organization membership is redirected to onboarding.
-   - Product intent favors allowing authenticated zero-Organization users to enter Demo.
-   - This should be fixed in a subsequent Demo batch.
+1. **Shared-component depth**
+   - Batch 02 aligns the Demo structure closely with the real workspace, but some screens still use separate Demo-specific rendering.
+   - Prefer shared presentation/view-model components where practical so future real/Demo UI drift is reduced.
 
-2. **Role simulator depth**
-   - The current `View as Admin | Property Manager | User` control is educational/visual.
-   - It does not yet materially change all page rendering/navigation/data perspective.
-   - Future Demo screens should make the simulated role perspective functional while never touching real session permissions.
+2. **Reports parity**
+   - Demo Reports are synthetic and operationally linked, but richer filter controls, drill-down and report-type parity should continue to evolve with the real Reports area.
 
-3. **Reports filters**
-   - Demo Reports are synthetic and functional, but richer filtering should evolve in parity with real Reports.
+3. **Role perspective depth**
+   - Role simulation now changes server-rendered scope/navigation/perspective.
+   - Continue strengthening this as real role behavior evolves, while ensuring the simulator never changes real authorization/session state.
 
-4. **Detail-page parity**
-   - Additional deep detail experiences should be added as the real application evolves.
+4. **Deep detail parity**
+   - Add occurrence/evidence/reported-work/detail equivalents as the real product evolves, using synthetic/read-only representations.
 
 ---
 
@@ -875,7 +894,7 @@ The workflow definition may also exist on the repository default branch so GitHu
 
 GitHub Actions run:
 
-`33472542332`
+`33474724798`
 
 Branch:
 
@@ -883,21 +902,32 @@ Branch:
 
 Commit:
 
-`dd02d76449f658a9bd40bbf60792fc19b946871c`
+`fe1ea082d8e2f2c71bc5a695d9b8b063134f71ac`
 
 Verified:
 
 - Prisma Client generation — PASS
 - TypeScript check — PASS
-- Demo Workspace focused suite — **5/5 PASS**
-- Complete V2 suite — **41/41 PASS**
+- Demo Workspace focused suite — **8/8 PASS**
+- Complete V2 suite — **44/44 PASS**
 - Playwright artifact upload — PASS
 
-The complete 41-test suite covers the active baseline including:
+The focused Demo suite validates:
+
+- switching into the universal Demo Workspace;
+- deterministic Demo Reports;
+- detailed Demo Task definition and safe Task-template prefill;
+- detailed Demo Schedule definition with ordered Tasks;
+- Property detail tabs;
+- Work Area Service Status and Demo QR;
+- unauthenticated public Demo QR;
+- server-rendered role-simulator perspective changes.
+
+The complete 44-test suite covers the active baseline including:
 
 - Audit;
 - cross-tenant isolation;
-- Demo Workspace;
+- Demo Workspace UI/drill-down parity;
 - fine-tuning UI;
 - mobile queue authorization;
 - V2 public landing;
@@ -908,7 +938,7 @@ The complete 41-test suite covers the active baseline including:
 - RLS transaction-context foundation;
 - key smoke/profile flows.
 
-This 41/41 result is the current canonical regression baseline.
+This **44/44** result is the current canonical regression baseline.
 
 ---
 
@@ -971,17 +1001,48 @@ Important remaining work includes:
 
 ---
 
+
+## 33A. Demo Workspace Batch 03 — DASHBOARD & NAVIGATION PARITY (PENDING VALIDATION)
+
+Batch 03 is the current in-progress increment. Do not call it green until the V2 E2E workflow passes after deployment.
+
+Scope:
+
+- Demo Dashboard uses the same visual/section hierarchy and CSS class concepts as the real `LiveOperationsDashboard`.
+- Demo adds deterministic synthetic workforce with Working, Online/Idle, Working-without-heartbeat and Offline states.
+- Demo shows online-vs-total users and the same workforce columns used by the real Dashboard.
+- Demo adds a Recent Evidence carousel with bundled sample evidence images, previous/next controls, expansion thumbnails and evidence modal.
+- Demo adds Task-completion Activity Feed.
+- Demo adds Attention Required in the real dashboard style.
+- Demo adds Schedule Progress with Completed / In Progress / Upcoming / Overdue / Missed / Partial breakdown.
+- Demo dropdown menus are controlled client components and close on submenu navigation, outside click and Escape.
+- Demo Administration navigation gains synthetic Audit Trail and Subscription equivalents for closer menu parity.
+- Demo remains read-only/synthetic and performs no database writes.
+- RLS remains disabled.
+
+Pre-Batch-03 verified baseline remains:
+
+- Demo focused: **8/8 PASS**
+- Full V2: **44/44 PASS**
+- validated commit: `fe1ea082d8e2f2c71bc5a695d9b8b063134f71ac`
+
+Expected test count after the two new Batch 03 E2E assertions is approximately **46** total, but the exact new baseline must be recorded only after GitHub Actions verifies it.
+
+---
+
 ## 34. Current Immediate Next Steps
 
-### Demo Workspace Batch 02
+### Demo Workspace parity track
 
-Priorities:
+Batch 02 is complete and green. Batch 03 Dashboard & Navigation Parity is currently pending validation.
 
-1. Allow authenticated users with **zero real Organization memberships** to enter Demo Workspace.
-2. Make the Demo role simulator materially change the educational role perspective while never changing real authorization/session state.
-3. Improve Demo Reports/filter/detail parity with the current real application.
-4. Add deeper Demo detail pages where useful.
-5. Continue enforcing the standing Demo parity rule for every new real feature.
+Next priorities:
+
+1. Reduce remaining real/Demo UI drift by extracting or reusing shared presentation/view-model components where practical.
+2. Continue bringing Demo Reports closer to the real reporting experience, including filters and deeper drill-down.
+3. Add synthetic read-only occurrence/evidence/reported-work detail equivalents as corresponding real experiences mature.
+4. Keep Demo role perspectives synchronized with future real authorization/navigation behavior.
+5. Continue enforcing both functional parity and visual/drill-down parity for every new real feature.
 
 ### RLS track
 
@@ -1013,8 +1074,8 @@ Also remember:
 
 - development branch is `v2-rebuild`;
 - V2 URL is `https://edekhbhal.vercel.app`;
-- current E2E baseline is **41/41**;
-- Demo focused baseline is **5/5**;
+- current E2E baseline is **44/44**;
+- Demo focused baseline is **8/8**;
 - RLS is **not enabled**;
 - every real feature change must evaluate/implement Demo parity.
 

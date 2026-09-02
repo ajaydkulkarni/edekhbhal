@@ -11,11 +11,38 @@ test.describe("Demo Workspace", () => {
     await expect(page).toHaveURL(/\/demo\/dashboard$/);
     await expect(page.getByText("DEMO WORKSPACE — Sample data", { exact: true })).toBeVisible();
     await expect(page.getByRole("heading", { name: "eDekhbhal Best Practice Demo" })).toBeVisible();
+  });
 
-    const progressTable = page.locator("table").first();
-    await expect(
-      progressTable.getByRole("cell", { name: "Butter Chicken Bowl — Lot Production", exact: true })
-    ).toBeVisible();
+  test("Demo Dashboard mirrors the real live-operations sections", async ({ page, request }) => {
+    await setupFixtures(request);
+    await login(page, accountEmails().admin);
+    await page.goto("/demo/dashboard");
+
+    await expect(page.getByRole("heading", { name: "Today at a glance" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Latest photos & videos" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Who is active now" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Attention required" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Task completions" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Schedule progress" })).toBeVisible();
+
+    await expect(page.getByText(/online/).first()).toBeVisible();
+    await expect(page.locator(".presenceBadge.working").first()).toBeVisible();
+    await expect(page.locator(".presenceBadge.offline").first()).toBeVisible();
+    await expect(page.getByRole("img", { name: /Demo evidence:/ }).first()).toBeVisible();
+  });
+
+  test("Demo dropdown closes after submenu navigation", async ({ page, request }) => {
+    await setupFixtures(request);
+    await login(page, accountEmails().admin);
+    await page.goto("/demo/dashboard");
+
+    const operations = page.locator("details.navMenu").filter({ hasText: "Operations" }).first();
+    await operations.locator("summary").click();
+    await expect(operations).toHaveAttribute("open", "");
+
+    await operations.getByRole("link", { name: /Properties/ }).click();
+    await expect(page).toHaveURL(/\/demo\/properties$/);
+    await expect(operations).not.toHaveAttribute("open", "");
   });
 
   test("Demo Reports contain deterministic real-life exceptions", async ({ page, request }) => {
@@ -88,7 +115,7 @@ test.describe("Demo Workspace", () => {
     await page.goto("/demo/dashboard");
     await expect(page.getByRole("button", { name: "Admin" })).toBeVisible();
     await page.getByRole("button", { name: "Property Manager" }).click();
-    await expect(page.getByText("Assigned-Property perspective for FreshBite Foods Manufacturing Plant.", { exact: true })).toBeVisible();
+    await expect(page.getByText(/Assigned-Property operations for FreshBite Foods Manufacturing Plant/)).toBeVisible();
     await page.getByRole("button", { name: "User", exact: true }).click();
     await expect(page.getByText("Sample assigned work and read-only operational context for a field User.", { exact: true })).toBeVisible();
   });
