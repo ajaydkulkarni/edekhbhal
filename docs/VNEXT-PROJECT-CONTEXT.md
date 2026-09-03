@@ -8,7 +8,7 @@
 
 **Last updated:** 2026-09-03
 **Primary rebuild branch:** `vNext`
-**Latest validated vNext baseline:** `51d8e19c5bc417307cbecec18ca07153ed71238e` — `Harden Evidence Storage upload security`
+**Latest validated vNext baseline:** `856382812aac28b58df2eea0fad7f82d58f912d2` — `Add Evidence Verification and Media Normalization Foundation`
 **Validated database foundation:** `0109eb5`
 **Legacy behavioral reference branch:** `v2-rebuild`
 **Legacy validated Web/API E2E:** 46/46 PASS
@@ -474,7 +474,7 @@ Implemented:
 - internal Task audit helper remains non-executable by runtime
 - Demo illustrates sequential execution, explicit Task commands, evidence gating, server-derived completion, history preservation, and mismatched idempotent replay rejection
 
-Evidence upload is now implemented and Storage-hardened. Media normalization/transcoding and verification processing remain deferred.
+Evidence upload plus the processor control-plane foundation are implemented. A dedicated worker identity, real media codecs/derivative generation, object deletion execution, and authorized operational read delivery remain deferred.
 
 ---
 
@@ -605,16 +605,46 @@ Implemented application/storage boundary:
 - Demo illustrates the evidence pipeline without real media writes
 - public QR never exposes private evidence
 
+Evidence processing foundation commit:
+
+`856382812aac28b58df2eea0fad7f82d58f912d2` — `Add Evidence Verification and Media Normalization Foundation`
+
+Migration:
+
+- `0017_evidence_processing_foundation.sql`
+
+Migration `0017` is already applied to the active vNext database. **Do not reapply it.**
+
+Implemented processing control plane:
+
+- upload finalization atomically queues `EVIDENCE_PROCESS_REQUESTED` through the transactional outbox
+- Evidence processing states `NOT_QUEUED / QUEUED / PROCESSING / DONE / FAILED`
+- processor claim uses a short lease, claim token, optimistic Evidence version, attempt count, and idempotency
+- stale/active processing leases fail closed
+- processor completion validates observed content type, byte size, and SHA-256 against uploaded metadata
+- processor owns the PENDING → VERIFIED/REJECTED transition
+- VERIFIED Evidence records tenant-scoped normalized/preview object metadata
+- PHOTO normalized contract is JPEG/WebP; VIDEO normalized contract is MP4
+- successful normalization defaults the original to `DELETE_QUEUED` unless retention is requested
+- original deletion is handed off through `EVIDENCE_ORIGINAL_DELETE_REQUESTED`
+- REJECTED Evidence preserves the original and never satisfies the Task evidence gate
+- processing verification/rejection is audited as WORKER activity
+- normal `vnext_runtime`, anon, authenticated, and public roles cannot invoke processor claim/completion commands
+- no universal worker/BYPASSRLS credential was introduced
+- My Work exposes processing/verification state
+- Demo illustrates queued, leased, verified/rejected processing without real media writes
+
 Still required before the evidence pipeline is production-complete:
 
-- trusted verification/processing worker boundary
-- optimized/compressed image output
-- normalized/transcoded video output
-- poster/thumbnail generation
-- processor-owned VERIFIED/REJECTED transition and reason
-- original-object disposal after successful normalization unless policy/entitlement retains it
-- short-lived signed operational reads after authorization
-- deployed end-to-end media processing/load certification
+- provision a dedicated least-privilege processor identity
+- implement a deployed worker that consumes the outbox safely
+- real optimized/compressed image derivative generation
+- real video normalization/transcoding and poster/thumbnail generation
+- Storage write policy/credential boundary for normalized and preview objects
+- execute and confirm queued original-object deletion
+- short-lived signed operational reads after application authorization
+- ADMIN/SITE_MANAGER Site-scoped and assigned USER evidence-view UX
+- real Storage transport/media processing end-to-end and load certification
 
 Original media must be discarded after successful normalization unless policy/entitlement explicitly retains it.
 
@@ -634,7 +664,7 @@ Platform administration is separate from customer tenant roles. No frontend univ
 
 ## 17. Current Validated Test Baseline
 
-At commit `51d8e19c5bc417307cbecec18ca07153ed71238e`:
+At commit `856382812aac28b58df2eea0fad7f82d58f912d2`:
 
 ### Integration
 
@@ -650,12 +680,13 @@ At commit `51d8e19c5bc417307cbecec18ca07153ed71238e`:
 - Occurrence Execution Security Hardening: **12/12 PASS**
 - Occurrence Task Execution & Completion + hardening: **14/14 PASS**
 - Evidence Capture & Storage hardening: **10/10 PASS**
-- Total integration: **99/99 PASS**
+- Evidence Verification & Media Normalization Foundation 02: **6/6 PASS**
+- Total integration: **105/105 PASS**
 
 ### Full Vitest
 
-- Test files: **32/32 PASS**
-- Tests: **158/158 PASS**
+- Test files: **34/34 PASS**
+- Tests: **169/169 PASS**
 
 ### Build gates
 
@@ -683,7 +714,7 @@ Validated routes include:
 ### Playwright
 
 - **3/3 PASS**
-- Demo regression covers planning, My Work / claim / QR-start / supersession, sequential Task execution/completion, Evidence upload/verification gating, expired-intent/wrong-object fail-closed behavior, and idempotency/security explanation
+- Demo regression covers planning, My Work / claim / QR-start / supersession, sequential Task execution/completion, Evidence upload/verification gating, expired-intent/wrong-object fail-closed behavior, queued/leased processor behavior, verification/normalization safety boundaries, and idempotency/security explanation
 
 ---
 
@@ -714,29 +745,28 @@ Data/Auth:
 
 Next increment:
 
-**Evidence Verification & Media Normalization Foundation 02**
+**Evidence Processing Worker & Authorized Reads Foundation 03**
 
-Build on the validated private-upload boundary without weakening tenant, Site, assignment, Task-sequence, idempotency, Storage isolation, or history guarantees.
+Build on the validated processor command/control-plane foundation without weakening tenant isolation, Site scope, Storage isolation, processor leases/idempotency, Evidence history, or the Task verification gate.
 
 Target foundation:
 
-- trusted processor/worker command boundary without a universal runtime BYPASSRLS credential
-- transactional handoff from finalized PENDING evidence to processing, preferably through the existing outbox pattern
-- processor validates the uploaded object against expected bucket/key/content type/byte size/checksum before verification
-- optimized/compressed image derivative
-- normalized/transcoded video derivative plus poster/thumbnail where practical
-- processor-owned PENDING → VERIFIED/REJECTED transition with auditable reason
-- normalized/preview object keys remain tenant-scoped and non-guessable
-- discard original object after successful normalization unless policy/entitlement explicitly retains it
-- idempotent processing and safe retry/concurrency behavior
-- short-lived signed operational reads only after application authorization
-- ADMIN/SITE_MANAGER Site-scope and assigned USER read authorization
-- no evidence read path from public QR
-- Task completion continues to require matching VERIFIED evidence
-- Demo parity using synthetic processing/verification states
-- regression coverage for forged processing, wrong tenant/Site/object/checksum, stale/replayed worker commands, unauthorized reads, and retained-history behavior
+- provision a dedicated least-privilege processor identity; never reuse `vnext_runtime` and never grant universal BYPASSRLS
+- define the processor's exact database and Storage privileges separately from browser/runtime credentials
+- consume `EVIDENCE_PROCESS_REQUESTED` safely from the transactional outbox with retry/backoff and claim-lease semantics
+- fetch the exact private original object and independently validate actual content type/size/SHA-256 before processing
+- generate optimized image derivatives and normalized video/poster derivatives using a deployed processor implementation
+- upload normalized/preview objects only to server-owned tenant-scoped keys
+- complete VERIFIED/REJECTED through the processor command boundary
+- execute `EVIDENCE_ORIGINAL_DELETE_REQUESTED` after successful normalization and persist final deletion disposition
+- authorize operational evidence reads in the application before issuing short-lived signed read URLs
+- ADMIN Organization-wide, SITE_MANAGER Site-scoped, USER assigned-occurrence/Site-scoped evidence reads only
+- public QR must have no private evidence read path
+- signed URLs must be short-lived and must not become durable bearer authorization
+- Demo parity remains synthetic/read-only
+- regression coverage includes worker privilege escape, cross-tenant object access, stale leases/tokens, object tampering, duplicate outbox delivery, unauthorized reads, signed-URL expiry, and deletion retry safety
 
-Keep mobile camera UX, claim expiry, priority ranking, and reported work separate unless required for the processing/API contract.
+Keep mobile camera UX, claim expiry, priority ranking, and reported work separate unless required for the worker/read API contract.
 
 ---
 
@@ -747,7 +777,7 @@ Not yet production-complete:
 - working-hours management UI
 - multi-Site administration UI
 - Site assignment management UI/API
-- production evidence verification/media normalization pipeline
+- deployed evidence processing worker, real media normalization codecs, original-object deletion execution, and authorized evidence-view delivery
 - rolling background generation worker
 - reported work
 - mobile field application
@@ -784,5 +814,6 @@ Key validated vNext commits:
 - `460a5c9` — Harden Occurrence Task Execution security boundary
 - `776f392` — Add Evidence Capture and Media Pipeline Foundation
 - `51d8e19` — Harden Evidence Storage upload security
+- `8563828` — Add Evidence Verification and Media Normalization Foundation
 
-`51d8e19c5bc417307cbecec18ca07153ed71238e` is the current locked validated vNext baseline.
+`856382812aac28b58df2eea0fad7f82d58f912d2` is the current locked validated vNext baseline.
