@@ -9,7 +9,7 @@ test("public auth and Demo onboarding paths render", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Create your account." })).toBeVisible();
 
   await page.goto("/demo");
-  await expect(page.getByRole("heading", { name: /Explore .* onboarding/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Explore .*/ })).toBeVisible();
   await expect(page.getByText("Demo safety boundary")).toBeVisible();
   await expect(page.getByText("First Site")).toBeVisible();
 });

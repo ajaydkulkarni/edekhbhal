@@ -13,11 +13,9 @@ export default function DemoPage() {
     <main className="simplePage">
       <div className="onboardingWide">
         <span className="eyebrow">BEST PRACTICE DEMO</span>
-        <h1>Explore {brand.productName} onboarding</h1>
-        <p className="muted">
-          This is a read-only educational simulation. It does not create an account,
-          Organization, subscription, or Site.
-        </p>
+        <h1>Explore {brand.productName}</h1>
+        <p className="muted">This is a read-only educational simulation. It never creates tenant data.</p>
+
         <div className="demoSteps">
           {demoSteps.map(([number, title, description]) => (
             <article className="demoStep" key={number}>
@@ -26,9 +24,27 @@ export default function DemoPage() {
             </article>
           ))}
         </div>
+
+        <section className="demoOperations">
+          <span className="eyebrow">WORK AREA + QR DEMO</span>
+          <div className="demoWorkAreaCard">
+            <div>
+              <span className="statusPill activePill">ACTIVE</span>
+              <h2>Main Lobby</h2>
+              <p>Downtown Site · LOBBY</p>
+            </div>
+            <div className="demoQrPattern" aria-label="Synthetic QR illustration" />
+          </div>
+          <div className="demoBehaviorGrid">
+            <article><strong>Reprint</strong><span>Uses the same active QR identity.</span></article>
+            <article><strong>Regenerate</strong><span>Revokes the old QR and issues a new random public token.</span></article>
+            <article><strong>Public scan</strong><span>Shows safe service information only. A QR never grants authorization.</span></article>
+          </div>
+        </section>
+
         <div className="demoBanner">
           <strong>Demo safety boundary</strong>
-          <span>Real authentication, billing writes, evidence capture, and destructive actions are intentionally unavailable.</span>
+          <span>Real authentication, tenant writes, QR regeneration, billing, evidence capture, and destructive actions are unavailable here.</span>
         </div>
         <Link className="button" href="/">Back to landing page</Link>
       </div>

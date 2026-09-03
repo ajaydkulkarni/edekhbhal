@@ -1,7 +1,9 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireAuthenticatedUser } from "@/lib/auth/server-session";
 import { signOut } from "@/lib/auth/actions";
 import { getOnboardingSnapshot, onboardingPath } from "@/lib/onboarding/server";
+import { listWorkAreas } from "@/lib/work-areas/server";
 
 export default async function WorkspacePage() {
   const user = await requireAuthenticatedUser();
@@ -10,6 +12,13 @@ export default async function WorkspacePage() {
   if (!snapshot || snapshot.onboarding_state !== "ONBOARDING_COMPLETE") {
     redirect(onboardingPath(snapshot?.onboarding_state ?? "REGISTERED"));
   }
+  if (!snapshot.app_user_id || !snapshot.organization_id || !snapshot.membership_id) redirect("/login");
+
+  const workAreas = await listWorkAreas({
+    userId: snapshot.app_user_id,
+    organizationId: snapshot.organization_id,
+    membershipId: snapshot.membership_id,
+  });
 
   return (
     <main className="workspacePage">
@@ -23,13 +32,14 @@ export default async function WorkspacePage() {
       </header>
       <section className="workspaceGrid">
         <article className="metricCard"><span>Role</span><strong>{snapshot.role_code}</strong><p>Organization-scoped authorization is active.</p></article>
-        <article className="metricCard"><span>Site</span><strong>{snapshot.site_name}</strong><p>Your first Site is ready for Work Areas.</p></article>
-        <article className="metricCard"><span>Plan</span><strong>{snapshot.plan_code}</strong><p>Provider-neutral entitlement is active.</p></article>
+        <article className="metricCard"><span>Site</span><strong>{snapshot.site_name}</strong><p>Site hierarchy is ready for operational Work Areas.</p></article>
+        <article className="metricCard"><span>Work Areas</span><strong>{workAreas.length}</strong><p>Each Work Area owns one active QR identity.</p></article>
       </section>
       <section className="workspacePanel">
-        <span className="eyebrow">NEXT MODULE</span>
+        <span className="eyebrow">OPERATIONS</span>
         <h2>Site → Work Areas → QR identity</h2>
-        <p>The workspace shell is now authenticated, tenant-aware, and ready for the first operational hierarchy.</p>
+        <p>Create operational areas, print the current QR label, or regenerate a compromised QR.</p>
+        <Link className="button" href="/workspace/work-areas">Manage Work Areas</Link>
       </section>
     </main>
   );
