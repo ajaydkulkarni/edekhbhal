@@ -1,0 +1,629 @@
+# vNext Project Context & Continuity Notes
+
+> **Purpose**
+>
+> This is the vNext continuity document for the clean-slate rebuild. It records the current validated baseline, locked architecture, security posture, implemented onboarding flow, test state, Demo parity rules, and immediate next development target.
+>
+> **Development rule:** Before every future code change, first read the latest `PROJECT-CONTEXT.md` from `v2-rebuild`, then inspect the current `vNext` implementation. The legacy branch remains a behavioral reference; vNext architecture takes precedence where the clean-slate design deliberately differs.
+
+**Last updated:** 2026-09-02  
+**Primary rebuild branch:** `vNext`  
+**Latest validated vNext functional commit:** `b99b38f` — `Add vNext authentication and guided onboarding foundation`  
+**Previous validated database baseline:** `0109eb5` — `Establish vNext RLS database foundation`  
+**Legacy behavioral reference branch:** `v2-rebuild`  
+**Legacy validated Web/API E2E:** 46/46 PASS  
+**Legacy Demo focused E2E:** 10/10 PASS  
+
+---
+
+## 1. Canonical Development Workflow
+
+For every future vNext development increment:
+
+1. Read the latest `PROJECT-CONTEXT.md` from `v2-rebuild` first.
+2. Inspect the latest relevant `vNext` source and migration files.
+3. Preserve locked vNext architecture and business rules.
+4. Apply every applicable real Organization Workspace feature to the Demo Workspace automatically.
+5. Add or update automated regression coverage.
+6. Validate database migration behavior, RLS, typecheck, tests, lint, production build, and relevant E2E.
+7. Do not weaken a failing security test merely to make a build pass.
+8. Update this vNext continuity document after a validated baseline.
+9. Do not require the product owner to manually edit source files; provide complete files or guarded APPLY scripts.
+
+---
+
+## 2. Product & Naming Direction
+
+vNext is a clean-slate, product-name-neutral multi-tenant SaaS platform.
+
+The durable technical hierarchy is:
+
+`Organization → Site → Work Area`
+
+Canonical technical names:
+
+- `Organization`
+- `Site`
+- `Work Area`
+- `SITE_MANAGER`
+
+Do not embed the temporary product name in durable schema names, APIs, storage keys, feature codes, Demo identifiers, or RLS logic. Branding is centralized and replaceable.
+
+The legacy `Property` terminology is a behavioral reference only. vNext uses `Site`.
+
+---
+
+## 3. Locked Customer Roles
+
+Exactly three customer roles:
+
+- `ADMIN`
+- `SITE_MANAGER`
+- `USER`
+
+A single global User may belong to multiple Organizations with different roles.
+
+Authorization order:
+
+`Authenticated → Active membership → Role → Site/resource scope → Entitlement → Domain invariant → RLS`
+
+Authorization and commercial entitlement remain separate concerns.
+
+---
+
+## 4. Multi-Tenant Database Security
+
+### Runtime and migrator separation
+
+The vNext Supabase/PostgreSQL project uses separate database roles:
+
+- `vnext_migrator`
+  - migration/schema role
+  - privileged only as required for schema lifecycle
+  - not used by runtime requests
+- `vnext_runtime`
+  - no superuser
+  - no `BYPASSRLS`
+  - no database CREATE privilege
+  - explicit least-privilege table/function grants only
+
+Runtime PostgreSQL connections use the transaction pooler with prepared statements disabled.
+
+### Transaction-local tenant context
+
+Tenant execution context is transaction-local, never session-global:
+
+- `app.user_id`
+- `app.organization_id`
+- `app.membership_id`
+
+Authentication bootstrap additionally uses transaction-local:
+
+- `app.auth_subject`
+
+This design supports concurrent requests and multiple browser tabs operating in different Organizations without context leakage.
+
+### RLS
+
+RLS is treated as a database invariant in vNext.
+
+Core tenant tables have `ENABLE ROW LEVEL SECURITY` and `FORCE ROW LEVEL SECURITY`.
+
+The Database Foundation regression suite verifies:
+
+- Organization isolation
+- same User in different Organizations
+- mismatched membership/Organization fail-closed behavior
+- transaction-local context clearing after commit
+- concurrent context isolation
+- ADMIN vs USER visibility/update rules
+- immutable Organization name
+- exact audit actor-context enforcement
+- append-only Audit runtime behavior
+
+Broad default runtime table privileges were explicitly removed after a security regression exposed inherited `DELETE` permission on `audit_event`.
+
+Future tables must remain fail-closed by default.
+
+---
+
+## 5. Validated Database Foundation 01
+
+Validated commit:
+
+`0109eb5 Establish vNext RLS database foundation`
+
+Core tables:
+
+- `organization`
+- `app_user`
+- `organization_membership`
+- `audit_event`
+- `outbox_event`
+
+Locked rules:
+
+- Organization name is immutable after creation.
+- Normal business lifecycle is soft/inactive, not destructive deletion.
+- Audit is append-only for runtime.
+- Outbox is transactional infrastructure, not an application read model.
+- Every tenant-owned future table must include explicit `organization_id`.
+
+Deterministic seed data proves one User can have distinct memberships and roles in separate Organizations.
+
+---
+
+## 6. Authentication Foundation
+
+Validated functional commit:
+
+`b99b38f Add vNext authentication and guided onboarding foundation`
+
+Authentication uses Supabase Auth.
+
+Implemented application paths:
+
+- Email + password registration
+- Email + password sign-in
+- Magic-link sign-in
+- PKCE/auth callback exchange at `/auth/callback`
+- Supabase server/client helpers
+- request-boundary session refresh through Next.js proxy middleware
+- authenticated workspace gate
+- sign-out
+
+The Supabase auth subject is mapped to the product-level `app_user` record through a narrow server-side provisioning function rather than granting unrestricted direct table bootstrap writes.
+
+### Verification scope
+
+The code compiles and production-builds successfully. Public auth screens and Demo onboarding paths are covered by Playwright.
+
+Database onboarding behavior is covered by integration tests.
+
+A real external email confirmation/magic-link round trip against the deployed environment is still a deployment-level verification item; automated tests do not depend on receiving a real email.
+
+---
+
+## 7. Guided Onboarding
+
+Canonical onboarding flow:
+
+`User details → Create Organization → Select Plan → payment/free activation → Create first Site → Workspace`
+
+The state machine includes:
+
+- `REGISTERED`
+- `PROFILE_COMPLETED`
+- `ORGANIZATION_CREATED`
+- `PLAN_SELECTED`
+- `BILLING_COMPLETE`
+- `FREE_OR_SPONSORED_ACTIVATED`
+- `FIRST_SITE_CREATED`
+- `ONBOARDING_COMPLETE`
+
+Current implemented routes:
+
+- `/register`
+- `/login`
+- `/onboarding/profile`
+- `/onboarding/organization`
+- `/onboarding/plan`
+- `/onboarding/site`
+- `/workspace`
+
+### Secure first-tenant bootstrap
+
+Direct runtime INSERT privileges are intentionally not broadened for `organization` or `app_user`.
+
+Initial provisioning occurs through narrow `SECURITY DEFINER` functions using the authenticated subject.
+
+Implemented provisioning functions cover:
+
+- current App User upsert
+- first Organization bootstrap
+- first ADMIN membership creation
+- free/sponsored plan activation
+- first Site creation
+- current onboarding snapshot
+
+The first Organization bootstrap rejects creation of a second initial Organization through the onboarding bootstrap path.
+
+---
+
+## 8. Site Foundation
+
+The first tenant operational child entity is `Site`.
+
+Implemented `site` table includes:
+
+- Organization ownership
+- name
+- code
+- IANA timezone
+- address fields
+- country
+- ACTIVE/INACTIVE lifecycle
+- timestamps
+- optimistic `version`
+
+RLS + FORCE RLS are enabled.
+
+Current Site policies allow tenant-scoped visibility and controlled ADMIN/SITE_MANAGER writes when a valid tenant context exists.
+
+Onboarding creates only the **first Site**. Normal multi-Site administration belongs to the later Site management module.
+
+---
+
+## 9. Billing & Entitlements Foundation
+
+Billing architecture is provider-neutral from day one.
+
+Commercial modes:
+
+- `FREE`
+- `SPONSORED`
+- `TRIAL`
+- `PAID`
+- `CUSTOM_CONTRACT`
+
+Subscription statuses include:
+
+- `ACTIVE`
+- `PENDING_PAYMENT`
+- `GRACE`
+- `SUSPENDED`
+- `CANCELLED`
+
+Implemented catalog baseline:
+
+- `FREE_BETA`
+- `STANDARD`
+- `PROFESSIONAL`
+
+`FREE_BETA` activation is currently functional.
+
+Paid activation deliberately fails closed until a billing provider adapter exists.
+
+Stripe is the first planned provider. Razorpay/India follows behind the same billing/entitlement abstraction.
+
+Operational modules must not import provider SDKs directly.
+
+Downgrades must never delete operational history.
+
+Payment failure will use grace/suspension policy rather than destructive deletion.
+
+---
+
+## 10. Audit
+
+Human-readable target format:
+
+`Date/Time Stamp | User | IP Address | Module | Action | Old Value | New Value`
+
+Machine audit records preserve:
+
+- Organization
+- actor User
+- actor Membership
+- actor display-name snapshot
+- module/action
+- entity type/id
+- old/new JSON
+- request/correlation IDs
+- source
+- IP
+- reason
+
+Authentication/onboarding foundation currently audits:
+
+- `ORGANIZATION_CREATED`
+- `FREE_PLAN_ACTIVATED`
+- `SITE_CREATED`
+
+All future meaningful changes require change-of-value testing where applicable.
+
+---
+
+## 11. Transactional Outbox
+
+`outbox_event` is already part of the core database foundation.
+
+Future cross-system operations such as:
+
+- billing provider synchronization
+- emails
+- notifications
+- media processing
+- webhook delivery
+
+must use the transactional outbox instead of making external provider calls inside core business transactions.
+
+The future worker must remain a separate constrained role/mechanism; it must not become a universal `BYPASSRLS` runtime credential.
+
+---
+
+## 12. Demo Workspace Rule
+
+Demo parity is mandatory and automatic.
+
+Every applicable real Organization Workspace feature must have a Demo equivalent without needing a separate request.
+
+Demo is:
+
+- synthetic
+- read-only or safely simulated
+- educational
+- not a shared tenant Organization
+- never a path to real billing or destructive operations
+
+Current Demo onboarding illustrates:
+
+- User details
+- Organization creation
+- plan selection
+- first Site
+- workspace handoff
+
+It explicitly explains that real authentication, billing writes, evidence capture, and destructive actions are unavailable in Demo.
+
+---
+
+## 13. Time Rules
+
+System/execution timestamps:
+
+- PostgreSQL `timestamptz`
+- stored/processed in UTC
+- server authoritative
+
+Scheduling must preserve local intent using IANA timezone identifiers.
+
+Future Schedule and Occurrence design must snapshot effective timezone context so historical work never shifts after Organization/Site timezone changes.
+
+Mandatory time regression areas include:
+
+- DST gap
+- DST overlap
+- midnight boundaries
+- Jan 31
+- Feb 29
+- incorrect device clocks
+- later government timezone-rule changes
+
+Device time is never authoritative for execution records.
+
+---
+
+## 14. Mobile & Work Execution Rules
+
+Mobile development follows after the Schedule/Occurrence/QR backend becomes stable.
+
+Locked behavior:
+
+### My Work
+
+Server-ranked eligible work:
+
+1. assigned to me
+2. overdue
+3. due now
+4. closest upcoming
+5. priority
+6. deterministic tie-break
+
+### QR
+
+A User may scan any nearby Work Area QR.
+
+The server validates:
+
+- QR validity
+- active membership
+- Site scope
+- work eligibility
+- assignment
+- active-work conflict
+
+QR never grants authorization.
+
+### Claim/start
+
+Open work can be claimed by an eligible User without manager approval.
+
+Assigned-to-another-User work cannot be claimed.
+
+Active-work exclusivity is per **Organization Membership**, not globally per User.
+
+Claim/start must use transaction locks/constraints and idempotency.
+
+Previous/Next navigation never changes task state.
+
+---
+
+## 15. Evidence & Storage Rules
+
+Future evidence architecture:
+
+- private object storage
+- signed short-lived URLs
+- optimized/compressed images
+- normalized/transcoded video
+- poster/thumbnail generation
+- SHA-256 checksum
+- no cross-tenant content deduplication
+- lifecycle/retention policy
+- optional original retention by entitlement
+
+Original video should normally be discarded after normalization unless the applicable plan/retention policy explicitly retains it.
+
+---
+
+## 16. Platform Control Plane
+
+Future platform administration is separate from customer tenant roles.
+
+Planned platform roles:
+
+- `PLATFORM_SUPERADMIN`
+- `OPERATIONS`
+- `BILLING`
+- `SUPPORT`
+- `READONLY`
+
+Support access should default to metadata/configuration and read-only View As.
+
+Any deeper support elevation requires:
+
+- reason/ticket
+- short lifetime
+- attribution
+- prominent UI state
+- audit
+- sensitive-action restrictions
+
+No frontend universal database credential is permitted.
+
+---
+
+## 17. Current Validated Test Baseline
+
+At commit `b99b38f`, the validated development run was:
+
+### Integration
+
+- Database Foundation RLS tests: **13/13 PASS**
+- Auth + Onboarding integration tests: **6/6 PASS**
+- Total integration: **19/19 PASS**
+
+### Full Vitest
+
+- Test files: **7/7 PASS**
+- Tests: **30/30 PASS**
+
+Includes:
+
+- RLS integration
+- onboarding DB boundary integration
+- tenant context unit tests
+- audit diff unit tests
+- onboarding state-machine tests
+- foundation contract tests
+- onboarding route-state module tests
+
+### Build gates
+
+- TypeScript: **PASS**
+- ESLint: **PASS**
+- Next.js production build: **PASS**
+
+Build routes include:
+
+- `/`
+- `/demo`
+- `/login`
+- `/register`
+- `/auth/callback`
+- `/onboarding/profile`
+- `/onboarding/organization`
+- `/onboarding/plan`
+- `/onboarding/site`
+- `/workspace`
+
+Next.js Proxy middleware is active.
+
+### Playwright
+
+- Public Auth + Demo onboarding paths: PASS
+- Landing primary product paths: PASS
+- Total: **2/2 PASS**
+
+The prior Next.js `127.0.0.1` development HMR warning was addressed through `allowedDevOrigins`.
+
+---
+
+## 18. Current Technology Baseline
+
+Application:
+
+- Next.js 16.3.4
+- React 19.2.8
+- TypeScript 6.0.3
+- ESLint 9.39.2
+- Vitest 4.1.11
+- Playwright 1.62.1
+
+Data/Auth:
+
+- Supabase Auth
+- PostgreSQL
+- Drizzle ORM 0.45.2
+- postgres.js 3.4.7
+- Supabase JS 2.112.4
+- Supabase SSR 0.12.5
+- Zod 4.5.4
+
+Runtime PostgreSQL transaction pooling uses `prepare: false`.
+
+---
+
+## 19. Immediate Next Development Target
+
+Next functional increment:
+
+**Site → Work Area → QR lifecycle**
+
+The increment should establish:
+
+1. Work Area schema under Site
+2. ACTIVE/INACTIVE lifecycle
+3. Site-scoped authorization
+4. Work Area QR identity table
+5. Reprint semantics: same active QR identity
+6. Regenerate semantics: revoke old QR, issue new QR
+7. public/safe QR resolution contract
+8. server-side QR validation independent of authorization
+9. audit events for Work Area and QR changes
+10. Demo parity
+11. deterministic seed/test data
+12. RLS, concurrency, idempotency, and change-of-value tests
+13. workspace UI for Sites/Work Areas
+14. API contracts suitable for later mobile use
+
+Do not start Task/Schedule/Occurrence execution until the Work Area + QR lifecycle is stable.
+
+---
+
+## 20. Important Deferred Items
+
+Not yet implemented/validated as complete production capabilities:
+
+- Stripe checkout/customer/subscription adapter
+- Razorpay adapter
+- multi-Site administration UI
+- Work Areas
+- QR lifecycle
+- Tasks
+- Schedules
+- Occurrences
+- assignment
+- claim/start/complete workflow
+- evidence/media pipeline
+- reported work
+- mobile field application
+- platform control plane
+- real deployed email/magic-link round-trip verification
+- production SLO/load certification
+
+These are planned capabilities, not claims about the current baseline.
+
+---
+
+## 21. Baseline Commit Chain
+
+Key validated vNext commits:
+
+- `0109eb5` — Establish vNext RLS database foundation
+- `b99b38f` — Add vNext authentication and guided onboarding foundation
+
+`b99b38f` is the current functional baseline for subsequent vNext development.
+
