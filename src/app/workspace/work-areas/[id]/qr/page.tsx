@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import QRCode from "qrcode";
+import { brand } from "@/lib/brand";
 import { requireAuthenticatedUser } from "@/lib/auth/server-session";
 import { getOnboardingSnapshot, onboardingPath } from "@/lib/onboarding/server";
 import { getWorkArea } from "@/lib/work-areas/server";
@@ -42,7 +43,7 @@ export default async function WorkAreaQrPage({ params }: Props) {
         <span className="button">Browser: Ctrl/Cmd + P</span>
       </div>
       <section className="qrLabel">
-        <div className="qrBrand">Operations Platform</div>
+        <div className="qrBrand">{brand.productName}</div>
         <div>{snapshot.organization_name}</div>
         <div>{area.site_name}</div>
         <h1>{area.name}</h1>

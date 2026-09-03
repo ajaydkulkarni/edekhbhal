@@ -6,10 +6,11 @@
 >
 > **Development rule:** Before every future code change, first read the latest `PROJECT-CONTEXT.md` from `v2-rebuild`, then inspect the current `vNext` implementation. The legacy branch remains a behavioral reference; vNext architecture takes precedence where the clean-slate design deliberately differs.
 
-**Last updated:** 2026-09-02  
+**Last updated:** 2026-09-03  
 **Primary rebuild branch:** `vNext`  
-**Latest validated vNext functional commit:** `b99b38f` — `Add vNext authentication and guided onboarding foundation`  
-**Previous validated database baseline:** `0109eb5` — `Establish vNext RLS database foundation`  
+**Latest validated vNext functional commit:** `3c360af` — `Add Work Area and QR lifecycle foundation`  
+**Previous validated functional baseline:** `b99b38f` — `Add vNext authentication and guided onboarding foundation`  
+**Validated database foundation:** `0109eb5` — `Establish vNext RLS database foundation`  
 **Legacy behavioral reference branch:** `v2-rebuild`  
 **Legacy validated Web/API E2E:** 46/46 PASS  
 **Legacy Demo focused E2E:** 10/10 PASS  
@@ -254,7 +255,58 @@ Onboarding creates only the **first Site**. Normal multi-Site administration bel
 
 ---
 
-## 9. Billing & Entitlements Foundation
+## 9. Work Area + QR Lifecycle Foundation
+
+Validated functional commit:
+
+`3c360af Add Work Area and QR lifecycle foundation`
+
+Implemented hierarchy:
+
+`Organization → Site → Work Area`
+
+Work Area foundation includes:
+
+- explicit `organization_id` and parent `site_id`
+- name/code/description/location fields
+- ACTIVE/INACTIVE soft lifecycle
+- optimistic `version`
+- Site-scoped authorization
+- RLS + FORCE RLS
+- management writes limited to ADMIN and assigned SITE_MANAGER scope
+- `site_membership_scope` foundation for assignment-based Site access
+
+QR lifecycle includes:
+
+- one ACTIVE database-backed QR identity per Work Area
+- partial unique database constraint enforcing one active QR
+- random 48-character public token separate from internal UUIDs
+- Reprint preserves the same active QR identity
+- Regenerate atomically revokes the old QR and creates a new identity
+- old public QR becomes invalid after regeneration
+- create/regenerate idempotency records
+- row locking/concurrency protection
+- safe public resolver at `/q/[token]`
+- printable 4×6 Work Area QR label
+- QR never grants application authorization
+
+The public resolver intentionally exposes only safe transparency fields:
+
+- Organization name
+- Site name
+- Work Area name
+- Work Area description/location
+- service status
+
+It does not expose worker contact details, private notes, audit history, memberships, or private evidence.
+
+Migration `0005_work_area_qr_token_hotfix.sql` replaced the initial `gen_random_bytes` token implementation with two PostgreSQL UUIDv4 values truncated to 48 lowercase hex characters. The base `0004` migration was repaired too, so a clean replay does not reintroduce the defect.
+
+Demo parity includes synthetic Work Area + QR lifecycle behavior and explicitly explains Reprint, Regenerate, public scanning, and the rule that QR identity is not authorization.
+
+---
+
+## 11. Billing & Entitlements Foundation
 
 Billing architecture is provider-neutral from day one.
 
@@ -314,17 +366,21 @@ Machine audit records preserve:
 - IP
 - reason
 
-Authentication/onboarding foundation currently audits:
+Current validated audit coverage includes:
 
 - `ORGANIZATION_CREATED`
 - `FREE_PLAN_ACTIVATED`
 - `SITE_CREATED`
+- `WORK_AREA_CREATED`
+- `QR_ISSUED`
+- `QR_REGENERATED`
+- `WORK_AREA_STATUS_CHANGED`
 
 All future meaningful changes require change-of-value testing where applicable.
 
 ---
 
-## 11. Transactional Outbox
+## 12. Transactional Outbox
 
 `outbox_event` is already part of the core database foundation.
 
@@ -342,7 +398,7 @@ The future worker must remain a separate constrained role/mechanism; it must not
 
 ---
 
-## 12. Demo Workspace Rule
+## 13. Demo Workspace Rule
 
 Demo parity is mandatory and automatic.
 
@@ -356,19 +412,23 @@ Demo is:
 - not a shared tenant Organization
 - never a path to real billing or destructive operations
 
-Current Demo onboarding illustrates:
+Current Demo illustrates:
 
 - User details
 - Organization creation
 - plan selection
 - first Site
 - workspace handoff
+- synthetic Work Area lifecycle
+- QR Reprint vs Regenerate behavior
+- safe public QR transparency
+- the rule that QR identity never grants authorization
 
-It explicitly explains that real authentication, billing writes, evidence capture, and destructive actions are unavailable in Demo.
+It explicitly explains that real authentication, tenant writes, QR regeneration, billing writes, evidence capture, and destructive actions are unavailable in Demo.
 
 ---
 
-## 13. Time Rules
+## 14. Time Rules
 
 System/execution timestamps:
 
@@ -394,7 +454,7 @@ Device time is never authoritative for execution records.
 
 ---
 
-## 14. Mobile & Work Execution Rules
+## 15. Mobile & Work Execution Rules
 
 Mobile development follows after the Schedule/Occurrence/QR backend becomes stable.
 
@@ -440,7 +500,7 @@ Previous/Next navigation never changes task state.
 
 ---
 
-## 15. Evidence & Storage Rules
+## 16. Evidence & Storage Rules
 
 Future evidence architecture:
 
@@ -458,7 +518,7 @@ Original video should normally be discarded after normalization unless the appli
 
 ---
 
-## 16. Platform Control Plane
+## 17. Platform Control Plane
 
 Future platform administration is separate from customer tenant roles.
 
@@ -485,30 +545,23 @@ No frontend universal database credential is permitted.
 
 ---
 
-## 17. Current Validated Test Baseline
+## 18. Current Validated Test Baseline
 
-At commit `b99b38f`, the validated development run was:
+At commit `3c360af`, the validated development run was:
 
 ### Integration
 
 - Database Foundation RLS tests: **13/13 PASS**
 - Auth + Onboarding integration tests: **6/6 PASS**
-- Total integration: **19/19 PASS**
+- Work Area + QR integration tests: **7/7 PASS**
+- Total integration: **26/26 PASS**
 
 ### Full Vitest
 
-- Test files: **7/7 PASS**
-- Tests: **30/30 PASS**
+- Test files: **8/8 PASS**
+- Tests: **37/37 PASS**
 
-Includes:
-
-- RLS integration
-- onboarding DB boundary integration
-- tenant context unit tests
-- audit diff unit tests
-- onboarding state-machine tests
-- foundation contract tests
-- onboarding route-state module tests
+Includes Work Area + QR lifecycle, RLS, onboarding, tenant-context, audit-diff, state-machine, foundation-contract, and route-state coverage.
 
 ### Build gates
 
@@ -516,32 +569,22 @@ Includes:
 - ESLint: **PASS**
 - Next.js production build: **PASS**
 
-Build routes include:
+Additional validated routes:
 
-- `/`
-- `/demo`
-- `/login`
-- `/register`
-- `/auth/callback`
-- `/onboarding/profile`
-- `/onboarding/organization`
-- `/onboarding/plan`
-- `/onboarding/site`
-- `/workspace`
-
-Next.js Proxy middleware is active.
+- `/q/[token]`
+- `/workspace/work-areas`
+- `/workspace/work-areas/[id]/qr`
 
 ### Playwright
 
 - Public Auth + Demo onboarding paths: PASS
 - Landing primary product paths: PASS
-- Total: **2/2 PASS**
-
-The prior Next.js `127.0.0.1` development HMR warning was addressed through `allowedDevOrigins`.
+- Demo Work Area + QR lifecycle: PASS
+- Total: **3/3 PASS**
 
 ---
 
-## 18. Current Technology Baseline
+## 19. Current Technology Baseline
 
 Application:
 
@@ -566,42 +609,41 @@ Runtime PostgreSQL transaction pooling uses `prepare: false`.
 
 ---
 
-## 19. Immediate Next Development Target
+## 20. Immediate Next Development Target
 
 Next functional increment:
 
-**Site → Work Area → QR lifecycle**
+**Task Master Foundation 01**
 
 The increment should establish:
 
-1. Work Area schema under Site
-2. ACTIVE/INACTIVE lifecycle
-3. Site-scoped authorization
-4. Work Area QR identity table
-5. Reprint semantics: same active QR identity
-6. Regenerate semantics: revoke old QR, issue new QR
-7. public/safe QR resolution contract
-8. server-side QR validation independent of authorization
-9. audit events for Work Area and QR changes
-10. Demo parity
-11. deterministic seed/test data
-12. RLS, concurrency, idempotency, and change-of-value tests
-13. workspace UI for Sites/Work Areas
-14. API contracts suitable for later mobile use
+1. Organization-level reusable Task master
+2. name and rich task instructions/description
+3. ACTIVE/INACTIVE lifecycle
+4. ADMIN and permitted SITE_MANAGER management; USER read-only
+5. attachment metadata contract prepared for private object storage
+6. no Base64 media storage
+7. audit old/new values for create/edit/status changes
+8. RLS + FORCE RLS
+9. optimistic versioning
+10. idempotent command boundaries where applicable
+11. Demo parity with representative synthetic Tasks
+12. deterministic seed/test data
+13. unit/module/integration/RLS/change-of-value coverage
+14. workspace Task administration UI
+15. API/service contracts suitable for later Schedule composition
 
-Do not start Task/Schedule/Occurrence execution until the Work Area + QR lifecycle is stable.
+Do not implement Schedule/Occurrence execution in the Task increment. Task remains a reusable Organization-level master and must not be coupled to a specific Site or Work Area.
 
 ---
 
-## 20. Important Deferred Items
+## 21. Important Deferred Items
 
 Not yet implemented/validated as complete production capabilities:
 
 - Stripe checkout/customer/subscription adapter
 - Razorpay adapter
 - multi-Site administration UI
-- Work Areas
-- QR lifecycle
 - Tasks
 - Schedules
 - Occurrences
@@ -618,12 +660,13 @@ These are planned capabilities, not claims about the current baseline.
 
 ---
 
-## 21. Baseline Commit Chain
+## 22. Baseline Commit Chain
 
 Key validated vNext commits:
 
 - `0109eb5` — Establish vNext RLS database foundation
 - `b99b38f` — Add vNext authentication and guided onboarding foundation
+- `3c360af` — Add Work Area and QR lifecycle foundation
 
-`b99b38f` is the current functional baseline for subsequent vNext development.
+`3c360af` is the current locked functional baseline for subsequent vNext development.
 

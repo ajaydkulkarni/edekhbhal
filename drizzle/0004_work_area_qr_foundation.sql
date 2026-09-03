@@ -213,13 +213,13 @@ returns text
 language sql
 volatile
 set search_path = pg_catalog
-as $
+as $$
   select substring(
     replace(gen_random_uuid()::text, '-', '') ||
     replace(gen_random_uuid()::text, '-', '')
     from 1 for 48
   )
-$;
+$$;
 
 revoke all on function app_private.new_public_qr_token() from public;
 grant execute on function app_private.new_public_qr_token() to vnext_runtime;
