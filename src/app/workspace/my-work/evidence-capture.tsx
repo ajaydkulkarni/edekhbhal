@@ -50,25 +50,19 @@ export function EvidenceCapture({taskId,taskVersion,evidenceType}:Props){
    });
 
    const supabase=createClient();
-   const signed=await supabase.storage
-    .from(intent.storageBucket)
-    .createSignedUploadUrl(intent.objectKey);
 
-   if(signed.error||!signed.data){
-    throw new Error(
-     `Private evidence storage is not provisioned for this upload intent. ${signed.error?.message??""}`.trim()
-    );
-   }
-
+   // Use an authenticated direct INSERT rather than a signed upload token.
+   // The Storage RLS INSERT policy is therefore evaluated at the actual upload
+   // and enforces the server-owned short-lived Evidence intent at that moment.
    const uploaded=await supabase.storage
     .from(intent.storageBucket)
-    .uploadToSignedUrl(intent.objectKey,signed.data.token,file,{
+    .upload(intent.objectKey,file,{
      contentType:file.type,
      upsert:false,
     });
 
    if(uploaded.error){
-    throw new Error(`Evidence upload failed: ${uploaded.error.message}`);
+    throw new Error(`Evidence upload blocked: ${uploaded.error.message}`);
    }
 
    const checksum=await sha256Hex(file);
@@ -93,8 +87,8 @@ export function EvidenceCapture({taskId,taskVersion,evidenceType}:Props){
  return <div className="workspacePanel">
   <strong>{evidenceType} evidence capture</strong>
   <p className="muted">
-   Private direct upload. The server allocates the tenant/Occurrence/Task-scoped object key;
-   the browser never chooses the storage path.
+   Private authenticated upload. The server allocates the tenant/Occurrence/Task-scoped object key,
+   and Storage re-checks the active short-lived Evidence intent when the upload occurs.
   </p>
   <input
    id={`evidence-${taskId}`}

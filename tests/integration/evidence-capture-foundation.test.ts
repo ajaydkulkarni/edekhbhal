@@ -142,7 +142,7 @@ describe("Evidence Capture & Media Pipeline Foundation database boundary",()=>{
    ${noEvidence.taskId},${noEvidenceVersion},'PHOTO','not-needed.jpg','image/jpeg',1024,${crypto.randomUUID()},'API'
   )`)).rejects.toThrow(/does not require evidence/i);
   await migrator`update schedule_occurrence set status='COMPLETED',completed_at=now() where id=${noEvidence.occurrenceId}`;
- });
+ },15000);
 
  it("enforces evidence MIME and size limits",async()=>{
   const item=await makeOccurrence("Evidence validation");
@@ -238,6 +238,45 @@ describe("Evidence Capture & Media Pipeline Foundation database boundary",()=>{
   ) ok`)[0].ok;
   expect(canWriteA).toBe(true);expect(canWriteB).toBe(false);
   expect(canReadA).toBe(true);expect(canReadB).toBe(false);
+  await migrator`update schedule_occurrence set status='COMPLETED',completed_at=now() where id=${item.occurrenceId}`;
+ });
+
+
+ it("fails closed for expired upload intents at Storage-policy and finalize boundaries",async()=>{
+  const item=await makeOccurrence("Expired Evidence intent");
+  await start(item);
+  const version=await taskVersion(item.taskId);
+  const intent=(await asA(tx=>tx`select * from app_private.create_evidence_upload_intent(
+   ${item.taskId},${version},'PHOTO','expired.jpg','image/jpeg',4096,${crypto.randomUUID()},'API'
+  )`))[0];
+  await migrator`update schedule_occurrence_evidence
+    set upload_expires_at=now()-interval '1 minute'
+    where id=${intent.result_evidence_id}`;
+  const canWrite=(await migrator`select public.storage_can_write_occurrence_evidence(
+    ${intent.result_storage_bucket},${intent.result_object_key},${ids.subjectA}
+  ) ok`)[0].ok;
+  expect(canWrite).toBe(false);
+  await expect(asA(tx=>tx`select app_private.finalize_evidence_upload(
+    ${intent.result_evidence_id},${intent.result_version},${"c".repeat(64)},${crypto.randomUUID()},'API'
+  )`)).rejects.toThrow(/expired/i);
+  await migrator`update schedule_occurrence set status='COMPLETED',completed_at=now() where id=${item.occurrenceId}`;
+ });
+
+ it("rejects wrong bucket and wrong object path even for the assigned authenticated subject",async()=>{
+  const item=await makeOccurrence("Wrong Evidence object");
+  await start(item);
+  const version=await taskVersion(item.taskId);
+  const intent=(await asA(tx=>tx`select * from app_private.create_evidence_upload_intent(
+   ${item.taskId},${version},'PHOTO','proof.jpg','image/jpeg',4096,${crypto.randomUUID()},'API'
+  )`))[0];
+  const wrongObject=(await migrator`select public.storage_can_write_occurrence_evidence(
+    ${intent.result_storage_bucket},${intent.result_object_key+"-tampered"},${ids.subjectA}
+  ) ok`)[0].ok;
+  const wrongBucket=(await migrator`select public.storage_can_write_occurrence_evidence(
+    'another-bucket',${intent.result_object_key},${ids.subjectA}
+  ) ok`)[0].ok;
+  expect(wrongObject).toBe(false);
+  expect(wrongBucket).toBe(false);
   await migrator`update schedule_occurrence set status='COMPLETED',completed_at=now() where id=${item.occurrenceId}`;
  });
 

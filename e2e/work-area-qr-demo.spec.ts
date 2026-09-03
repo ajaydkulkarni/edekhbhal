@@ -21,4 +21,5 @@ test("Demo explains planning and execution foundations safely",async({page})=>{
  await expect(page.getByText("EVIDENCE CAPTURE FOUNDATION DEMO")).toBeVisible();
  await expect(page.getByText(/Successful upload records SHA-256 metadata but remains PENDING/i)).toBeVisible();
  await expect(page.getByText(/Public QR never exposes evidence/i)).toBeVisible();
+ await expect(page.getByText(/expired intent, wrong object path, UPDATE\/DELETE, and public access fail closed/i)).toBeVisible();
 });
