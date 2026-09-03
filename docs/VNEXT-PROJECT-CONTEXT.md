@@ -2,17 +2,14 @@
 
 > **Purpose**
 >
-> This is the vNext continuity document for the clean-slate rebuild. It records the current validated baseline, locked architecture, security posture, implemented onboarding flow, test state, Demo parity rules, and immediate next development target.
+> Canonical continuity document for the clean-slate `vNext` rebuild. Keep this document concise: preserve locked architecture/business rules, validated baselines, important deferred decisions, and the immediate next increment. Do not accumulate temporary hotfix history here.
 >
-> **Development rule:** Before every future code change, first read the latest `PROJECT-CONTEXT.md` from `v2-rebuild`, then inspect the current `vNext` implementation. The legacy branch remains a behavioral reference; vNext architecture takes precedence where the clean-slate design deliberately differs.
+> **Development rule:** Before every future code change, first read the latest `PROJECT-CONTEXT.md` from `v2-rebuild`, then inspect the current committed `vNext` implementation. Legacy remains the behavioral reference; deliberate vNext architecture takes precedence.
 
 **Last updated:** 2026-09-03
 **Primary rebuild branch:** `vNext`
-**Latest validated vNext baseline:** `a6e8072` — `Add Task Master foundation`
-**Task Master functional baseline:** `a6e8072` — `Add Task Master foundation`
-**Work Area + QR functional baseline:** `3c360af` — `Add Work Area and QR lifecycle foundation`
-**Previous validated functional baseline:** `b99b38f` — `Add vNext authentication and guided onboarding foundation`
-**Validated database foundation:** `0109eb5` — `Establish vNext RLS database foundation`
+**Latest validated vNext baseline:** `c832ce1d5118b00db32f14cf7991c2479d279945` — `Add Schedule Master and harden Task Schedule command boundary`
+**Validated database foundation:** `0109eb5`
 **Legacy behavioral reference branch:** `v2-rebuild`
 **Legacy validated Web/API E2E:** 46/46 PASS
 **Legacy Demo focused E2E:** 10/10 PASS
@@ -21,25 +18,28 @@
 
 ## 1. Canonical Development Workflow
 
-For every future vNext development increment:
+For every vNext development increment:
 
-1. Read the latest `PROJECT-CONTEXT.md` from `v2-rebuild` first.
-2. Inspect the latest relevant `vNext` source and migration files.
+1. Read `v2-rebuild/PROJECT-CONTEXT.md` first.
+2. Inspect the latest relevant committed `vNext` source and migrations.
 3. Preserve locked vNext architecture and business rules.
-4. Apply every applicable real Organization Workspace feature to the Demo Workspace automatically.
-5. Add or update automated regression coverage.
-6. Validate database migration behavior, RLS, typecheck, tests, lint, production build, and relevant E2E.
+4. Apply every applicable Organization Workspace change to Demo automatically.
+5. Add/update regression coverage before calling the increment complete.
+6. Validate migration/RLS, integration tests, full Vitest, typecheck, lint, production build, and relevant E2E.
 7. Do not weaken a failing security test merely to make a build pass.
-8. Update this vNext continuity document after a validated baseline.
-9. Do not require the product owner to manually edit source files; provide complete files or guarded APPLY scripts.
+8. Commit a stable functional checkpoint before starting a materially separate hardening increment when practical.
+9. When an unexpected failure appears, collect the exact affected local source/diagnostics before generating a patch.
+10. Update this document only after a validated baseline.
+11. Never require the product owner to manually edit source files; provide complete files or guarded APPLY packages.
+12. Codespaces command blocks given to the product owner should begin with `git pull origin vNext`.
 
 ---
 
 ## 2. Product & Naming Direction
 
-vNext is a clean-slate, product-name-neutral multi-tenant SaaS platform.
+vNext is a product-name-neutral multi-tenant SaaS platform.
 
-The durable technical hierarchy is:
+Durable hierarchy:
 
 `Organization → Site → Work Area`
 
@@ -50,13 +50,13 @@ Canonical technical names:
 - `Work Area`
 - `SITE_MANAGER`
 
-Do not embed the temporary product name in durable schema names, APIs, storage keys, feature codes, Demo identifiers, or RLS logic. Branding is centralized and replaceable.
+The legacy `Property` concept maps to vNext `Site`.
 
-The legacy `Property` terminology is a behavioral reference only. vNext uses `Site`.
+Do not embed the temporary product name in durable schema names, APIs, storage keys, feature codes, Demo identifiers, or RLS logic. Branding remains centralized and replaceable.
 
 ---
 
-## 3. Locked Customer Roles
+## 3. Locked Customer Roles & Authorization
 
 Exactly three customer roles:
 
@@ -64,7 +64,7 @@ Exactly three customer roles:
 - `SITE_MANAGER`
 - `USER`
 
-A single global User may belong to multiple Organizations with different roles.
+A global User may belong to multiple Organizations with different memberships/roles.
 
 Authorization order:
 
@@ -72,69 +72,57 @@ Authorization order:
 
 Authorization and commercial entitlement remain separate concerns.
 
+Open work may be claimed by an eligible USER without manager approval. Assigned-to-another-user work cannot be claimed.
+
+Active-work exclusivity is per **Organization Membership**, not globally per User.
+
 ---
 
 ## 4. Multi-Tenant Database Security
 
-### Runtime and migrator separation
-
-The vNext Supabase/PostgreSQL project uses separate database roles:
+### Database roles
 
 - `vnext_migrator`
   - migration/schema role
   - privileged only as required for schema lifecycle
-  - not used by runtime requests
+  - never used by runtime requests
 - `vnext_runtime`
   - no superuser
   - no `BYPASSRLS`
   - no database CREATE privilege
-  - explicit least-privilege table/function grants only
+  - explicit least-privilege grants only
 
-Runtime PostgreSQL connections use the transaction pooler with prepared statements disabled.
+Runtime PostgreSQL transaction pooling uses `prepare: false`.
 
 ### Transaction-local tenant context
 
-Tenant execution context is transaction-local, never session-global:
+Per request/transaction only:
 
 - `app.user_id`
 - `app.organization_id`
 - `app.membership_id`
 
-Authentication bootstrap additionally uses transaction-local:
+Authentication bootstrap additionally uses:
 
 - `app.auth_subject`
 
-This design supports concurrent requests and multiple browser tabs operating in different Organizations without context leakage.
+Never use session-global tenant state. Multi-tab requests for different Organizations must remain isolated.
 
 ### RLS
 
-RLS is treated as a database invariant in vNext.
+Tenant-owned tables use explicit `organization_id`, `ENABLE ROW LEVEL SECURITY`, and `FORCE ROW LEVEL SECURITY` from their first migration.
 
-Core tenant tables have `ENABLE ROW LEVEL SECURITY` and `FORCE ROW LEVEL SECURITY`.
+Runtime must fail closed when context is absent/mismatched.
 
-The Database Foundation regression suite verifies:
-
-- Organization isolation
-- same User in different Organizations
-- mismatched membership/Organization fail-closed behavior
-- transaction-local context clearing after commit
-- concurrent context isolation
-- ADMIN vs USER visibility/update rules
-- immutable Organization name
-- exact audit actor-context enforcement
-- append-only Audit runtime behavior
-
-Broad default runtime table privileges were explicitly removed after a security regression exposed inherited `DELETE` permission on `audit_event`.
-
-Future tables must remain fail-closed by default.
+Audit remains append-only for runtime. Outbox remains transactional infrastructure rather than a customer-facing read model.
 
 ---
 
-## 5. Validated Database Foundation 01
+## 5. Validated Foundations
 
-Validated commit:
+### Database Foundation
 
-`0109eb5 Establish vNext RLS database foundation`
+Commit: `0109eb5` — `Establish vNext RLS database foundation`
 
 Core tables:
 
@@ -144,302 +132,243 @@ Core tables:
 - `audit_event`
 - `outbox_event`
 
-Locked rules:
+Locked rules include immutable Organization name, soft lifecycle, exact actor-context audit enforcement, tenant isolation, and transaction-local context isolation.
 
-- Organization name is immutable after creation.
-- Normal business lifecycle is soft/inactive, not destructive deletion.
-- Audit is append-only for runtime.
-- Outbox is transactional infrastructure, not an application read model.
-- Every tenant-owned future table must include explicit `organization_id`.
+### Auth + Guided Onboarding
 
-Deterministic seed data proves one User can have distinct memberships and roles in separate Organizations.
+Commit: `b99b38f` — `Add vNext authentication and guided onboarding foundation`
 
----
+Implemented:
 
-## 6. Authentication Foundation
+- Supabase Auth
+- email/password registration/sign-in
+- magic-link sign-in
+- PKCE callback
+- authenticated workspace gate/sign-out
+- secure app-user provisioning
+- first Organization + ADMIN membership bootstrap
+- plan selection/free activation
+- first Site creation
 
-Validated functional commit:
-
-`b99b38f Add vNext authentication and guided onboarding foundation`
-
-Authentication uses Supabase Auth.
-
-Implemented application paths:
-
-- Email + password registration
-- Email + password sign-in
-- Magic-link sign-in
-- PKCE/auth callback exchange at `/auth/callback`
-- Supabase server/client helpers
-- request-boundary session refresh through Next.js proxy middleware
-- authenticated workspace gate
-- sign-out
-
-The Supabase auth subject is mapped to the product-level `app_user` record through a narrow server-side provisioning function rather than granting unrestricted direct table bootstrap writes.
-
-### Verification scope
-
-The code compiles and production-builds successfully. Public auth screens and Demo onboarding paths are covered by Playwright.
-
-Database onboarding behavior is covered by integration tests.
-
-A real external email confirmation/magic-link round trip against the deployed environment is still a deployment-level verification item; automated tests do not depend on receiving a real email.
-
----
-
-## 7. Guided Onboarding
-
-Canonical onboarding flow:
+Canonical onboarding:
 
 `User details → Create Organization → Select Plan → payment/free activation → Create first Site → Workspace`
 
-The state machine includes:
+Paid activation still fails closed until a billing provider adapter exists.
 
-- `REGISTERED`
-- `PROFILE_COMPLETED`
-- `ORGANIZATION_CREATED`
-- `PLAN_SELECTED`
-- `BILLING_COMPLETE`
-- `FREE_OR_SPONSORED_ACTIVATED`
-- `FIRST_SITE_CREATED`
-- `ONBOARDING_COMPLETE`
+### Site Foundation
 
-Current implemented routes:
+`Site` includes Organization ownership, name/code, IANA timezone, address/country, ACTIVE/INACTIVE status, timestamps, and optimistic `version`.
 
-- `/register`
-- `/login`
-- `/onboarding/profile`
-- `/onboarding/organization`
-- `/onboarding/plan`
-- `/onboarding/site`
-- `/workspace`
+Current Site visibility:
 
-### Secure first-tenant bootstrap
+- ADMIN: Organization-wide
+- SITE_MANAGER: explicitly assigned Sites
+- USER: explicitly assigned Sites
 
-Direct runtime INSERT privileges are intentionally not broadened for `organization` or `app_user`.
+Historical Site visibility survives Site inactivation; new Work Area/QR creation requires an ACTIVE Site.
 
-Initial provisioning occurs through narrow `SECURITY DEFINER` functions using the authenticated subject.
-
-Implemented provisioning functions cover:
-
-- current App User upsert
-- first Organization bootstrap
-- first ADMIN membership creation
-- free/sponsored plan activation
-- first Site creation
-- current onboarding snapshot
-
-The first Organization bootstrap rejects creation of a second initial Organization through the onboarding bootstrap path.
+Normal multi-Site administration UI remains deferred.
 
 ---
 
-## 8. Site Foundation
+## 6. Work Area + QR Lifecycle
 
-The first tenant operational child entity is `Site`.
+Functional commit: `3c360af`
+Hardening commits: `de64847`, `41af015`
 
-Implemented `site` table includes:
+Work Area includes:
 
-- Organization ownership
-- name
-- code
-- IANA timezone
-- address fields
-- country
+- explicit Organization + Site ownership
+- name/code/description/location
 - ACTIVE/INACTIVE lifecycle
-- timestamps
-- optimistic `version`
-
-RLS + FORCE RLS are enabled.
-
-Current Site authorization is assignment-aware:
-
-- ADMIN retains Organization-wide Site visibility.
-- SITE_MANAGER sees only explicitly assigned Sites.
-- USER sees only explicitly assigned Sites.
-- Site scope is independent of Site ACTIVE/INACTIVE state for historical visibility.
-- creation of new Work Areas and QR regeneration require an ACTIVE Site.
-- normal multi-Site administration UI remains deferred.
-
-Onboarding creates only the **first Site**. Normal multi-Site administration belongs to the later Site management module.
-
----
-
-## 9. Work Area + QR Lifecycle Foundation
-
-Validated functional commit:
-
-`3c360af Add Work Area and QR lifecycle foundation`
-
-Implemented hierarchy:
-
-`Organization → Site → Work Area`
-
-Work Area foundation includes:
-
-- explicit `organization_id` and parent `site_id`
-- name/code/description/location fields
-- ACTIVE/INACTIVE soft lifecycle
-- optimistic `version`
-- Site-scoped authorization
+- optimistic version
+- assignment-scoped authorization
 - RLS + FORCE RLS
-- management writes limited to ADMIN and assigned SITE_MANAGER scope
-- `site_membership_scope` foundation for assignment-based Site access
 
-QR lifecycle includes:
+QR lifecycle:
 
 - one ACTIVE database-backed QR identity per Work Area
-- partial unique database constraint enforcing one active QR
-- random 48-character public token separate from internal UUIDs
-- Reprint preserves the same active QR identity
-- Regenerate atomically revokes the old QR and creates a new identity
-- old public QR becomes invalid after regeneration
-- create/regenerate idempotency records
-- row locking/concurrency protection
-- safe public resolver at `/q/[token]`
-- printable 4×6 Work Area QR label
-- QR never grants application authorization
+- random 48-character public token separate from internal UUID
+- Reprint preserves active QR identity
+- Regenerate atomically revokes old QR and creates a new identity
+- old public QR becomes invalid
+- create/regenerate idempotency + advisory locking
+- safe public `/q/[token]` resolver
+- printable 4×6 label
+- QR identity never grants application authorization
 
-The public resolver intentionally exposes only safe transparency fields:
+Public QR transparency may expose Organization/Site/Work Area name and safe service-status/location/description information only. Never expose private notes, audit, memberships, worker contact, or private evidence.
 
-- Organization name
-- Site name
-- Work Area name
-- Work Area description/location
-- service status
+### Deferred Work Area items
 
-It does not expose worker contact details, private notes, audit history, memberships, or private evidence.
+- effective working-hours inheritance/override implementation
+- Work Area details edit UI
+- Site assignment management UI/API
+- QR reprint audit event
 
-Migration `0005_work_area_qr_token_hotfix.sql` replaced the initial `gen_random_bytes` token implementation with two PostgreSQL UUIDv4 values truncated to 48 lowercase hex characters. The base `0004` migration was repaired too, so a clean replay does not reintroduce the defect.
+Legacy effective working-hours rule to preserve when implemented:
 
-Demo parity includes synthetic Work Area + QR lifecycle behavior and explicitly explains Reprint, Regenerate, public scanning, and the rule that QR identity is not authorization.
+`Work Area override → Site override → Organization default`
 
-### Work Area + QR Hardening 02
-
-Validated hardening commit:
-
-`41af015 Harden Work Area QR authorization and idempotency`
-
-Hardening 02 established:
-
-- assignment-scoped Site visibility for SITE_MANAGER and USER
-- Organization-wide Site visibility retained for ADMIN
-- historical Site and Work Area reads preserved when an assigned Site becomes INACTIVE
-- new Work Area creation blocked when the parent Site is INACTIVE
-- QR regeneration blocked when the parent Site is INACTIVE
-- USER cannot read command idempotency payloads
-- same-key Work Area creation is serialized with transaction-scoped advisory locking
-- same-key QR regeneration is serialized with transaction-scoped advisory locking
-- concurrent callers using the same idempotency key receive the same operation result
-- existing one-active-QR and RLS invariants remain enforced
-
-The hardening migration is `0006_work_area_qr_hardening.sql`.
+`null` at a lower level means inherit.
 
 ---
 
-## 10. Task Master Foundation
+## 7. Task Master Foundation
 
-Validated functional commit:
+Functional commit: `a6e8072`
+Command-boundary hardening included in `c832ce1`
 
-`a6e8072 Add Task Master foundation`
+Tasks are reusable **Organization-level** masters, deliberately not Site/Work-Area-owned.
 
-Tasks are reusable Organization-level masters and are deliberately not coupled to a Site or Work Area.
-
-Implemented Task foundation includes:
+Implemented:
 
 - explicit `organization_id`
-- name and rich HTML instruction source
-- ACTIVE/INACTIVE soft lifecycle
-- optimistic `version`
+- name + rich HTML instruction source
+- ACTIVE/INACTIVE lifecycle
+- optimistic version
 - RLS + FORCE RLS
 - ADMIN management
-- permitted SITE_MANAGER management when the membership has Site scope in the Organization
+- SITE_MANAGER management under current `can_manage_tasks()` rule
 - USER read-only visibility
-- idempotent Task creation
-- audited create/edit/status changes with old/new values
+- idempotent create
+- audited create/edit/status commands
 - attachment metadata contract for private object storage
-- no Base64 media storage in PostgreSQL
-- workspace administration route at `/workspace/tasks`
-- Workspace Task metric/navigation
-- synthetic Demo Task parity
-- service/query contracts suitable for later Schedule composition
+- no Base64/blob content in PostgreSQL
+- `/workspace/tasks`
+- Demo Task parity
 
-Task attachment metadata currently records storage provider/bucket/key, original filename, media type, byte size, and optional SHA-256 checksum. Actual upload/signing/media-processing infrastructure remains deferred.
-
-The management UI stores rich HTML source but renders a text-safe preview rather than executing stored markup on the Task list page.
-
-Task Master database commands use transaction-local tenant context and preserve the existing vNext runtime/migrator separation.
-
-Validated Task audit actions include:
+Audit actions:
 
 - `TASK_CREATED`
 - `TASK_UPDATED`
 - `TASK_STATUS_CHANGED`
 
-Task Master Foundation does not implement Schedule or Occurrence execution.
+### Current Task SITE_MANAGER scope decision
+
+Tasks remain Organization-level. Current `SITE_MANAGER` Task management is allowed when that membership has at least one Site scope in the Organization. There is no Task→Site ownership relation to narrow an individual Task mutation further.
+
+Do **not** silently redesign Tasks as Site-scoped. Revisit this only with an explicit product model decision.
+
+### Deferred Task items
+
+- actual attachment upload/signing/media processing
+- rich-HTML sanitizer for future HTML rendering surfaces
+- tenant-safe composite attachment FK hardening (`organization_id`, `task_id`) remains a worthwhile database-hardening follow-up
 
 ---
 
-## 11. Billing & Entitlements Foundation
+## 8. Schedule Master Foundation 01
 
-Billing architecture is provider-neutral from day one.
+Validated baseline: `c832ce1d5118b00db32f14cf7991c2479d279945`
 
-Commercial modes:
+Migration:
 
-- `FREE`
-- `SPONSORED`
-- `TRIAL`
-- `PAID`
-- `CUSTOM_CONTRACT`
+- `0008_schedule_master_foundation.sql`
 
-Subscription statuses include:
+Schedule is the reusable **planning layer**. Occurrence generation/execution is deliberately separate.
 
-- `ACTIVE`
-- `PENDING_PAYMENT`
-- `GRACE`
-- `SUSPENDED`
-- `CANCELLED`
+Implemented Schedule master supports:
 
-Implemented catalog baseline:
+- one Work Area per Schedule
+- one or more ordered reusable Tasks
+- `ONE_TIME` and `RECURRING`
+- recurrence units `MINUTE`, `HOUR`, `DAY`, `WEEK`, `MONTH`, `YEAR`
+- optional recurring end date inclusive by local Schedule calendar date
+- local start date + local start time
+- IANA timezone snapshot from Site
+- optional controlled-document fields:
+  - Document/SOP Reference
+  - Revision/Version
+- ACTIVE/INACTIVE lifecycle
+- optimistic version
+- idempotent create
+- audited create/update/status changes
+- RLS + FORCE RLS
+- ADMIN/SITE_MANAGER management constrained by Site scope
+- USER read-only access
+- historical reads preserved for scoped users when Site becomes inactive
+- new create/edit/reactivation blocked when required Site/Work Area is inactive
+- only ACTIVE same-Organization Tasks may be selected for new composition
 
-- `FREE_BETA`
-- `STANDARD`
-- `PROFESSIONAL`
+`schedule_task` snapshots planning composition:
 
-`FREE_BETA` activation is currently functional.
+- Task ID
+- contiguous sequence starting at 1
+- planned duration minutes
+- cumulative planned start/end offsets
+- evidence rule: `NONE`, `PHOTO`, `VIDEO`, `RANDOM`
+- RANDOM deterministic subset configuration (`random_every_n`)
+- RANDOM media policy (`PHOTO`, `VIDEO`, `EITHER`)
 
-Paid activation deliberately fails closed until a billing provider adapter exists.
+RANDOM means deterministic 1-in-N evidence selection; it does **not** mean randomly choose Photo vs Video each performance.
 
-Stripe is the first planned provider. Razorpay/India follows behind the same billing/entitlement abstraction.
+Schedule UI:
 
-Operational modules must not import provider SDKs directly.
+- `/workspace/schedules`
+- Workspace navigation/metric integration
+- Demo Schedule parity
 
-Downgrades must never delete operational history.
+### Time behavior validated at Schedule-master level
 
-Payment failure will use grace/suspension policy rather than destructive deletion.
+- Site timezone snapshot into Schedule
+- DST-gap local intent is preserved as local intent rather than silently device-normalized
+- weekly/monthly recurrence validation
+- Jan 31
+- Feb 29
+- inclusive local end date
+
+Device time is never authoritative for execution data.
+
+### Schedule items intentionally deferred to Occurrence/working-hours work
+
+- generation of concrete UTC occurrence timestamps
+- DST overlap/gap resolution policy for actual occurrence instants
+- effective working-hours fit enforcement
+- occurrence snapshots/history
+- rolling generation/reconciliation
+- assignment/claim/start/complete
+- supersession/miss behavior
+- mobile execution/evidence
 
 ---
 
-## 12. Audit
+## 9. Task + Schedule Command Boundary Hardening 01
 
-Human-readable target format:
+Validated baseline: `c832ce1d5118b00db32f14cf7991c2479d279945`
+
+Migration:
+
+- `0009_task_schedule_command_boundary_hardening.sql`
+
+Security objective: runtime may read permitted tenant rows through RLS, but meaningful Task/Schedule writes must cross audited/versioned command functions.
+
+Hardening establishes:
+
+- direct runtime `INSERT/UPDATE` revoked on `task_master`
+- direct runtime `INSERT/UPDATE` revoked on `schedule_master`
+- direct runtime `INSERT/UPDATE/DELETE` revoked on `schedule_task`
+- internal `insert_schedule_tasks(...)` helper no longer executable by runtime
+- Task/Schedule command functions execute through constrained `SECURITY DEFINER` boundaries
+- update/status command functions explicitly pin master/child mutations to transaction-local `organization_id`
+- fixed function `search_path`
+- command paths preserve optimistic versioning, audit, role/site checks, and domain invariants
+- direct forbidden runtime DML now fails with permission denial rather than relying only on zero-row RLS behavior
+
+This hardening does not weaken RLS; RLS remains the read/fail-closed tenant boundary and an additional defense layer.
+
+---
+
+## 10. Audit & Outbox
+
+Human-readable audit target:
 
 `Date/Time Stamp | User | IP Address | Module | Action | Old Value | New Value`
 
-Machine audit records preserve:
+Machine audit preserves Organization, actor User/Membership, actor-name snapshot, module/action, entity, old/new JSON, source, correlation/request metadata, IP, and reason where applicable.
 
-- Organization
-- actor User
-- actor Membership
-- actor display-name snapshot
-- module/action
-- entity type/id
-- old/new JSON
-- request/correlation IDs
-- source
-- IP
-- reason
-
-Current validated audit coverage includes:
+Current validated operational actions include:
 
 - `ORGANIZATION_CREATED`
 - `FREE_PLAN_ACTIVATED`
@@ -451,34 +380,15 @@ Current validated audit coverage includes:
 - `TASK_CREATED`
 - `TASK_UPDATED`
 - `TASK_STATUS_CHANGED`
+- Schedule create/update/status actions introduced by Schedule Foundation
 
-All future meaningful changes require change-of-value testing where applicable.
-
----
-
-## 13. Transactional Outbox
-
-`outbox_event` is already part of the core database foundation.
-
-Future cross-system operations such as:
-
-- billing provider synchronization
-- emails
-- notifications
-- media processing
-- webhook delivery
-
-must use the transactional outbox instead of making external provider calls inside core business transactions.
-
-The future worker must remain a separate constrained role/mechanism; it must not become a universal `BYPASSRLS` runtime credential.
+Future external side effects (billing sync, mail, notifications, media processing, webhooks) must use the transactional outbox. A future worker must not become a universal BYPASSRLS credential.
 
 ---
 
-## 14. Demo Workspace Rule
+## 11. Demo Workspace Rule — Mandatory
 
-Demo parity is mandatory and automatic.
-
-Every applicable real Organization Workspace feature must have a Demo equivalent without needing a separate request.
+Every applicable real Organization Workspace addition/change must automatically receive a Demo equivalent without requiring another request.
 
 Demo is:
 
@@ -486,63 +396,48 @@ Demo is:
 - read-only or safely simulated
 - educational
 - not a shared tenant Organization
-- never a path to real billing or destructive operations
+- never a path to real billing/destructive writes
 
-Current Demo illustrates:
+Current Demo illustrates onboarding, Work Area/QR lifecycle, reusable Task masters, Task role behavior, Schedule composition, recurrence/local-time intent, evidence-rule semantics, and that Occurrence/claim/QR-start execution remains separate.
 
-- User details
-- Organization creation
-- plan selection
-- first Site
-- workspace handoff
-- synthetic Work Area lifecycle
-- QR Reprint vs Regenerate behavior
-- safe public QR transparency
-- the rule that QR identity never grants authorization
-- representative reusable Task masters
-- ACTIVE/INACTIVE Task lifecycle
-- management-role vs USER read-only Task behavior
-- private object-storage attachment contract without Base64 media
-
-It explicitly explains that real authentication, tenant writes, Task changes, QR regeneration, billing writes, evidence capture, and destructive actions are unavailable in Demo.
+Demo excludes real auth tenant writes, billing writes, evidence capture, mobile execution, and destructive operations, but should explain those boundaries rather than silently omit them.
 
 ---
 
-## 15. Time Rules
+## 12. Time Rules
 
 System/execution timestamps:
 
 - PostgreSQL `timestamptz`
-- stored/processed in UTC
+- UTC
 - server authoritative
 
-Scheduling must preserve local intent using IANA timezone identifiers.
+Planning preserves local intent using IANA timezone identifiers.
 
-Future Schedule and Occurrence design must snapshot effective timezone context so historical work never shifts after Organization/Site timezone changes.
+Timezone resolution model:
 
-Mandatory time regression areas include:
+`Organization default → Site override → Schedule snapshot → Occurrence snapshot`
 
-- DST gap
-- DST overlap
+Historical values never shift after later timezone changes.
+
+Mandatory time regression areas for Occurrence work:
+
+- DST gaps
+- DST overlaps
 - midnight boundaries
 - Jan 31
 - Feb 29
-- incorrect device clocks
-- later government timezone-rule changes
-
-Device time is never authoritative for execution records.
+- wrong device clock
+- Organization/Site timezone changes after generation
+- future timezone-rule changes
 
 ---
 
-## 16. Mobile & Work Execution Rules
+## 13. Mobile & Work Execution Rules
 
-Mobile development follows after the Schedule/Occurrence/QR backend becomes stable.
+Mobile implementation follows after Schedule/Occurrence/QR backend contracts stabilize.
 
-Locked behavior:
-
-### My Work
-
-Server-ranked eligible work:
+Server-ranked My Work order:
 
 1. assigned to me
 2. overdue
@@ -551,11 +446,7 @@ Server-ranked eligible work:
 5. priority
 6. deterministic tie-break
 
-### QR
-
-A User may scan any nearby Work Area QR.
-
-The server validates:
+A USER may scan any nearby Work Area QR, but the server must independently validate:
 
 - QR validity
 - active membership
@@ -566,21 +457,11 @@ The server validates:
 
 QR never grants authorization.
 
-### Claim/start
-
-Open work can be claimed by an eligible User without manager approval.
-
-Assigned-to-another-User work cannot be claimed.
-
-Active-work exclusivity is per **Organization Membership**, not globally per User.
-
-Claim/start must use transaction locks/constraints and idempotency.
-
-Previous/Next navigation never changes task state.
+Claim/start must use transaction locking/constraints and idempotency. Previous/Next navigation must never change task state.
 
 ---
 
-## 17. Evidence & Storage Rules
+## 14. Evidence & Storage Rules
 
 Future evidence architecture:
 
@@ -594,69 +475,41 @@ Future evidence architecture:
 - lifecycle/retention policy
 - optional original retention by entitlement
 
-Original video should normally be discarded after normalization unless the applicable plan/retention policy explicitly retains it.
+Original video should normally be discarded after normalization unless policy/entitlement explicitly retains it.
 
 ---
 
-## 18. Platform Control Plane
+## 15. Billing & Platform Control Plane
 
-Future platform administration is separate from customer tenant roles.
+Billing architecture remains provider-neutral.
 
-Planned platform roles:
+Commercial modes include FREE/SPONSORED/TRIAL/PAID/CUSTOM_CONTRACT. Current plan catalog includes FREE_BETA/STANDARD/PROFESSIONAL.
 
-- `PLATFORM_SUPERADMIN`
-- `OPERATIONS`
-- `BILLING`
-- `SUPPORT`
-- `READONLY`
+FREE_BETA activation is functional. Paid activation fails closed until a provider adapter exists. Stripe is planned first; Razorpay follows behind the same abstraction.
 
-Support access should default to metadata/configuration and read-only View As.
-
-Any deeper support elevation requires:
-
-- reason/ticket
-- short lifetime
-- attribution
-- prominent UI state
-- audit
-- sensitive-action restrictions
-
-No frontend universal database credential is permitted.
+Future platform administration is separate from customer tenant roles. No frontend universal database credential is permitted. Support elevation must be attributable, time-limited, reasoned, visible, audited, and restricted.
 
 ---
 
-## 19. Current Validated Test Baseline
+## 16. Current Validated Test Baseline
 
-At commit `a6e8072`, the validated development run was:
+At commit `c832ce1d5118b00db32f14cf7991c2479d279945`:
 
 ### Integration
 
-- Database Foundation RLS tests: **13/13 PASS**
-- Auth + Onboarding integration tests: **6/6 PASS**
-- Work Area + QR foundation integration tests: **7/7 PASS**
-- Work Area + QR Hardening 02 integration tests: **6/6 PASS**
-- Task Master Foundation integration tests: **8/8 PASS**
-- Total integration: **40/40 PASS**
-
-Task Master Foundation specifically verifies:
-
-- deterministic ADMIN, scoped SITE_MANAGER, USER, and Site fixture
-- idempotent reusable Task creation
-- rich HTML instruction-source persistence
-- scoped SITE_MANAGER management
-- USER read-only behavior through RLS
-- optimistic versioning and stale-update rejection
-- audited old/new values for Task edits
-- ACTIVE/INACTIVE soft lifecycle
-- Task lifecycle audit old/new values
-- attachment metadata contract without Base64/blob content columns
-- fail-closed reads without tenant context
-- Task create/edit/status audit action coverage
+- Database Foundation RLS: **13/13 PASS**
+- Auth + Onboarding: **6/6 PASS**
+- Work Area + QR foundation: **7/7 PASS**
+- Work Area + QR Hardening 02: **6/6 PASS**
+- Task Master Foundation: **8/8 PASS**
+- Schedule Master Foundation: **8/8 PASS**
+- Task/Schedule command-boundary hardening: **3/3 PASS**
+- Total integration: **51/51 PASS**
 
 ### Full Vitest
 
-- Test files: **12/12 PASS**
-- Tests: **57/57 PASS**
+- Test files: **17/17 PASS**
+- Tests: **78/78 PASS**
 
 ### Build gates
 
@@ -677,20 +530,21 @@ Validated routes include:
 - `/onboarding/site`
 - `/workspace`
 - `/workspace/tasks`
-- `/q/[token]`
+- `/workspace/schedules`
 - `/workspace/work-areas`
 - `/workspace/work-areas/[id]/qr`
+- `/q/[token]`
 
 ### Playwright
 
-- Public Auth + Demo onboarding paths: PASS
+- Public Auth + Demo onboarding: PASS
 - Landing primary product paths: PASS
-- Demo Work Area + QR + Task Master lifecycle: PASS
+- Demo Work Area + QR + Task + Schedule behavior: PASS
 - Total: **3/3 PASS**
 
 ---
 
-## 20. Current Technology Baseline
+## 17. Current Technology Baseline
 
 Application:
 
@@ -711,33 +565,56 @@ Data/Auth:
 - Supabase SSR 0.12.5
 - Zod 4.5.4
 
-Runtime PostgreSQL transaction pooling uses `prepare: false`.
-
 ---
 
-## 21. Immediate Next Development Target
+## 18. Immediate Next Development Target
 
 Next functional increment:
 
-**Schedule Master Foundation 01**
+**Occurrence Foundation 01**
 
-The increment should establish the reusable planning layer that binds one Work Area to one or more Tasks while preserving local scheduling intent and future Occurrence snapshots.
+Before implementation, re-read the legacy Occurrence/rolling-generation/supersession behavior and inspect committed vNext Schedule/Task/Work Area/time/security contracts.
 
-Before implementation, re-read the legacy Schedule behavior and current vNext time/security rules. The Schedule increment must define recurring and one-time schedule masters, ordered Task associations, planned duration/sequence, evidence-rule contracts, timezone/local-time intent, ACTIVE/INACTIVE lifecycle, RLS/role/site-scope authorization, audit/change-of-value coverage, optimistic versioning/idempotency where applicable, Demo parity, and service contracts suitable for later Occurrence generation.
+Occurrence Foundation should establish the **generated planning snapshot layer**, not full mobile execution.
 
-Do not implement mobile execution in the Schedule Master increment. Occurrence generation/execution remains a separate subsequent increment.
+Required design topics:
+
+- `Schedule → Occurrence → Occurrence Task` snapshot model
+- explicit `organization_id`, Site, Work Area, Schedule references
+- uniqueness for Schedule + scheduled instant
+- server-authoritative UTC planned start/end (`timestamptz`)
+- snapshots of timezone/local date/local time/UTC offset
+- snapshots of Organization/Site/Work Area/Schedule/Task planning values needed for immutable history
+- controlled-document reference/revision snapshots
+- deterministic RANDOM evidence decision at generation time
+- occurrence/task status model
+- RLS + FORCE RLS
+- Site/resource visibility
+- rolling generation/reconciliation contract (legacy historically used ~48h horizon)
+- schedule create/edit reconciliation hooks or service contracts
+- preservation of IN_PROGRESS/completed/history against later master edits
+- idempotency + concurrency/uniqueness behavior
+- supersession groundwork (`supersedeUnstarted=true`, latest due wins) without inventing unsupported execution shortcuts
+- Demo parity
+- unit/integration/module/change-of-value/time tests
+
+### Important prerequisite to resolve during Occurrence design
+
+Legacy requires a Schedule to fit completely inside effective open working hours before an occurrence is generated. vNext has not yet implemented the Work Area/Site/Organization working-hours inheritance model. Occurrence Foundation must therefore explicitly resolve that dependency rather than silently generating work that violates the legacy rule.
+
+Do not implement full mobile claim/start/evidence workflow in Occurrence Foundation 01 unless the product owner explicitly expands the increment.
 
 ---
 
-## 22. Important Deferred Items
+## 19. Important Deferred Items
 
-Not yet implemented/validated as complete production capabilities:
+Not yet production-complete:
 
 - Stripe checkout/customer/subscription adapter
 - Razorpay adapter
 - multi-Site administration UI
-- Schedules
-- Occurrences
+- effective Organization/Site/Work Area working-hours model
+- Occurrences and rolling generation
 - assignment
 - claim/start/complete workflow
 - evidence/media pipeline
@@ -746,12 +623,14 @@ Not yet implemented/validated as complete production capabilities:
 - platform control plane
 - real deployed email/magic-link round-trip verification
 - production SLO/load certification
+- Task attachment composite tenant FK hardening
+- Task rich-HTML rendering sanitizer
 
-These are planned capabilities, not claims about the current baseline.
+These are planned/deferred capabilities, not claims about the current baseline.
 
 ---
 
-## 23. Baseline Commit Chain
+## 20. Baseline Commit Chain
 
 Key validated vNext commits:
 
@@ -762,6 +641,6 @@ Key validated vNext commits:
 - `59477e1` — Fix vNext context section numbering
 - `41af015` — Harden Work Area QR authorization and idempotency
 - `a6e8072` — Add Task Master foundation
+- `c832ce1` — Add Schedule Master and harden Task Schedule command boundary
 
-`a6e8072` is the current locked vNext functional baseline for subsequent development. Schedule Master Foundation 01 is the immediate next functional increment.
-
+`c832ce1d5118b00db32f14cf7991c2479d279945` is the current locked validated vNext baseline. Occurrence Foundation 01 is the immediate next functional increment.
