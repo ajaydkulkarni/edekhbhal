@@ -306,7 +306,7 @@ Demo parity includes synthetic Work Area + QR lifecycle behavior and explicitly 
 
 ---
 
-## 11. Billing & Entitlements Foundation
+## 10. Billing & Entitlements Foundation
 
 Billing architecture is provider-neutral from day one.
 
@@ -346,7 +346,7 @@ Payment failure will use grace/suspension policy rather than destructive deletio
 
 ---
 
-## 10. Audit
+## 11. Audit
 
 Human-readable target format:
 
