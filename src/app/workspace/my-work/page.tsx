@@ -116,7 +116,8 @@ export default async function MyWorkPage({searchParams}:{searchParams:Promise<{m
             {row.normalized_content_type?` · normalized ${row.normalized_content_type}`:""}
             {row.original_disposition!=="PENDING"?` · original ${row.original_disposition}`:""}
             {row.processing_error?` · ${row.processing_error}`:""}
-            {row.uploaded_at?` · uploaded ${row.uploaded_at} UTC`:""}
+            {row.uploaded_at?` · uploaded ${row.uploaded_at} UTC`:""}{" "}
+            {row.upload_status==="UPLOADED"?<Link href={`/workspace/evidence/${row.id}?variant=BEST`} target="_blank" rel="noreferrer">View · 60 sec</Link>:null}
            </p>)}
           </div>:null}
 

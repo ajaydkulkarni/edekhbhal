@@ -25,4 +25,7 @@ test("Demo explains planning and execution foundations safely",async({page})=>{
  await expect(page.getByText("EVIDENCE VERIFICATION + NORMALIZATION DEMO")).toBeVisible();
  await expect(page.getByText(/Normal Web\/API runtime cannot claim or complete processing/i)).toBeVisible();
  await expect(page.getByText(/processing claim gets a short lease and claim token/i)).toBeVisible();
+ await expect(page.getByText("EVIDENCE WORKER + AUTHORIZED READS DEMO")).toBeVisible();
+ await expect(page.getByText(/worker capability role is NOLOGIN, non-BYPASSRLS/i)).toBeVisible();
+ await expect(page.getByText(/signed URL, capped at 60 seconds/i)).toBeVisible();
 });
