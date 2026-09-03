@@ -6,14 +6,15 @@
 >
 > **Development rule:** Before every future code change, first read the latest `PROJECT-CONTEXT.md` from `v2-rebuild`, then inspect the current `vNext` implementation. The legacy branch remains a behavioral reference; vNext architecture takes precedence where the clean-slate design deliberately differs.
 
-**Last updated:** 2026-09-03  
-**Primary rebuild branch:** `vNext`  
-**Latest validated vNext functional commit:** `3c360af` — `Add Work Area and QR lifecycle foundation`  
-**Previous validated functional baseline:** `b99b38f` — `Add vNext authentication and guided onboarding foundation`  
-**Validated database foundation:** `0109eb5` — `Establish vNext RLS database foundation`  
-**Legacy behavioral reference branch:** `v2-rebuild`  
-**Legacy validated Web/API E2E:** 46/46 PASS  
-**Legacy Demo focused E2E:** 10/10 PASS  
+**Last updated:** 2026-09-03
+**Primary rebuild branch:** `vNext`
+**Latest validated vNext baseline:** `41af015` — `Harden Work Area QR authorization and idempotency`
+**Work Area + QR functional baseline:** `3c360af` — `Add Work Area and QR lifecycle foundation`
+**Previous validated functional baseline:** `b99b38f` — `Add vNext authentication and guided onboarding foundation`
+**Validated database foundation:** `0109eb5` — `Establish vNext RLS database foundation`
+**Legacy behavioral reference branch:** `v2-rebuild`
+**Legacy validated Web/API E2E:** 46/46 PASS
+**Legacy Demo focused E2E:** 10/10 PASS
 
 ---
 
@@ -249,7 +250,14 @@ Implemented `site` table includes:
 
 RLS + FORCE RLS are enabled.
 
-Current Site policies allow tenant-scoped visibility and controlled ADMIN/SITE_MANAGER writes when a valid tenant context exists.
+Current Site authorization is assignment-aware:
+
+- ADMIN retains Organization-wide Site visibility.
+- SITE_MANAGER sees only explicitly assigned Sites.
+- USER sees only explicitly assigned Sites.
+- Site scope is independent of Site ACTIVE/INACTIVE state for historical visibility.
+- creation of new Work Areas and QR regeneration require an ACTIVE Site.
+- normal multi-Site administration UI remains deferred.
 
 Onboarding creates only the **first Site**. Normal multi-Site administration belongs to the later Site management module.
 
@@ -303,6 +311,27 @@ It does not expose worker contact details, private notes, audit history, members
 Migration `0005_work_area_qr_token_hotfix.sql` replaced the initial `gen_random_bytes` token implementation with two PostgreSQL UUIDv4 values truncated to 48 lowercase hex characters. The base `0004` migration was repaired too, so a clean replay does not reintroduce the defect.
 
 Demo parity includes synthetic Work Area + QR lifecycle behavior and explicitly explains Reprint, Regenerate, public scanning, and the rule that QR identity is not authorization.
+
+### Work Area + QR Hardening 02
+
+Validated hardening commit:
+
+`41af015 Harden Work Area QR authorization and idempotency`
+
+Hardening 02 established:
+
+- assignment-scoped Site visibility for SITE_MANAGER and USER
+- Organization-wide Site visibility retained for ADMIN
+- historical Site and Work Area reads preserved when an assigned Site becomes INACTIVE
+- new Work Area creation blocked when the parent Site is INACTIVE
+- QR regeneration blocked when the parent Site is INACTIVE
+- USER cannot read command idempotency payloads
+- same-key Work Area creation is serialized with transaction-scoped advisory locking
+- same-key QR regeneration is serialized with transaction-scoped advisory locking
+- concurrent callers using the same idempotency key receive the same operation result
+- existing one-active-QR and RLS invariants remain enforced
+
+The hardening migration is `0006_work_area_qr_hardening.sql`.
 
 ---
 
@@ -547,21 +576,29 @@ No frontend universal database credential is permitted.
 
 ## 18. Current Validated Test Baseline
 
-At commit `3c360af`, the validated development run was:
+At commit `41af015`, the validated development run was:
 
 ### Integration
 
 - Database Foundation RLS tests: **13/13 PASS**
 - Auth + Onboarding integration tests: **6/6 PASS**
-- Work Area + QR integration tests: **7/7 PASS**
-- Total integration: **26/26 PASS**
+- Work Area + QR foundation integration tests: **7/7 PASS**
+- Work Area + QR Hardening 02 integration tests: **6/6 PASS**
+- Total integration: **32/32 PASS**
+
+Hardening 02 specifically verifies:
+
+- Site visibility scoping for ADMIN, SITE_MANAGER, and USER
+- historical visibility under an INACTIVE assigned Site
+- blocking new Work Areas under an INACTIVE Site
+- USER denial from command idempotency payloads
+- same-key concurrent Work Area creation
+- same-key concurrent QR regeneration
 
 ### Full Vitest
 
-- Test files: **8/8 PASS**
-- Tests: **37/37 PASS**
-
-Includes Work Area + QR lifecycle, RLS, onboarding, tenant-context, audit-diff, state-machine, foundation-contract, and route-state coverage.
+- Test files: **10/10 PASS**
+- Tests: **46/46 PASS**
 
 ### Build gates
 
@@ -569,8 +606,18 @@ Includes Work Area + QR lifecycle, RLS, onboarding, tenant-context, audit-diff, 
 - ESLint: **PASS**
 - Next.js production build: **PASS**
 
-Additional validated routes:
+Validated routes include:
 
+- `/`
+- `/demo`
+- `/login`
+- `/register`
+- `/auth/callback`
+- `/onboarding/profile`
+- `/onboarding/organization`
+- `/onboarding/plan`
+- `/onboarding/site`
+- `/workspace`
 - `/q/[token]`
 - `/workspace/work-areas`
 - `/workspace/work-areas/[id]/qr`
@@ -667,6 +714,9 @@ Key validated vNext commits:
 - `0109eb5` — Establish vNext RLS database foundation
 - `b99b38f` — Add vNext authentication and guided onboarding foundation
 - `3c360af` — Add Work Area and QR lifecycle foundation
+- `de64847` — Harden Work Area QR foundation
+- `59477e1` — Fix vNext context section numbering
+- `41af015` — Harden Work Area QR authorization and idempotency
 
-`3c360af` is the current locked functional baseline for subsequent vNext development.
+`41af015` is the current locked vNext baseline for subsequent development. Task Master Foundation 01 remains the immediate next functional increment.
 
