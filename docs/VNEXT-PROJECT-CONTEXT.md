@@ -8,7 +8,7 @@
 
 **Last updated:** 2026-09-03
 **Primary rebuild branch:** `vNext`
-**Latest validated vNext baseline:** `c90de368ac8567834d7f3fd735f6dc92c62b9a5c` — `Harden Occurrence Execution security boundary`
+**Latest validated vNext baseline:** `460a5c9e0c51b669dea039a05db76569d69ca8ef` — `Harden Occurrence Task Execution security boundary`
 **Validated database foundation:** `0109eb5`
 **Legacy behavioral reference branch:** `v2-rebuild`
 **Legacy validated Web/API E2E:** 46/46 PASS
@@ -430,6 +430,52 @@ Demo now illustrates:
 
 Demo performs no real claims, scans, tenant writes, evidence capture, or mobile execution.
 
+### Task execution & completion
+
+Functional commit:
+
+`5f05615863f31200957475616f4541c19903ba88` — `Add Occurrence Task Execution and Completion Foundation`
+
+Hardening commit:
+
+`460a5c9e0c51b669dea039a05db76569d69ca8ef` — `Harden Occurrence Task Execution security boundary`
+
+Migrations:
+
+- `0014_occurrence_task_execution_completion.sql`
+- `0015_occurrence_task_execution_idempotency_hardening.sql`
+
+Migrations `0014` and `0015` are already applied to the active vNext database. **Do not reapply them.**
+
+Implemented:
+
+- sequential execution against snapshotted Occurrence Tasks
+- starting an Occurrence starts only the first pending Task
+- completing the current Task server-starts the next pending Task
+- Task start/completion timestamps and actual duration are server authoritative
+- optional Task execution notes, private to authenticated operational surfaces
+- only the assigned active USER membership may execute an IN_PROGRESS Occurrence
+- wrong-sequence completion is blocked
+- completed Tasks remain historical execution records
+- optimistic Task/Occurrence version checks
+- concurrent duplicate completion resolves to one successful state transition
+- Task completion and partial completion are idempotent
+- idempotency keys are bound to the full meaningful request payload, including expected version, normalized notes/reason, and source channel
+- source channel is restricted to WEB/API/MOBILE
+- occurrence status is server-derived from Task outcomes
+- all Tasks completed → `COMPLETED`
+- reasoned early terminal transition after at least one completed Task → `PARTIALLY_COMPLETED`
+- remaining unfinished Tasks become CANCELED on partial completion
+- active-work exclusivity is released only by a valid terminal transition
+- private `schedule_occurrence_evidence` metadata boundary with ENABLE + FORCE RLS
+- runtime direct evidence INSERT/UPDATE/DELETE remains denied
+- evidence-required Task completion fails closed until matching evidence metadata is VERIFIED
+- Task start/completion and Occurrence terminal transitions are audited
+- internal Task audit helper remains non-executable by runtime
+- Demo illustrates sequential execution, explicit Task commands, evidence gating, server-derived completion, history preservation, and mismatched idempotent replay rejection
+
+Production evidence upload, media normalization/transcoding, and verification processing remain deferred.
+
 ---
 
 ## 11. Audit & Outbox
@@ -544,7 +590,7 @@ Platform administration is separate from customer tenant roles. No frontend univ
 
 ## 17. Current Validated Test Baseline
 
-At commit `c90de368ac8567834d7f3fd735f6dc92c62b9a5c`:
+At commit `460a5c9e0c51b669dea039a05db76569d69ca8ef`:
 
 ### Integration
 
@@ -558,12 +604,13 @@ At commit `c90de368ac8567834d7f3fd735f6dc92c62b9a5c`:
 - Occurrence Foundation: **5/5 PASS**
 - Occurrence Execution & Supersession: **7/7 PASS**
 - Occurrence Execution Security Hardening: **12/12 PASS**
-- Total integration: **75/75 PASS**
+- Occurrence Task Execution & Completion + hardening: **14/14 PASS**
+- Total integration: **89/89 PASS**
 
 ### Full Vitest
 
-- Test files: **25/25 PASS**
-- Tests: **116/116 PASS**
+- Test files: **29/29 PASS**
+- Tests: **140/140 PASS**
 
 ### Build gates
 
@@ -591,7 +638,7 @@ Validated routes include:
 ### Playwright
 
 - **3/3 PASS**
-- Demo regression covers planning, My Work / claim / QR-start / supersession, and fail-closed execution-security explanation
+- Demo regression covers planning, My Work / claim / QR-start / supersession, sequential Task execution/completion, evidence gating, and fail-closed idempotency/security explanation
 
 ---
 
@@ -622,31 +669,33 @@ Data/Auth:
 
 Next increment:
 
-**Occurrence Task Execution & Completion Foundation 01**
+**Evidence Capture & Media Pipeline Foundation 01**
 
-Build on the validated claim/start boundary without weakening its tenant, Site, QR, assignment, idempotency, or concurrency guarantees.
+Build on the validated Task evidence gate without weakening tenant, Site, assignment, Task-sequence, idempotency, or history guarantees.
 
 Target foundation:
 
-- sequential execution against snapshotted `schedule_occurrence_task` rows
-- server-authoritative Task start/completion timestamps and actual duration
-- Previous/Next navigation never changes Task state
-- only the active membership holding the IN_PROGRESS Occurrence may execute its Tasks
-- completed Tasks are immutable execution history
-- Task completion idempotency and optimistic/concurrency protection
-- evidence-required Tasks cannot complete until the required evidence contract is satisfied
-- define evidence metadata boundary now, while deferring production media processing/upload pipeline if necessary
-- optional Task notes without exposing private content publicly
-- Occurrence completion derives from Task outcomes rather than client-declared status
-- support COMPLETED and PARTIALLY_COMPLETED according to explicit domain rules
-- server-authoritative Occurrence completion timestamp/duration
-- release active-work exclusivity only through valid terminal transition
-- audit Task start/complete and Occurrence terminal transition
-- preserve historical snapshots despite later Task/Schedule changes
-- Demo parity
-- regression coverage for cross-tenant/Site/assignment, wrong sequence, duplicate completion, and concurrent completion
+- private object-storage-backed evidence flow; no Base64/blob payloads in PostgreSQL
+- server-issued tenant/Occurrence/Task-scoped upload intent
+- only the assigned active USER executing the current IN_PROGRESS Task may initiate evidence capture
+- enforce the snapshotted required evidence type (PHOTO or VIDEO)
+- server-owned evidence metadata creation/finalization; no direct runtime table DML
+- object keys must be tenant-scoped and non-guessable
+- content-type and size validation before accepting upload/finalization
+- SHA-256 metadata and no cross-tenant content deduplication
+- PENDING → VERIFIED/REJECTED verification lifecycle
+- optimized/compressed image output
+- normalized/transcoded video output with poster/thumbnail where practical
+- originals discarded after normalization unless policy/entitlement explicitly retains them
+- idempotent upload/finalization commands and concurrency-safe retries
+- short-lived signed read URLs for authorized operational viewing only
+- public QR transparency must not expose private evidence
+- Task completion remains fail-closed until required evidence is VERIFIED
+- audit evidence initiation/finalization/verification
+- Demo parity using synthetic/read-only evidence states
+- regression coverage for cross-tenant/Site/assignment, wrong Task/type, stale/duplicate finalization, and unauthorized reads
 
-Do not implement claim expiry, priority ranking, reported work, or the full media normalization pipeline as part of this increment unless needed for a safe execution contract.
+Keep mobile scanner/camera UX, claim expiry, priority ranking, and reported work separate unless required to define the API contract safely.
 
 ---
 
@@ -657,9 +706,7 @@ Not yet production-complete:
 - working-hours management UI
 - multi-Site administration UI
 - Site assignment management UI/API
-- Task-by-Task execution/completion workflow
-- occurrence completion / partial completion
-- evidence/media pipeline
+- production evidence/media upload and normalization pipeline
 - rolling background generation worker
 - reported work
 - mobile field application
@@ -691,5 +738,8 @@ Key validated vNext commits:
 - `1f5dbf7` — Add Occurrence Execution and Supersession Foundation
 - `98f2eba` — Update vNext context after Occurrence Execution
 - `c90de36` — Harden Occurrence Execution security boundary
+- `8536cd7` — Update vNext context after Occurrence Execution hardening
+- `5f05615` — Add Occurrence Task Execution and Completion Foundation
+- `460a5c9` — Harden Occurrence Task Execution security boundary
 
-`c90de368ac8567834d7f3fd735f6dc92c62b9a5c` is the current locked validated vNext baseline.
+`460a5c9e0c51b669dea039a05db76569d69ca8ef` is the current locked validated vNext baseline.
