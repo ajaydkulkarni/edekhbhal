@@ -35,3 +35,33 @@ export async function startOccurrence(formData:FormData){
  }catch(e){redirect(`/workspace/my-work?error=${err(e)}`)}
  revalidatePath("/workspace/my-work");revalidatePath("/workspace/occurrences");redirect("/workspace/my-work?message=Work%20started.");
 }
+
+export async function completeOccurrenceTask(formData:FormData){
+ const context=await currentContext();
+ const taskId=z.string().uuid().parse(formData.get("occurrenceTaskId"));
+ const version=z.coerce.number().int().positive().parse(formData.get("expectedVersion"));
+ const notes=z.string().trim().max(4000).optional().catch("").parse(formData.get("notes")||"");
+ const key=z.string().uuid().catch(randomUUID()).parse(formData.get("idempotencyKey")||randomUUID());
+ try{
+  await withTenantContext(context,tx=>tx`
+   select app_private.complete_occurrence_task(${taskId},${version},${notes||null},${key},'WEB')
+  `);
+ }catch(e){redirect(`/workspace/my-work?error=${err(e)}`)}
+ revalidatePath("/workspace/my-work");revalidatePath("/workspace/occurrences");
+ redirect("/workspace/my-work?message=Task%20completed.");
+}
+
+export async function partiallyCompleteOccurrence(formData:FormData){
+ const context=await currentContext();
+ const id=z.string().uuid().parse(formData.get("occurrenceId"));
+ const version=z.coerce.number().int().positive().parse(formData.get("expectedVersion"));
+ const reason=z.string().trim().min(3).max(1000).parse(formData.get("reason"));
+ const key=z.string().uuid().catch(randomUUID()).parse(formData.get("idempotencyKey")||randomUUID());
+ try{
+  await withTenantContext(context,tx=>tx`
+   select app_private.partially_complete_occurrence(${id},${version},${reason},${key},'WEB')
+  `);
+ }catch(e){redirect(`/workspace/my-work?error=${err(e)}`)}
+ revalidatePath("/workspace/my-work");revalidatePath("/workspace/occurrences");
+ redirect("/workspace/my-work?message=Work%20ended%20as%20partially%20completed.");
+}

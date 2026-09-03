@@ -18,14 +18,39 @@ export type MyWorkRow={
  task_count:number;
  evidence_task_count:number;
  rank_bucket:number;
+ version:number;
 };
 
-type Raw=Omit<MyWorkRow,"planned_duration_minutes"|"assigned_to_me"|"task_count"|"evidence_task_count"|"rank_bucket"> & {
+export type OccurrenceTaskRow={
+ id:string;
+ task_name_snapshot:string;
+ task_instructions_snapshot:string;
+ sequence:number;
+ planned_duration_minutes:number;
+ evidence_required:boolean;
+ required_evidence_type:"PHOTO"|"VIDEO"|null;
+ status:"PENDING"|"IN_PROGRESS"|"COMPLETED"|"MISSED"|"CANCELED";
+ started_at:string|null;
+ completed_at:string|null;
+ actual_duration_seconds:number|null;
+ execution_notes:string|null;
+ version:number;
+};
+
+type Raw=Omit<MyWorkRow,"planned_duration_minutes"|"assigned_to_me"|"task_count"|"evidence_task_count"|"rank_bucket"|"version"> & {
  planned_duration_minutes:number|string;
  assigned_to_me:boolean;
  task_count:number|string;
  evidence_task_count:number|string;
  rank_bucket:number|string;
+ version:number|string;
+};
+
+type RawTask=Omit<OccurrenceTaskRow,"sequence"|"planned_duration_minutes"|"actual_duration_seconds"|"version"> & {
+ sequence:number|string;
+ planned_duration_minutes:number|string;
+ actual_duration_seconds:number|string|null;
+ version:number|string;
 };
 
 export async function listMyWork(context:TenantRuntimeContext){
@@ -50,7 +75,8 @@ export async function listMyWork(context:TenantRuntimeContext){
       when o.scheduled_end_utc<now() then 2
       when o.scheduled_start_utc<=now() then 3
       else 4
-    end rank_bucket
+    end rank_bucket,
+    o.version
    from schedule_occurrence o
    where (
      (o.status='IN_PROGRESS' and o.assigned_membership_id=app_private.current_membership_id())
@@ -67,7 +93,30 @@ export async function listMyWork(context:TenantRuntimeContext){
    planned_duration_minutes:Number(r.planned_duration_minutes),
    task_count:Number(r.task_count),
    evidence_task_count:Number(r.evidence_task_count),
-   rank_bucket:Number(r.rank_bucket)
+   rank_bucket:Number(r.rank_bucket),
+   version:Number(r.version)
   })) as MyWorkRow[];
+ });
+}
+
+export async function listOccurrenceTasks(context:TenantRuntimeContext,occurrenceId:string){
+ return withTenantContext(context,async tx=>{
+  const rows=await tx<RawTask[]>`
+   select
+    ot.id,ot.task_name_snapshot,ot.task_instructions_snapshot,ot.sequence,
+    ot.planned_duration_minutes,ot.evidence_required,ot.required_evidence_type,ot.status,
+    case when ot.started_at is null then null else to_char(ot.started_at at time zone 'UTC','YYYY-MM-DD HH24:MI:SS') end started_at,
+    case when ot.completed_at is null then null else to_char(ot.completed_at at time zone 'UTC','YYYY-MM-DD HH24:MI:SS') end completed_at,
+    ot.actual_duration_seconds,ot.execution_notes,ot.version
+   from schedule_occurrence_task ot
+   where ot.occurrence_id=${occurrenceId}
+   order by ot.sequence
+  `;
+  return rows.map(r=>({...r,
+   sequence:Number(r.sequence),
+   planned_duration_minutes:Number(r.planned_duration_minutes),
+   actual_duration_seconds:r.actual_duration_seconds===null?null:Number(r.actual_duration_seconds),
+   version:Number(r.version)
+  })) as OccurrenceTaskRow[];
  });
 }
