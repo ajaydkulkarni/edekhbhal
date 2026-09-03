@@ -90,6 +90,7 @@ describe("Evidence Capture & Media Pipeline Foundation database boundary",()=>{
  afterAll(async()=>{
   if(ids.org){
    await migrator`delete from audit_event where organization_id=${ids.org}`;
+   await migrator`delete from outbox_event where organization_id=${ids.org}`;
    await migrator`delete from operation_idempotency where organization_id=${ids.org}`;
    await migrator`delete from schedule_occurrence_evidence where organization_id=${ids.org}`;
    await migrator`delete from schedule_occurrence_task where organization_id=${ids.org}`;

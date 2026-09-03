@@ -110,8 +110,12 @@ export default async function MyWorkPage({searchParams}:{searchParams:Promise<{m
           {evidence.length>0?<div>
            <strong>Evidence</strong>
            {evidence.map(row=><p className="muted" key={row.id}>
-            {row.evidence_type} · {row.upload_status} · {row.verification_status}
+            {row.evidence_type} · {row.upload_status} · {row.processing_status} · {row.verification_status}
             {row.byte_size!==null?` · ${Math.ceil(row.byte_size/1024)} KB`:""}
+            {row.processing_attempt_count>0?` · processing attempt ${row.processing_attempt_count}`:""}
+            {row.normalized_content_type?` · normalized ${row.normalized_content_type}`:""}
+            {row.original_disposition!=="PENDING"?` · original ${row.original_disposition}`:""}
+            {row.processing_error?` · ${row.processing_error}`:""}
             {row.uploaded_at?` · uploaded ${row.uploaded_at} UTC`:""}
            </p>)}
           </div>:null}

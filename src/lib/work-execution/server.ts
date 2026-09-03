@@ -45,6 +45,12 @@ export type OccurrenceEvidenceRow={
  byte_size:number|null;
  verification_status:"PENDING"|"VERIFIED"|"REJECTED";
  upload_status:"INTENT"|"UPLOADED";
+ processing_status:"NOT_QUEUED"|"QUEUED"|"PROCESSING"|"DONE"|"FAILED";
+ processing_attempt_count:number;
+ processing_error:string|null;
+ normalized_content_type:string|null;
+ normalized_byte_size:number|null;
+ original_disposition:"PENDING"|"RETAIN"|"DELETE_QUEUED"|"DELETED";
  uploaded_at:string|null;
  created_at:string;
  version:number;
@@ -66,8 +72,10 @@ type RawTask=Omit<OccurrenceTaskRow,"sequence"|"planned_duration_minutes"|"actua
  version:number|string;
 };
 
-type RawEvidence=Omit<OccurrenceEvidenceRow,"byte_size"|"version"> & {
+type RawEvidence=Omit<OccurrenceEvidenceRow,"byte_size"|"processing_attempt_count"|"normalized_byte_size"|"version"> & {
  byte_size:number|string|null;
+ processing_attempt_count:number|string;
+ normalized_byte_size:number|string|null;
  version:number|string;
 };
 
@@ -144,7 +152,8 @@ export async function listOccurrenceEvidence(context:TenantRuntimeContext,occurr
   const rows=await tx<RawEvidence[]>`
    select
     e.id,e.occurrence_task_id,e.evidence_type,e.content_type,e.byte_size,
-    e.verification_status,e.upload_status,
+    e.verification_status,e.upload_status,e.processing_status,e.processing_attempt_count,
+    e.processing_error,e.normalized_content_type,e.normalized_byte_size,e.original_disposition,
     case when e.uploaded_at is null then null else to_char(e.uploaded_at at time zone 'UTC','YYYY-MM-DD HH24:MI:SS') end uploaded_at,
     to_char(e.created_at at time zone 'UTC','YYYY-MM-DD HH24:MI:SS') created_at,
     e.version
@@ -154,6 +163,8 @@ export async function listOccurrenceEvidence(context:TenantRuntimeContext,occurr
   `;
   return rows.map(r=>({...r,
    byte_size:r.byte_size===null?null:Number(r.byte_size),
+   processing_attempt_count:Number(r.processing_attempt_count),
+   normalized_byte_size:r.normalized_byte_size===null?null:Number(r.normalized_byte_size),
    version:Number(r.version)
   })) as OccurrenceEvidenceRow[];
  });

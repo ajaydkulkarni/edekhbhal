@@ -37,7 +37,8 @@
     "db:execution:apply": "node scripts/db-apply-occurrence-execution-13.mjs",
     "db:task-execution:apply": "node scripts/db-apply-occurrence-task-execution-14.mjs",
     "db:task-execution:harden": "node scripts/db-apply-occurrence-task-execution-hardening-15.mjs",
-    "db:evidence:apply": "node scripts/db-apply-evidence-capture-16.mjs"
+    "db:evidence:apply": "node scripts/db-apply-evidence-capture-16.mjs",
+    "db:evidence-processing:apply": "node scripts/db-apply-evidence-processing-17.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "0.12.5",
