@@ -8,7 +8,7 @@
 
 **Last updated:** 2026-09-03
 **Primary rebuild branch:** `vNext`
-**Latest validated vNext baseline:** `a6d01d1021d207d10ee5aa55ad9cec730531888c` — `Add Occurrence Foundation`
+**Latest validated vNext baseline:** `1f5dbf76cad550bf20e56da60033ab8b8a03702e` — `Add Occurrence Execution and Supersession Foundation`
 **Validated database foundation:** `0109eb5`
 **Legacy behavioral reference branch:** `v2-rebuild`
 **Legacy validated Web/API E2E:** 46/46 PASS
@@ -81,7 +81,7 @@ Open work may be claimed by an eligible USER without manager approval. Assigned-
 
 Active-work exclusivity is per **Organization Membership**, not globally per User.
 
-QR never grants authorization. The server must independently validate membership, Site/resource scope, work eligibility, assignment, and active-work conflict.
+QR never grants authorization. The server independently validates membership, Site/resource scope, work eligibility, assignment, active-work conflict, and exact active Work Area QR when QR start is required.
 
 ---
 
@@ -173,7 +173,7 @@ QR lifecycle:
 
 Public QR transparency may expose safe Organization/Site/Work Area/service information only. Never expose private notes, audit, memberships, worker contact, or private evidence.
 
-Working-hours inheritance is now implemented by Occurrence Foundation:
+Working-hours inheritance:
 
 `Work Area override → Site override → Organization default`
 
@@ -216,7 +216,7 @@ Implemented:
 
 Current SITE_MANAGER rule: Task management is permitted when the membership has at least one Site scope in the Organization. There is no Task→Site ownership relation. Do not silently redesign Tasks as Site-scoped.
 
-Occurrence Foundation closed the deferred tenant-safe composite attachment FK:
+Occurrence Foundation closed the tenant-safe composite attachment FK:
 
 `task_attachment(organization_id, task_id) → task_master(organization_id, id)`
 
@@ -261,7 +261,7 @@ Implemented:
 - evidence rules NONE / PHOTO / VIDEO / RANDOM
 - deterministic RANDOM 1-in-N configuration
 
-Schedule create/edit/status actions now reconcile the normal **48-hour** occurrence horizon.
+Schedule create/edit/status actions reconcile the normal **48-hour** occurrence horizon.
 
 Runtime direct DML remains revoked from Task/Schedule command-owned tables.
 
@@ -279,21 +279,18 @@ Migrations:
 - `0011_occurrence_id_ambiguity_hotfix.sql`
 - `0012_working_hours_validator_privilege_hotfix.sql`
 
-`0011` and `0012` are already applied to the active vNext database. Do not reapply `0010`, `0011`, or `0012`.
+Migrations `0010`, `0011`, and `0012` are already applied to the active vNext database. Do not reapply them.
 
 Execution planning model:
 
 `Schedule → Schedule Occurrence → Schedule Occurrence Task`
 
-Implemented Occurrence snapshot data includes:
+Implemented:
 
 - explicit Organization / Site / Work Area / Schedule references
-- uniqueness by Schedule + scheduled UTC start
-- `scheduled_start_utc` / `scheduled_end_utc` as server-authoritative `timestamptz`
-- timezone snapshot
-- local date snapshot
-- local time snapshot
-- UTC offset snapshot
+- unique Schedule + scheduled UTC start
+- server-authoritative UTC start/end snapshots
+- timezone/local-date/local-time/UTC-offset snapshots
 - Organization/Site/Work Area/Schedule display snapshots
 - Work Area description/location snapshots
 - Schedule version snapshot
@@ -301,18 +298,14 @@ Implemented Occurrence snapshot data includes:
 - total planned duration
 - effective working-hours JSON + source snapshot
 - `supersede_unstarted` snapshot
-- status/version/timestamps needed for later execution
-
-Occurrence Task snapshots include:
-
-- Task identity
-- Task name
-- Task instruction source
-- sequence
-- planned duration/start/end offsets
-- evidence rule/config
+- Task identity/name/instruction/sequence/duration/offset/evidence snapshots
 - deterministic evidence-required decision at generation
-- task execution status/timestamp fields prepared for later execution
+- RLS + FORCE RLS
+- runtime SELECT only; no direct runtime occurrence DML
+- bounded reconciliation, maximum 7-day requested horizon
+- normal application reconciliation horizon 48 hours
+- future unstarted PENDING reconciliation only
+- IN_PROGRESS/completed/history not rewritten
 
 ### Effective working hours
 
@@ -320,37 +313,18 @@ Implemented inheritance:
 
 `Work Area override → Site override → Organization default`
 
-Working-hours JSON is validated by database CHECK constraints.
-
-Organization receives a validated explicit 24×7 default unless changed by future management UI/configuration.
-
 A Schedule occurrence is generated only when its entire planned local wall-clock span fits the effective open window.
 
-### Time/DST behavior
+### Time/DST
 
-Generation is local-intent-driven and produces concrete UTC instants.
+Validated:
 
-Validated behavior:
-
-- nonexistent DST-gap local times are skipped rather than silently shifted
-- ambiguous DST-overlap local times use PostgreSQL canonical timezone resolution
+- nonexistent DST-gap local times are skipped
+- ambiguous overlap uses PostgreSQL canonical timezone resolution
 - selected UTC offset is snapshotted
-- historical Occurrence timestamps never shift later
-- Jan 31 and Feb 29 Schedule behavior remains covered
+- historical Occurrence timestamps never shift
+- Jan 31 / Feb 29 behavior covered
 - device clock is never authoritative
-
-### Reconciliation
-
-- correctness-first bounded generator
-- maximum requested horizon currently 7 days
-- normal Schedule action hook reconciles 48 hours
-- future unstarted PENDING rows may reconcile
-- IN_PROGRESS/completed/history are not rewritten
-- stale unstarted PENDING rows are soft-canceled with reconciliation reason
-- unique constraints + command boundary provide idempotency/concurrency groundwork
-- runtime receives SELECT on Occurrence tables, not direct DML
-- reconciliation writes cross a constrained SECURITY DEFINER command
-- Site/resource visibility remains RLS scoped
 
 ### UI / Demo
 
@@ -359,13 +333,82 @@ Implemented:
 - `/workspace/occurrences`
 - Workspace Occurrence metric/navigation
 - read-only generated planning view
-- Demo Occurrence parity explaining snapshots, DST, working-hours enforcement, and execution boundary
-
-Full claim/start/evidence/mobile execution is intentionally not part of Occurrence Foundation 01.
+- Demo Occurrence parity
 
 ---
 
-## 10. Audit & Outbox
+## 10. Occurrence Execution & Supersession Foundation 01
+
+Validated commit:
+
+`1f5dbf76cad550bf20e56da60033ab8b8a03702e` — `Add Occurrence Execution and Supersession Foundation`
+
+Migration:
+
+- `0013_occurrence_execution_supersession.sql`
+
+Migration `0013` is already applied to the active vNext database. **Do not reapply it.**
+
+Implemented execution boundary:
+
+- `/workspace/my-work`
+- USER-only claim/start command boundary
+- management roles retain Site-scoped planning/history reads
+- USER occurrence reads limited to open executable work or that membership's assigned work
+- server-ranked My Work queue
+- open work claim without manager approval
+- assigned-to-another-user work blocked
+- pre-assigned-but-unclaimed compatibility
+- idempotent claim
+- transaction locking/advisory locking around claim
+- one actively claimed or IN_PROGRESS occurrence per Organization Membership
+- database unique partial index backs active-work exclusivity
+- server-authoritative occurrence start
+- exact ACTIVE QR token must match the Occurrence Work Area
+- Site, Work Area, and Schedule must remain ACTIVE at start
+- QR never supplies authorization
+- first pending Occurrence Task moves to IN_PROGRESS on start
+- claim/start remain behind SECURITY DEFINER commands
+- runtime direct Occurrence/Occurrence Task UPDATE remains revoked
+
+### Latest-due-wins supersession
+
+For Occurrences whose snapshot has `supersede_unstarted=true`:
+
+- latest due PENDING occurrence wins
+- older due unstarted PENDING occurrences become MISSED
+- older claimed-but-unstarted PENDING occurrence may be released and become MISSED
+- corresponding PENDING Occurrence Tasks become MISSED
+- `missed_at` and `SUPERSEDED_BY_LATER_DUE` reason are stored
+- IN_PROGRESS/completed/partial/missed/canceled history is not rewritten
+- supersession executes before My Work reads and before claim/start commands
+- internal supersession helper is not runtime executable
+
+### Audit
+
+Validated audit actions:
+
+- `OCCURRENCE_CLAIMED`
+- `OCCURRENCE_STARTED`
+- `OCCURRENCE_SUPERSEDED`
+
+### Demo
+
+Demo now illustrates:
+
+- My Work
+- open claim
+- one active work item per Organization Membership
+- QR location validation
+- server-authoritative start
+- latest-due-wins supersession
+- preserved execution history
+
+Demo performs no real claims, scans, tenant writes, evidence capture, or mobile execution.
+
+---
+
+## 11. Audit & Outbox
 
 Human-readable audit target:
 
@@ -373,23 +416,21 @@ Human-readable audit target:
 
 Machine audit preserves Organization, actor User/Membership, actor-name snapshot, module/action, entity, old/new JSON, source, correlation/request metadata, IP, and reason where applicable.
 
-Validated operational audit actions include Organization/onboarding, Work Area/QR, Task, and Schedule mutations.
+Validated operational audit includes onboarding, Work Area/QR, Task, Schedule, occurrence claim/start, and supersession.
 
-Future assignment/claim/start/complete/supersession actions must also be audited.
+Audit remains append-only for runtime.
 
 ---
 
-## 11. Demo Workspace Rule — Mandatory
+## 12. Demo Workspace Rule — Mandatory
 
 Every applicable real Organization Workspace addition/change automatically receives a Demo equivalent.
 
 Demo is synthetic, read-only or safely simulated, educational, and never a path to real tenant writes, billing, destructive operations, evidence capture, or mobile execution.
 
-Current Demo illustrates onboarding, Work Area/QR lifecycle, Task masters, Schedule composition, recurrence/local-time intent, evidence semantics, and Occurrence snapshot/time/working-hours behavior.
-
 ---
 
-## 12. Time Rules
+## 13. Time Rules
 
 System/execution timestamps:
 
@@ -405,7 +446,7 @@ Timezone resolution:
 
 Historical values never shift after later timezone changes.
 
-Mandatory continuing time regression areas:
+Continuing regression areas:
 
 - DST gaps
 - DST overlaps
@@ -418,20 +459,20 @@ Mandatory continuing time regression areas:
 
 ---
 
-## 13. Mobile & Work Execution Rules
+## 14. Mobile & Work Execution Rules
 
-Mobile implementation follows after Schedule/Occurrence/QR backend execution contracts stabilize.
+Mobile implementation follows after Schedule/Occurrence/QR execution contracts stabilize.
 
-Server-ranked My Work order:
+Canonical My Work ranking:
 
-1. assigned to me
+1. assigned to me / active assigned work
 2. overdue
 3. due now
 4. closest upcoming
-5. priority
+5. priority when introduced
 6. deterministic tie-break
 
-A USER may scan any nearby Work Area QR, but the server must independently validate:
+A USER may scan a Work Area QR, but the server independently validates:
 
 - QR validity
 - active membership
@@ -439,14 +480,15 @@ A USER may scan any nearby Work Area QR, but the server must independently valid
 - work eligibility
 - assignment
 - active-work conflict
+- Schedule/Site/Work Area lifecycle compatibility
 
-Claim/start must use transaction locking/constraints and idempotency.
+Claim/start use locking/constraints and idempotency.
 
 Previous/Next navigation must never change Task state.
 
 ---
 
-## 14. Evidence & Storage Rules
+## 15. Evidence & Storage Rules
 
 Future evidence architecture:
 
@@ -464,7 +506,7 @@ Original media is discarded after normalization unless policy/entitlement explic
 
 ---
 
-## 15. Billing & Platform Control Plane
+## 16. Billing & Platform Control Plane
 
 Billing remains provider-neutral.
 
@@ -476,9 +518,9 @@ Platform administration is separate from customer tenant roles. No frontend univ
 
 ---
 
-## 16. Current Validated Test Baseline
+## 17. Current Validated Test Baseline
 
-At commit `a6d01d1021d207d10ee5aa55ad9cec730531888c`:
+At commit `1f5dbf76cad550bf20e56da60033ab8b8a03702e`:
 
 ### Integration
 
@@ -490,12 +532,13 @@ At commit `a6d01d1021d207d10ee5aa55ad9cec730531888c`:
 - Schedule Master Foundation: **8/8 PASS**
 - Task/Schedule command-boundary hardening: **3/3 PASS**
 - Occurrence Foundation: **5/5 PASS**
-- Total integration: **56/56 PASS**
+- Occurrence Execution & Supersession: **7/7 PASS**
+- Total integration: **63/63 PASS**
 
 ### Full Vitest
 
-- Test files: **21/21 PASS**
-- Tests: **89/89 PASS**
+- Test files: **23/23 PASS**
+- Tests: **100/100 PASS**
 
 ### Build gates
 
@@ -512,6 +555,7 @@ Validated routes include:
 - `/auth/callback`
 - onboarding routes
 - `/workspace`
+- `/workspace/my-work`
 - `/workspace/tasks`
 - `/workspace/schedules`
 - `/workspace/occurrences`
@@ -522,11 +566,11 @@ Validated routes include:
 ### Playwright
 
 - **3/3 PASS**
-- Demo regression includes Work Area QR + Task + Schedule + Occurrence behavior
+- Demo regression covers planning plus My Work / claim / QR-start / supersession explanation
 
 ---
 
-## 17. Current Technology Baseline
+## 18. Current Technology Baseline
 
 Application:
 
@@ -549,55 +593,54 @@ Data/Auth:
 
 ---
 
-## 18. Immediate Next Development Target
+## 19. Immediate Next Development Target
 
-Next functional increment:
+Next increment:
 
-**Occurrence Execution & Supersession Foundation 01**
+**Occurrence Execution Security Hardening 01**
 
-Before implementation, re-read the legacy My Work / claim / QR-start / latest-due-wins behavior and inspect the committed Occurrence/QR/membership/RLS contracts.
+Before extending into completion/evidence, close the execution command boundary with focused negative/concurrency coverage.
 
-Target backend contracts:
+Target hardening:
 
-- server-ranked My Work query
-- open-work claim by eligible USER without manager approval
-- optional pre-assignment compatibility
-- transaction-safe claim using row locking + idempotency
-- active-work exclusivity per Organization Membership
-- assignment/scope validation
-- server-authoritative start
-- QR validation as a location/resource check, never authorization
-- Schedule/Occurrence/Work Area compatibility validation at start
-- “latest due occurrence wins” supersession for `supersede_unstarted=true`
-- older unstarted PENDING may become MISSED
-- claimed-but-unstarted may be released and MISSED when superseded
-- corresponding Occurrence Tasks become MISSED
-- IN_PROGRESS/completed/history never rewritten
-- miss reason/time snapshots
-- audit events for claim/release/start/supersession
-- deterministic idempotency + concurrency tests
-- Demo parity
-- API/service contracts suitable for the future mobile app
+- no-context claim/start/supersession fails closed
+- cross-Organization claim/start fails closed
+- cross-Site scoped USER cannot claim/start
+- ADMIN/SITE_MANAGER cannot execute USER claim/start commands
+- direct runtime Occurrence/Occurrence Task UPDATE remains denied
+- internal execution/supersession helpers remain non-executable by runtime
+- assigned-to-another-user behavior covered independently of RLS visibility
+- same idempotency key used for different occurrence is rejected
+- concurrent same-occurrence claims resolve deterministically to one membership
+- concurrent different-occurrence claims for one membership preserve active-work exclusivity
+- revoked/old QR fails start
+- QR from another Work Area fails start
+- inactive Site/Work Area/Schedule blocks start
+- supersession affects only same Schedule/Organization and only due unstarted PENDING rows
+- `supersede_unstarted=false` remains untouched
+- claimed-but-unstarted supersession releases assignment; IN_PROGRESS is never released
+- audit actor/membership/org attribution verified
+- Demo remains educationally aligned where applicable
 
-Do not yet implement media upload/evidence processing or full mobile UI unless explicitly expanded.
-
-A rolling background reconciler/worker may be introduced with this increment or as a separate hardening increment, but it must preserve the validated 48-hour generation semantics and must not use a universal BYPASSRLS credential.
+After that hardening passes, proceed to **Occurrence Task Execution & Completion Foundation 01**.
 
 ---
 
-## 19. Important Deferred Items
+## 20. Important Deferred Items
 
 Not yet production-complete:
 
 - working-hours management UI
 - multi-Site administration UI
 - Site assignment management UI/API
-- Occurrence assignment/claim/start/complete workflow
-- smart supersession execution
-- rolling background generation worker
+- Task-by-Task execution/completion workflow
+- occurrence completion / partial completion
 - evidence/media pipeline
+- rolling background generation worker
 - reported work
 - mobile field application
+- claim expiry policy/configuration
+- priority field/ranking
 - Stripe adapter
 - Razorpay adapter
 - platform control plane
@@ -607,7 +650,7 @@ Not yet production-complete:
 
 ---
 
-## 20. Baseline Commit Chain
+## 21. Baseline Commit Chain
 
 Key validated vNext commits:
 
@@ -620,5 +663,7 @@ Key validated vNext commits:
 - `c832ce1` — Add Schedule Master and harden Task Schedule command boundary
 - `d61a105` — Update vNext context after Schedule hardening
 - `a6d01d1` — Add Occurrence Foundation
+- `72ea0dc` — Update vNext context after Occurrence Foundation
+- `1f5dbf7` — Add Occurrence Execution and Supersession Foundation
 
-`a6d01d1021d207d10ee5aa55ad9cec730531888c` is the current locked validated vNext functional baseline.
+`1f5dbf76cad550bf20e56da60033ab8b8a03702e` is the current locked validated vNext functional baseline.
