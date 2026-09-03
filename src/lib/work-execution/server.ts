@@ -37,6 +37,19 @@ export type OccurrenceTaskRow={
  version:number;
 };
 
+export type OccurrenceEvidenceRow={
+ id:string;
+ occurrence_task_id:string;
+ evidence_type:"PHOTO"|"VIDEO";
+ content_type:string|null;
+ byte_size:number|null;
+ verification_status:"PENDING"|"VERIFIED"|"REJECTED";
+ upload_status:"INTENT"|"UPLOADED";
+ uploaded_at:string|null;
+ created_at:string;
+ version:number;
+};
+
 type Raw=Omit<MyWorkRow,"planned_duration_minutes"|"assigned_to_me"|"task_count"|"evidence_task_count"|"rank_bucket"|"version"> & {
  planned_duration_minutes:number|string;
  assigned_to_me:boolean;
@@ -50,6 +63,11 @@ type RawTask=Omit<OccurrenceTaskRow,"sequence"|"planned_duration_minutes"|"actua
  sequence:number|string;
  planned_duration_minutes:number|string;
  actual_duration_seconds:number|string|null;
+ version:number|string;
+};
+
+type RawEvidence=Omit<OccurrenceEvidenceRow,"byte_size"|"version"> & {
+ byte_size:number|string|null;
  version:number|string;
 };
 
@@ -118,5 +136,25 @@ export async function listOccurrenceTasks(context:TenantRuntimeContext,occurrenc
    actual_duration_seconds:r.actual_duration_seconds===null?null:Number(r.actual_duration_seconds),
    version:Number(r.version)
   })) as OccurrenceTaskRow[];
+ });
+}
+
+export async function listOccurrenceEvidence(context:TenantRuntimeContext,occurrenceId:string){
+ return withTenantContext(context,async tx=>{
+  const rows=await tx<RawEvidence[]>`
+   select
+    e.id,e.occurrence_task_id,e.evidence_type,e.content_type,e.byte_size,
+    e.verification_status,e.upload_status,
+    case when e.uploaded_at is null then null else to_char(e.uploaded_at at time zone 'UTC','YYYY-MM-DD HH24:MI:SS') end uploaded_at,
+    to_char(e.created_at at time zone 'UTC','YYYY-MM-DD HH24:MI:SS') created_at,
+    e.version
+   from schedule_occurrence_evidence e
+   where e.occurrence_id=${occurrenceId}
+   order by e.created_at,e.id
+  `;
+  return rows.map(r=>({...r,
+   byte_size:r.byte_size===null?null:Number(r.byte_size),
+   version:Number(r.version)
+  })) as OccurrenceEvidenceRow[];
  });
 }

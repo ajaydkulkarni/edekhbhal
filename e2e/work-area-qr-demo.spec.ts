@@ -18,4 +18,7 @@ test("Demo explains planning and execution foundations safely",async({page})=>{
  await expect(page.getByText("TASK EXECUTION + COMPLETION DEMO")).toBeVisible();
  await expect(page.getByText(/Viewing Previous or Next Task content never/i)).toBeVisible();
  await expect(page.getByText(/evidence-required Task cannot complete until matching evidence metadata is VERIFIED/i)).toBeVisible();
+ await expect(page.getByText("EVIDENCE CAPTURE FOUNDATION DEMO")).toBeVisible();
+ await expect(page.getByText(/Successful upload records SHA-256 metadata but remains PENDING/i)).toBeVisible();
+ await expect(page.getByText(/Public QR never exposes evidence/i)).toBeVisible();
 });

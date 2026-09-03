@@ -65,3 +65,68 @@ export async function partiallyCompleteOccurrence(formData:FormData){
  revalidatePath("/workspace/my-work");revalidatePath("/workspace/occurrences");
  redirect("/workspace/my-work?message=Work%20ended%20as%20partially%20completed.");
 }
+
+const evidenceIntentSchema=z.object({
+ occurrenceTaskId:z.string().uuid(),
+ expectedTaskVersion:z.number().int().positive(),
+ evidenceType:z.enum(["PHOTO","VIDEO"]),
+ originalFilename:z.string().trim().min(1).max(255),
+ contentType:z.string().trim().min(1).max(100),
+ byteSize:z.number().int().positive().max(209715200),
+ idempotencyKey:z.string().uuid(),
+});
+
+export async function createEvidenceUploadIntent(input:z.infer<typeof evidenceIntentSchema>){
+ const context=await currentContext();
+ const p=evidenceIntentSchema.parse(input);
+ const rows=await withTenantContext(context,tx=>tx<{
+  result_evidence_id:string;
+  result_storage_bucket:string;
+  result_object_key:string;
+  result_upload_expires_at:string;
+  result_version:number|string;
+ }[]>`
+  select * from app_private.create_evidence_upload_intent(
+   ${p.occurrenceTaskId},
+   ${p.expectedTaskVersion},
+   ${p.evidenceType}::schedule_random_evidence_type,
+   ${p.originalFilename},
+   ${p.contentType},
+   ${p.byteSize},
+   ${p.idempotencyKey},
+   'WEB'
+  )
+ `);
+ const row=rows[0];
+ if(!row)throw new Error("Evidence upload intent was not created.");
+ return{
+  evidenceId:row.result_evidence_id,
+  storageBucket:row.result_storage_bucket,
+  objectKey:row.result_object_key,
+  uploadExpiresAt:String(row.result_upload_expires_at),
+  version:Number(row.result_version),
+ };
+}
+
+const evidenceFinalizeSchema=z.object({
+ evidenceId:z.string().uuid(),
+ expectedVersion:z.number().int().positive(),
+ sha256Hex:z.string().regex(/^[0-9a-fA-F]{64}$/),
+ idempotencyKey:z.string().uuid(),
+});
+
+export async function finalizeEvidenceUpload(input:z.infer<typeof evidenceFinalizeSchema>){
+ const context=await currentContext();
+ const p=evidenceFinalizeSchema.parse(input);
+ await withTenantContext(context,tx=>tx`
+  select app_private.finalize_evidence_upload(
+   ${p.evidenceId},
+   ${p.expectedVersion},
+   ${p.sha256Hex.toLowerCase()},
+   ${p.idempotencyKey},
+   'WEB'
+  )
+ `);
+ revalidatePath("/workspace/my-work");
+ return{evidenceId:p.evidenceId,uploadStatus:"UPLOADED" as const,verificationStatus:"PENDING" as const};
+}
