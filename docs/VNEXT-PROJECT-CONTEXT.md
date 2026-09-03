@@ -8,7 +8,7 @@
 
 **Last updated:** 2026-09-03
 **Primary rebuild branch:** `vNext`
-**Latest validated vNext baseline:** `1f5dbf76cad550bf20e56da60033ab8b8a03702e` — `Add Occurrence Execution and Supersession Foundation`
+**Latest validated vNext baseline:** `c90de368ac8567834d7f3fd735f6dc92c62b9a5c` — `Harden Occurrence Execution security boundary`
 **Validated database foundation:** `0109eb5`
 **Legacy behavioral reference branch:** `v2-rebuild`
 **Legacy validated Web/API E2E:** 46/46 PASS
@@ -392,6 +392,29 @@ Validated audit actions:
 - `OCCURRENCE_STARTED`
 - `OCCURRENCE_SUPERSEDED`
 
+### Security hardening
+
+Validated at `c90de368ac8567834d7f3fd735f6dc92c62b9a5c`:
+
+- no-context claim/start/supersession fails closed
+- cross-Organization execution attempts fail closed
+- cross-Site scoped USER claim is denied
+- ADMIN/SITE_MANAGER cannot invoke USER claim/start commands
+- direct runtime Occurrence/Occurrence Task UPDATE remains denied
+- internal execution/supersession helpers remain non-executable by runtime
+- assigned-to-another-user claim is denied inside the SECURITY DEFINER boundary
+- idempotency-key reuse for a different occurrence is rejected
+- concurrent same-occurrence claims deterministically leave one winner
+- concurrent different-occurrence claims for one membership preserve active-work exclusivity
+- revoked QR and another Work Area QR fail start
+- inactive Work Area or Schedule blocks start after claim
+- supersession stays within the same enabled Schedule and due unstarted PENDING rows
+- `supersede_unstarted=false` remains untouched
+- claimed-but-unstarted supersession releases assignment
+- IN_PROGRESS work is never released by supersession
+- audit Organization/User/Membership attribution is verified
+- no follow-up database migration was required; `0013` remains the latest applied migration
+
 ### Demo
 
 Demo now illustrates:
@@ -403,6 +426,7 @@ Demo now illustrates:
 - server-authoritative start
 - latest-due-wins supersession
 - preserved execution history
+- fail-closed security behavior for wrong Site, stale QR, cross-tenant work, and conflicting concurrent claims
 
 Demo performs no real claims, scans, tenant writes, evidence capture, or mobile execution.
 
@@ -520,7 +544,7 @@ Platform administration is separate from customer tenant roles. No frontend univ
 
 ## 17. Current Validated Test Baseline
 
-At commit `1f5dbf76cad550bf20e56da60033ab8b8a03702e`:
+At commit `c90de368ac8567834d7f3fd735f6dc92c62b9a5c`:
 
 ### Integration
 
@@ -533,12 +557,13 @@ At commit `1f5dbf76cad550bf20e56da60033ab8b8a03702e`:
 - Task/Schedule command-boundary hardening: **3/3 PASS**
 - Occurrence Foundation: **5/5 PASS**
 - Occurrence Execution & Supersession: **7/7 PASS**
-- Total integration: **63/63 PASS**
+- Occurrence Execution Security Hardening: **12/12 PASS**
+- Total integration: **75/75 PASS**
 
 ### Full Vitest
 
-- Test files: **23/23 PASS**
-- Tests: **100/100 PASS**
+- Test files: **25/25 PASS**
+- Tests: **116/116 PASS**
 
 ### Build gates
 
@@ -566,7 +591,7 @@ Validated routes include:
 ### Playwright
 
 - **3/3 PASS**
-- Demo regression covers planning plus My Work / claim / QR-start / supersession explanation
+- Demo regression covers planning, My Work / claim / QR-start / supersession, and fail-closed execution-security explanation
 
 ---
 
@@ -597,32 +622,31 @@ Data/Auth:
 
 Next increment:
 
-**Occurrence Execution Security Hardening 01**
+**Occurrence Task Execution & Completion Foundation 01**
 
-Before extending into completion/evidence, close the execution command boundary with focused negative/concurrency coverage.
+Build on the validated claim/start boundary without weakening its tenant, Site, QR, assignment, idempotency, or concurrency guarantees.
 
-Target hardening:
+Target foundation:
 
-- no-context claim/start/supersession fails closed
-- cross-Organization claim/start fails closed
-- cross-Site scoped USER cannot claim/start
-- ADMIN/SITE_MANAGER cannot execute USER claim/start commands
-- direct runtime Occurrence/Occurrence Task UPDATE remains denied
-- internal execution/supersession helpers remain non-executable by runtime
-- assigned-to-another-user behavior covered independently of RLS visibility
-- same idempotency key used for different occurrence is rejected
-- concurrent same-occurrence claims resolve deterministically to one membership
-- concurrent different-occurrence claims for one membership preserve active-work exclusivity
-- revoked/old QR fails start
-- QR from another Work Area fails start
-- inactive Site/Work Area/Schedule blocks start
-- supersession affects only same Schedule/Organization and only due unstarted PENDING rows
-- `supersede_unstarted=false` remains untouched
-- claimed-but-unstarted supersession releases assignment; IN_PROGRESS is never released
-- audit actor/membership/org attribution verified
-- Demo remains educationally aligned where applicable
+- sequential execution against snapshotted `schedule_occurrence_task` rows
+- server-authoritative Task start/completion timestamps and actual duration
+- Previous/Next navigation never changes Task state
+- only the active membership holding the IN_PROGRESS Occurrence may execute its Tasks
+- completed Tasks are immutable execution history
+- Task completion idempotency and optimistic/concurrency protection
+- evidence-required Tasks cannot complete until the required evidence contract is satisfied
+- define evidence metadata boundary now, while deferring production media processing/upload pipeline if necessary
+- optional Task notes without exposing private content publicly
+- Occurrence completion derives from Task outcomes rather than client-declared status
+- support COMPLETED and PARTIALLY_COMPLETED according to explicit domain rules
+- server-authoritative Occurrence completion timestamp/duration
+- release active-work exclusivity only through valid terminal transition
+- audit Task start/complete and Occurrence terminal transition
+- preserve historical snapshots despite later Task/Schedule changes
+- Demo parity
+- regression coverage for cross-tenant/Site/assignment, wrong sequence, duplicate completion, and concurrent completion
 
-After that hardening passes, proceed to **Occurrence Task Execution & Completion Foundation 01**.
+Do not implement claim expiry, priority ranking, reported work, or the full media normalization pipeline as part of this increment unless needed for a safe execution contract.
 
 ---
 
@@ -665,5 +689,7 @@ Key validated vNext commits:
 - `a6d01d1` — Add Occurrence Foundation
 - `72ea0dc` — Update vNext context after Occurrence Foundation
 - `1f5dbf7` — Add Occurrence Execution and Supersession Foundation
+- `98f2eba` — Update vNext context after Occurrence Execution
+- `c90de36` — Harden Occurrence Execution security boundary
 
-`1f5dbf76cad550bf20e56da60033ab8b8a03702e` is the current locked validated vNext functional baseline.
+`c90de368ac8567834d7f3fd735f6dc92c62b9a5c` is the current locked validated vNext baseline.
