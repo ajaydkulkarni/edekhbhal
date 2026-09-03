@@ -21,14 +21,19 @@ describe("Work Area + QR hardening contract", () => {
     expect(page).not.toContain('<div className="qrBrand">Operations Platform</div>');
   });
 
-  it("keeps the continuity document section numbering aligned", () => {
+  it("tracks the current concise continuity structure without stale section-number assumptions", () => {
     const context = fs.readFileSync("docs/VNEXT-PROJECT-CONTEXT.md", "utf8");
-    expect(context).toContain("## 11. Billing & Entitlements Foundation");
-    expect(context).toContain("## 12. Audit");
-    expect(context.indexOf("## 11. Billing & Entitlements Foundation")).toBeLessThan(
-      context.indexOf("## 12. Audit"),
-    );
-    expect(context).toContain("## 23. Baseline Commit Chain");
-    expect(context).not.toContain("## 22. Baseline Commit Chain");
+    const workArea = context.indexOf("## 6. Work Area + QR Lifecycle");
+    const audit = context.indexOf("## 10. Audit & Outbox");
+    const demo = context.indexOf("## 11. Demo Workspace Rule — Mandatory");
+    const baseline = context.indexOf("## 20. Baseline Commit Chain");
+
+    expect(workArea).toBeGreaterThanOrEqual(0);
+    expect(audit).toBeGreaterThan(workArea);
+    expect(demo).toBeGreaterThan(audit);
+    expect(baseline).toBeGreaterThan(demo);
+
+    expect(context).toContain("QR identity never grants application authorization");
+    expect(context).not.toContain("## 11. Billing & Entitlements Foundation");
   });
 });

@@ -43,35 +43,49 @@ function parse(formData:FormData){
 }
 const errorText=(e:unknown)=>encodeURIComponent(e instanceof Error?e.message:"Schedule operation failed.");
 
+async function reconcile48h(tx:any,scheduleId:string){
+ await tx`select app_private.reconcile_schedule_occurrences(${scheduleId},now(),now()+interval '48 hours')`;
+}
+
 export async function createSchedule(formData:FormData){
  const context=await currentContext();
  try{
   const i=parse(formData),key=i.idempotencyKey??randomUUID();
-  await withTenantContext(context,tx=>tx`select app_private.create_schedule_master(
-   ${i.workAreaId},${i.name},${i.documentReference},${i.documentRevision},${i.frequencyType}::schedule_frequency_type,
-   ${i.recurrence.recurrenceUnit}::schedule_recurrence_unit,${i.recurrence.recurrenceInterval},
-   ${i.recurrence.recurrenceConfig?tx.json(i.recurrence.recurrenceConfig):null},
-   ${i.localDate}::date,${i.localTime}::time,${i.recurrence.endLocalDate}::date,${tx.json(i.tasks)},${key})`);
+  await withTenantContext(context,async tx=>{
+   const rows=await tx<{id:string}[]>`select app_private.create_schedule_master(
+    ${i.workAreaId},${i.name},${i.documentReference},${i.documentRevision},${i.frequencyType}::schedule_frequency_type,
+    ${i.recurrence.recurrenceUnit}::schedule_recurrence_unit,${i.recurrence.recurrenceInterval},
+    ${i.recurrence.recurrenceConfig?tx.json(i.recurrence.recurrenceConfig):null},
+    ${i.localDate}::date,${i.localTime}::time,${i.recurrence.endLocalDate}::date,${tx.json(i.tasks)},${key}) id`;
+   await reconcile48h(tx,rows[0].id);
+  });
  }catch(e){redirect(`/workspace/schedules?error=${errorText(e)}`)}
- revalidatePath("/workspace/schedules");revalidatePath("/workspace");redirect("/workspace/schedules?message=Schedule%20created.");
+ revalidatePath("/workspace/schedules");revalidatePath("/workspace/occurrences");revalidatePath("/workspace");redirect("/workspace/schedules?message=Schedule%20created.");
 }
 
 export async function updateSchedule(formData:FormData){
  const context=await currentContext();
  try{
   const i=parse(formData),scheduleId=i.scheduleId,expectedVersion=i.expectedVersion;if(!scheduleId||!expectedVersion)throw new Error("Schedule version is required.");
-  await withTenantContext(context,tx=>tx`select app_private.update_schedule_master(
-   ${scheduleId},${i.workAreaId},${i.name},${i.documentReference},${i.documentRevision},${i.frequencyType}::schedule_frequency_type,
-   ${i.recurrence.recurrenceUnit}::schedule_recurrence_unit,${i.recurrence.recurrenceInterval},
-   ${i.recurrence.recurrenceConfig?tx.json(i.recurrence.recurrenceConfig):null},
-   ${i.localDate}::date,${i.localTime}::time,${i.recurrence.endLocalDate}::date,${tx.json(i.tasks)},${expectedVersion})`);
+  await withTenantContext(context,async tx=>{
+   await tx`select app_private.update_schedule_master(
+    ${scheduleId},${i.workAreaId},${i.name},${i.documentReference},${i.documentRevision},${i.frequencyType}::schedule_frequency_type,
+    ${i.recurrence.recurrenceUnit}::schedule_recurrence_unit,${i.recurrence.recurrenceInterval},
+    ${i.recurrence.recurrenceConfig?tx.json(i.recurrence.recurrenceConfig):null},
+    ${i.localDate}::date,${i.localTime}::time,${i.recurrence.endLocalDate}::date,${tx.json(i.tasks)},${expectedVersion})`;
+   await reconcile48h(tx,scheduleId);
+  });
  }catch(e){redirect(`/workspace/schedules?error=${errorText(e)}`)}
- revalidatePath("/workspace/schedules");revalidatePath("/workspace");redirect("/workspace/schedules?message=Schedule%20updated.");
+ revalidatePath("/workspace/schedules");revalidatePath("/workspace/occurrences");revalidatePath("/workspace");redirect("/workspace/schedules?message=Schedule%20updated.");
 }
 
 export async function toggleScheduleStatus(formData:FormData){
  const context=await currentContext(),id=z.string().uuid().parse(formData.get("scheduleId")),version=z.coerce.number().int().positive().parse(formData.get("expectedVersion")),current=z.enum(["ACTIVE","INACTIVE"]).parse(formData.get("currentStatus")),next=current==="ACTIVE"?"INACTIVE":"ACTIVE";
- try{await withTenantContext(context,tx=>tx`select app_private.set_schedule_master_status(${id},${next}::record_status,${version})`)}
- catch(e){redirect(`/workspace/schedules?error=${errorText(e)}`)}
- revalidatePath("/workspace/schedules");revalidatePath("/workspace");redirect("/workspace/schedules");
+ try{
+  await withTenantContext(context,async tx=>{
+   await tx`select app_private.set_schedule_master_status(${id},${next}::record_status,${version})`;
+   await reconcile48h(tx,id);
+  });
+ }catch(e){redirect(`/workspace/schedules?error=${errorText(e)}`)}
+ revalidatePath("/workspace/schedules");revalidatePath("/workspace/occurrences");revalidatePath("/workspace");redirect("/workspace/schedules");
 }
