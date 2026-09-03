@@ -1,8 +1,16 @@
 import {expect,test} from "@playwright/test";
-test("Demo explains Work Area QR, Task, Schedule, and Occurrence foundations safely",async({page})=>{
+test("Demo explains planning and execution foundations safely",async({page})=>{
  await page.goto("/demo");
- await expect(page.getByText("WORK AREA + QR DEMO")).toBeVisible();await expect(page.getByText("Reprint",{exact:true})).toBeVisible();await expect(page.getByText("Regenerate",{exact:true})).toBeVisible();await expect(page.getByText(/QR never grants authorization/)).toBeVisible();
- await expect(page.getByText("TASK MASTER DEMO")).toBeVisible();await expect(page.getByRole("heading",{name:"Reusable Organization-level Tasks"})).toBeVisible();await expect(page.getByRole("heading",{name:"Clean main entrance glass"})).toBeVisible();const firstTask=page.getByRole("article").filter({hasText:"Clean main entrance glass"});await expect(firstTask.getByText(/no Base64 media/i)).toBeVisible();await expect(page.getByText(/USER is read-only/i)).toBeVisible();
- await expect(page.getByText("SCHEDULE MASTER DEMO")).toBeVisible();await expect(page.getByRole("heading",{name:"One Work Area, ordered Tasks, preserved local intent"})).toBeVisible();await expect(page.getByText("Morning Lobby Readiness").first()).toBeVisible();await expect(page.getByText(/deterministic 1-in-N subset/i)).toBeVisible();
- await expect(page.getByText("OCCURRENCE FOUNDATION DEMO")).toBeVisible();await expect(page.getByRole("heading",{name:"Generated, immutable planning snapshots"})).toBeVisible();await expect(page.getByText(/nonexistent local clock time/i)).toBeVisible();await expect(page.getByText(/Work Area → Site → Organization effective hours/i)).toBeVisible();await expect(page.getByText(/Claiming, QR start, evidence capture/i)).toBeVisible();
+ await expect(page.getByText("WORK AREA + QR DEMO")).toBeVisible();
+ await expect(page.getByText(/QR never grants authorization/)).toBeVisible();
+ await expect(page.getByText("TASK MASTER DEMO")).toBeVisible();
+ await expect(page.getByText("SCHEDULE MASTER DEMO")).toBeVisible();
+ await expect(page.getByText("OCCURRENCE FOUNDATION DEMO")).toBeVisible();
+ await expect(page.getByText(/nonexistent local clock time/i)).toBeVisible();
+ await expect(page.getByText("MY WORK + SUPERSESSION DEMO")).toBeVisible();
+ await expect(page.getByRole("heading",{name:"Claim safely, validate location, preserve history"})).toBeVisible();
+ await expect(page.getByText(/eligible USER can claim open work without manager approval/i)).toBeVisible();
+ await expect(page.getByText(/One per Organization Membership/i)).toBeVisible();
+ await expect(page.getByText(/older due unstarted work becomes MISSED/i)).toBeVisible();
+ await expect(page.getByText(/QR confirms the exact Work Area but never grants/i)).toBeVisible();
 });

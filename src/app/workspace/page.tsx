@@ -24,9 +24,10 @@ export default async function WorkspacePage(){
    <article className="metricCard"><span>Schedules</span><strong>{schedules.length}</strong><p>Local-time planning masters.</p></article>
    <article className="metricCard"><span>Occurrences</span><strong>{occurrences}</strong><p>Upcoming generated planning snapshots.</p></article>
   </section>
+  {snapshot.role_code==="USER"?<section className="workspacePanel"><span className="eyebrow">FIELD EXECUTION</span><h2>My Work</h2><p>Review server-ranked eligible work, claim an open occurrence, and validate the Work Area QR before server-authoritative start.</p><Link className="button" href="/workspace/my-work">Open My Work</Link></section>:null}
   <section className="workspacePanel"><span className="eyebrow">SITE OPERATIONS</span><h2>Site → Work Areas → QR identity</h2><p>Create operational areas, print the current QR label, or regenerate a compromised QR.</p><Link className="button" href="/workspace/work-areas">Manage Work Areas</Link></section>
   <section className="workspacePanel"><span className="eyebrow">TASK LIBRARY</span><h2>Reusable Task masters</h2><p>Maintain Organization-level Tasks that can be composed into Schedules.</p><Link className="button" href="/workspace/tasks">Manage Tasks</Link></section>
   <section className="workspacePanel"><span className="eyebrow">PLANNING</span><h2>Schedule masters</h2><p>Bind an accessible Work Area to ordered Tasks while preserving Site-local timing intent.</p><Link className="button" href="/workspace/schedules">Manage Schedules</Link></section>
-  <section className="workspacePanel"><span className="eyebrow">GENERATED PLANNING</span><h2>Occurrence snapshots</h2><p>Review the server-generated UTC/local snapshots that later field execution will consume.</p><Link className="button" href="/workspace/occurrences">View Occurrences</Link></section>
+  <section className="workspacePanel"><span className="eyebrow">GENERATED PLANNING</span><h2>Occurrence snapshots</h2><p>Review the server-generated UTC/local snapshots that field execution consumes.</p><Link className="button" href="/workspace/occurrences">View Occurrences</Link></section>
  </main>
 }

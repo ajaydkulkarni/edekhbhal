@@ -33,7 +33,7 @@ describe("Work Area + QR hardening contract", () => {
     expect(demo).toBeGreaterThan(audit);
     expect(baseline).toBeGreaterThan(demo);
 
-    expect(context).toContain("QR identity never grants application authorization");
+    expect(context).toContain("QR identity never grants authorization");
     expect(context).not.toContain("## 11. Billing & Entitlements Foundation");
   });
 });

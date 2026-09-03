@@ -113,7 +113,10 @@ describe("Occurrence Foundation database boundary",()=>{
   const occurrence=await migrator`update schedule_occurrence set status='COMPLETED',started_at='2028-02-29T15:00:00Z',completed_at='2028-02-29T15:35:00Z' where schedule_id=${created[0].id} returning id,schedule_name_snapshot`;
   await migrator`update schedule_master set name='Changed Master',version=version+1 where id=${created[0].id}`;
   await asAdmin(tx=>tx`select app_private.reconcile_schedule_occurrences(${created[0].id},'2028-02-29T00:00:00Z','2028-03-01T00:00:00Z')`);
-  const after=await asUser(tx=>tx`select status,schedule_name_snapshot from schedule_occurrence where id=${occurrence[0].id}`);
+  const after=await asAdmin(tx=>tx`select status,schedule_name_snapshot from schedule_occurrence where id=${occurrence[0].id}`);
   expect(after[0]).toMatchObject({status:"COMPLETED",schedule_name_snapshot:"History Schedule"});
+
+  const userHistory=await asUser(tx=>tx`select id from schedule_occurrence where id=${occurrence[0].id}`);
+  expect(userHistory).toHaveLength(0);
  });
 });

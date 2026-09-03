@@ -33,7 +33,8 @@
     "db:command-boundary:apply": "node scripts/db-apply-command-boundary-09.mjs",
     "db:occurrence:apply": "node scripts/db-apply-occurrence-10.mjs",
     "db:occurrence:hotfix11": "node scripts/db-apply-occurrence-hotfix-11.mjs",
-    "db:occurrence:hotfix12": "node scripts/db-apply-occurrence-hotfix-12.mjs"
+    "db:occurrence:hotfix12": "node scripts/db-apply-occurrence-hotfix-12.mjs",
+    "db:execution:apply": "node scripts/db-apply-occurrence-execution-13.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "0.12.5",
