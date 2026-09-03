@@ -1,95 +1,16 @@
 import Link from "next/link";
-import { brand } from "@/lib/brand";
-
-const demoSteps = [
-  ["1", "User details", "A synthetic user profile demonstrates audit attribution."],
-  ["2", "Organization", "Creates a fictional Organization without touching tenant data."],
-  ["3", "Plan", "Shows Free Beta activation and explains paid-provider behavior."],
-  ["4", "First Site", "Creates a synthetic Site and previews the workspace handoff."],
+import {brand} from "@/lib/brand";
+const demoSteps=[["1","User details","A synthetic user profile demonstrates audit attribution."],["2","Organization","Creates a fictional Organization without touching tenant data."],["3","Plan","Shows Free Beta activation and explains paid-provider behavior."],["4","First Site","Creates a synthetic Site and previews the workspace handoff."]];
+const demoTasks=[
+ {name:"Clean main entrance glass",preview:"Clean both sides with approved cleaner. Check edges and corners before completion.",status:"ACTIVE"},
+ {name:"Restock lobby supplies",preview:"Confirm tissue, sanitizer, and visitor supplies are above the minimum operating level.",status:"ACTIVE"},
+ {name:"Legacy seasonal display check",preview:"Inactive masters remain available for history but are not intended for new Schedule composition.",status:"INACTIVE"},
 ];
-
-const demoTasks = [
-  {
-    name: "Clean main entrance glass",
-    preview: "Clean both sides with approved cleaner. Check edges and corners before completion.",
-    status: "ACTIVE",
-  },
-  {
-    name: "Restock lobby supplies",
-    preview: "Confirm tissue, sanitizer, and visitor supplies are above the minimum operating level.",
-    status: "ACTIVE",
-  },
-  {
-    name: "Legacy seasonal display check",
-    preview: "Inactive masters remain available for history but are not intended for new Schedule composition.",
-    status: "INACTIVE",
-  },
-];
-
-export default function DemoPage() {
-  return (
-    <main className="simplePage">
-      <div className="onboardingWide">
-        <span className="eyebrow">BEST PRACTICE DEMO</span>
-        <h1>Explore {brand.productName}</h1>
-        <p className="muted">This is a read-only educational simulation. It never creates tenant data.</p>
-
-        <div className="demoSteps">
-          {demoSteps.map(([number, title, description]) => (
-            <article className="demoStep" key={number}>
-              <strong>{number}</strong>
-              <div><h2>{title}</h2><p>{description}</p></div>
-            </article>
-          ))}
-        </div>
-
-        <section className="demoOperations">
-          <span className="eyebrow">WORK AREA + QR DEMO</span>
-          <div className="demoWorkAreaCard">
-            <div>
-              <span className="statusPill activePill">ACTIVE</span>
-              <h2>Main Lobby</h2>
-              <p>Downtown Site · LOBBY</p>
-            </div>
-            <div className="demoQrPattern" aria-label="Synthetic QR illustration" />
-          </div>
-          <div className="demoBehaviorGrid">
-            <article><strong>Reprint</strong><span>Uses the same active QR identity.</span></article>
-            <article><strong>Regenerate</strong><span>Revokes the old QR and issues a new random public token.</span></article>
-            <article><strong>Public scan</strong><span>Shows safe service information only. A QR never grants authorization.</span></article>
-          </div>
-        </section>
-
-        <section className="demoOperations">
-          <span className="eyebrow">TASK MASTER DEMO</span>
-          <h2>Reusable Organization-level Tasks</h2>
-          <p className="muted">
-            Tasks remain independent of Site and Work Area until a later Schedule composes them.
-            USER is read-only; permitted management roles maintain the reusable master.
-          </p>
-          <div className="demoTaskGrid">
-            {demoTasks.map((task) => (
-              <article className="demoTaskCard" key={task.name}>
-                <span className={`statusPill ${task.status === "ACTIVE" ? "activePill" : "inactivePill"}`}>{task.status}</span>
-                <h3>{task.name}</h3>
-                <p>{task.preview}</p>
-                <small>Attachment metadata → private object storage; no Base64 media.</small>
-              </article>
-            ))}
-          </div>
-          <div className="demoBehaviorGrid">
-            <article><strong>Create / edit</strong><span>Meaningful changes are versioned and audited with old/new values.</span></article>
-            <article><strong>Soft lifecycle</strong><span>Inactive Tasks remain historical masters instead of being deleted.</span></article>
-            <article><strong>Schedule-ready</strong><span>A later Schedule increment will snapshot Task instructions for execution history.</span></article>
-          </div>
-        </section>
-
-        <div className="demoBanner">
-          <strong>Demo safety boundary</strong>
-          <span>Real authentication, tenant writes, Task changes, QR regeneration, billing, evidence capture, and destructive actions are unavailable here.</span>
-        </div>
-        <Link className="button" href="/">Back to landing page</Link>
-      </div>
-    </main>
-  );
-}
+export default function DemoPage(){return <main className="simplePage"><div className="onboardingWide">
+ <span className="eyebrow">BEST PRACTICE DEMO</span><h1>Explore {brand.productName}</h1><p className="muted">This is a read-only educational simulation. It never creates tenant data.</p>
+ <div className="demoSteps">{demoSteps.map(([n,t,d])=><article className="demoStep" key={n}><strong>{n}</strong><div><h2>{t}</h2><p>{d}</p></div></article>)}</div>
+ <section className="demoOperations"><span className="eyebrow">WORK AREA + QR DEMO</span><div className="demoWorkAreaCard"><div><span className="statusPill activePill">ACTIVE</span><h2>Main Lobby</h2><p>Downtown Site · LOBBY</p></div><div className="demoQrPattern" aria-label="Synthetic QR illustration"/></div><div className="demoBehaviorGrid"><article><strong>Reprint</strong><span>Uses the same active QR identity.</span></article><article><strong>Regenerate</strong><span>Revokes the old QR and issues a new random public token.</span></article><article><strong>Public scan</strong><span>Shows safe service information only. A QR never grants authorization.</span></article></div></section>
+ <section className="demoOperations"><span className="eyebrow">TASK MASTER DEMO</span><h2>Reusable Organization-level Tasks</h2><p className="muted">Tasks remain independent of Site and Work Area until a Schedule composes them. USER is read-only; permitted management roles maintain the reusable master.</p><div className="demoTaskGrid">{demoTasks.map(task=><article className="demoTaskCard" key={task.name}><span className={`statusPill ${task.status==="ACTIVE"?"activePill":"inactivePill"}`}>{task.status}</span><h3>{task.name}</h3><p>{task.preview}</p><small>Attachment metadata → private object storage; no Base64 media.</small></article>)}</div><div className="demoBehaviorGrid"><article><strong>Create / edit</strong><span>Meaningful changes are versioned and audited with old/new values.</span></article><article><strong>Soft lifecycle</strong><span>Inactive Tasks remain historical masters instead of being deleted.</span></article><article><strong>Schedule-ready</strong><span>Schedules compose active Tasks; future Occurrences snapshot instructions for execution history.</span></article></div></section>
+ <section className="demoOperations"><span className="eyebrow">SCHEDULE MASTER DEMO</span><h2>One Work Area, ordered Tasks, preserved local intent</h2><div className="demoScheduleCard"><div className="scheduleCardHead"><div><span className="statusPill activePill">ACTIVE</span><h3>Morning Lobby Readiness</h3><p>Main Lobby · Downtown Site</p></div><strong>America/Denver</strong></div><div className="scheduleSummaryGrid"><div><span>Pattern</span><strong>Every weekday</strong></div><div><span>Local start</span><strong>08:00</strong></div><div><span>Document</span><strong>SOP-HK-004 · Rev 03</strong></div><div><span>End date</span><strong>Optional / inclusive</strong></div></div><ol className="scheduleTaskTimeline"><li><strong>1. Clean main entrance glass</strong><span>20 min · Photo required</span></li><li><strong>2. Restock lobby supplies</strong><span>15 min · Random 1 in 3, either media</span></li></ol></div><div className="demoBehaviorGrid"><article><strong>Local intent</strong><span>The IANA timezone and local date/time remain the Schedule master source of truth.</span></article><article><strong>DST-safe boundary</strong><span>UTC execution timestamps are resolved only when future Occurrences are generated; the master is not silently shifted.</span></article><article><strong>Random evidence</strong><span>RANDOM means a deterministic 1-in-N subset, not random Photo-vs-Video choice every time.</span></article></div><p className="muted">Occurrence generation, claiming, QR start, evidence capture, and mobile completion are intentionally not executed in this Demo increment.</p></section>
+ <div className="demoBanner"><strong>Demo safety boundary</strong><span>Real authentication, tenant writes, Task/Schedule changes, QR regeneration, billing, evidence capture, and destructive actions are unavailable here.</span></div><Link className="button" href="/">Back to landing page</Link>
+ </div></main>}

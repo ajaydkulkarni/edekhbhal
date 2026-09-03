@@ -168,13 +168,12 @@ describe("Task Master Foundation database boundary", () => {
     const visible = await asUser((tx) => tx`select id,name from task_master where id=${ids.task}`);
     expect(visible[0].id).toBe(ids.task);
 
-    const userUpdate = await asUser((tx) => tx`
+    await expect(asUser((tx) => tx`
       update task_master
       set name='Forbidden'
       where id=${ids.task}
       returning id
-    `);
-    expect(userUpdate).toHaveLength(0);
+    `)).rejects.toThrow(/permission denied/i);
 
     const unchanged = await asAdmin((tx) => tx<{ name: string }[]>`
       select name from task_master where id=${ids.task}

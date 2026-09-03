@@ -23,12 +23,12 @@ describe("Work Area + QR hardening contract", () => {
 
   it("keeps the continuity document section numbering aligned", () => {
     const context = fs.readFileSync("docs/VNEXT-PROJECT-CONTEXT.md", "utf8");
-    expect(context).toContain("## 10. Billing & Entitlements Foundation");
-    expect(context).toContain("## 11. Audit");
-    expect(context.indexOf("## 10. Billing & Entitlements Foundation")).toBeLessThan(
-      context.indexOf("## 11. Audit"),
+    expect(context).toContain("## 11. Billing & Entitlements Foundation");
+    expect(context).toContain("## 12. Audit");
+    expect(context.indexOf("## 11. Billing & Entitlements Foundation")).toBeLessThan(
+      context.indexOf("## 12. Audit"),
     );
-    expect(context).toContain("## 22. Baseline Commit Chain");
-    expect(context).not.toContain("## 21. Baseline Commit Chain");
+    expect(context).toContain("## 23. Baseline Commit Chain");
+    expect(context).not.toContain("## 22. Baseline Commit Chain");
   });
 });

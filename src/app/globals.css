@@ -232,3 +232,15 @@
   .taskGrid, .demoTaskGrid { grid-template-columns: 1fr; }
 }
 
+/* Schedule Master Foundation 01 */
+.scheduleGrid{max-width:1180px;margin:18px auto 0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+.scheduleCard,.demoScheduleCard{border:1px solid var(--border);border-radius:18px;padding:22px;background:var(--surface)}
+.scheduleCardHead{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}.scheduleCardHead h2,.scheduleCardHead h3{margin:10px 0 4px}.scheduleCardHead p{margin:0;color:var(--muted)}
+.scheduleSummaryGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:16px 0}.scheduleSummaryGrid>div{border:1px solid var(--border);border-radius:12px;padding:10px 12px;background:var(--soft)}.scheduleSummaryGrid span,.scheduleSummaryGrid strong{display:block}.scheduleSummaryGrid span{color:var(--muted);font-size:.75rem;margin-bottom:4px}
+.scheduleTaskTimeline{padding-left:22px}.scheduleTaskTimeline li{margin:10px 0}.scheduleTaskTimeline strong,.scheduleTaskTimeline span{display:block}.scheduleTaskTimeline span{color:var(--muted);font-size:.82rem;margin-top:3px}
+.scheduleEdit{margin-top:16px}.scheduleEdit summary{cursor:pointer;font-weight:750}
+.scheduleWhenGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.scheduleWhenGrid label,.scheduleTaskSettings label{display:grid;gap:7px;font-weight:650}.scheduleWhenGrid input,.scheduleWhenGrid select,.scheduleTaskSettings input,.scheduleTaskSettings select{width:100%;border:1px solid var(--border);border-radius:10px;padding:10px 11px;background:var(--surface);color:var(--text);font:inherit}
+.scheduleWeekdays{display:flex;flex-wrap:wrap;gap:12px;border:1px solid var(--border);border-radius:14px;padding:14px}.scheduleWeekdays legend{font-weight:750;padding:0 7px}.scheduleWeekdays label{display:inline-flex;align-items:center;gap:6px}
+.scheduleIntentNote{display:grid;gap:5px;border:1px solid var(--border);border-radius:14px;padding:14px;background:var(--soft)}.scheduleIntentNote span{color:var(--muted);line-height:1.5}
+.scheduleTaskPicker{display:grid;gap:12px}.scheduleTaskChoice{border:1px solid var(--border);border-radius:14px;padding:14px}.scheduleTaskSelect{display:flex!important;align-items:center;gap:10px!important}.scheduleTaskSelect input{width:auto!important}.scheduleTaskSettings{display:grid;grid-template-columns:90px 100px 1fr 120px 1fr;gap:10px;margin-top:12px}
+@media(max-width:900px){.scheduleGrid,.scheduleWhenGrid,.scheduleTaskSettings{grid-template-columns:1fr}.scheduleSummaryGrid{grid-template-columns:1fr 1fr}}@media(max-width:560px){.scheduleSummaryGrid{grid-template-columns:1fr}}

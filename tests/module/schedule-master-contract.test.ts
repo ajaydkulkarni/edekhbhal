@@ -1,0 +1,8 @@
+import fs from "node:fs";
+import {describe,expect,it} from "vitest";
+describe("Schedule Master Foundation contract",()=>{
+ it("binds one Work Area to reusable Task associations without Occurrences",()=>{const sql=fs.readFileSync("drizzle/0008_schedule_master_foundation.sql","utf8");expect(sql).toContain("work_area_id uuid not null references work_area(id)");expect(sql).toContain("task_id uuid not null references task_master(id)");expect(sql).not.toContain("schedule_occurrence")});
+ it("forces RLS and specific Site scope",()=>{const sql=fs.readFileSync("drizzle/0008_schedule_master_foundation.sql","utf8");expect(sql).toContain("alter table schedule_master force row level security");expect(sql).toContain("alter table schedule_task force row level security");expect(sql).toContain("app_private.can_manage_schedule_site(site_id)");expect(sql).toContain("app_private.has_site_scope(site_id)")});
+ it("stores local intent/evidence policy without premature UTC execution",()=>{const sql=fs.readFileSync("drizzle/0008_schedule_master_foundation.sql","utf8");expect(sql).toContain("start_local_date date not null");expect(sql).toContain("start_local_time time without time zone not null");expect(sql).toContain("timezone text not null");expect(sql).toContain("random_every_n");expect(sql).not.toContain("scheduled_start_utc")});
+ it("wires Workspace and Demo parity",()=>{const workspace=fs.readFileSync("src/app/workspace/page.tsx","utf8"),demo=fs.readFileSync("src/app/demo/page.tsx","utf8");expect(workspace).toContain('href="/workspace/schedules"');expect(demo).toContain("SCHEDULE MASTER DEMO");expect(demo).toContain("deterministic 1-in-N subset")});
+});
