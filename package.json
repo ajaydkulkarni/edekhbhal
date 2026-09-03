@@ -19,7 +19,11 @@
     "test:e2e": "playwright test",
     "test:foundation": "npm run lint && npm run typecheck && npm run test && npm run build",
     "db:generate": "drizzle-kit generate",
-    "db:check": "drizzle-kit check"
+    "db:check": "drizzle-kit check",
+    "db:foundation:apply": "node scripts/db-apply-foundation-01.mjs",
+    "db:foundation:seed": "node scripts/db-seed-foundation-01.mjs",
+    "db:foundation": "npm run db:foundation:apply && npm run db:foundation:seed",
+    "db:privileges:harden": "node scripts/db-apply-privilege-hardening-02.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "0.12.5",
