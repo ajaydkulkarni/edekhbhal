@@ -8,7 +8,7 @@
 
 **Last updated:** 2026-09-03
 **Primary rebuild branch:** `vNext`
-**Latest validated vNext baseline:** `460a5c9e0c51b669dea039a05db76569d69ca8ef` — `Harden Occurrence Task Execution security boundary`
+**Latest validated vNext baseline:** `51d8e19c5bc417307cbecec18ca07153ed71238e` — `Harden Evidence Storage upload security`
 **Validated database foundation:** `0109eb5`
 **Legacy behavioral reference branch:** `v2-rebuild`
 **Legacy validated Web/API E2E:** 46/46 PASS
@@ -474,7 +474,7 @@ Implemented:
 - internal Task audit helper remains non-executable by runtime
 - Demo illustrates sequential execution, explicit Task commands, evidence gating, server-derived completion, history preservation, and mismatched idempotent replay rejection
 
-Production evidence upload, media normalization/transcoding, and verification processing remain deferred.
+Evidence upload is now implemented and Storage-hardened. Media normalization/transcoding and verification processing remain deferred.
 
 ---
 
@@ -560,19 +560,63 @@ Previous/Next navigation must never change Task state.
 
 ## 15. Evidence & Storage Rules
 
-Future evidence architecture:
+Validated Evidence functional commit:
 
-- private object storage
-- signed short-lived URLs
-- optimized/compressed images
-- normalized/transcoded video
-- poster/thumbnail generation
-- SHA-256 checksum
+`776f392c75c2ed844e289090a5c0a4c7386db275` — `Add Evidence Capture and Media Pipeline Foundation`
+
+Validated Storage hardening commit:
+
+`51d8e19c5bc417307cbecec18ca07153ed71238e` — `Harden Evidence Storage upload security`
+
+Migration:
+
+- `0016_evidence_capture_foundation.sql`
+
+Migration `0016` is already applied to the active vNext database. **Do not reapply it.**
+
+Privileged Supabase Storage setup is separate from `vnext_migrator` and is deployed:
+
+- private bucket `occurrence-evidence-private`
+- bucket is not public
+- 200 MB bucket ceiling
+- allowed MIME types restricted to JPEG/PNG/WebP and MP4/WebM/QuickTime
+- authenticated INSERT and SELECT policies only
+- no Storage UPDATE/DELETE/public policy
+
+Implemented application/storage boundary:
+
+- no Base64/blob media in PostgreSQL
+- server-issued Organization/Occurrence/Task-scoped upload intents
+- only the assigned active USER executing the current IN_PROGRESS Task may initiate evidence
+- snapshotted PHOTO/VIDEO requirement is enforced
+- tenant-scoped non-guessable object keys
+- PHOTO max 20 MB; VIDEO max 200 MB
+- server-side MIME/size validation before intent creation
+- SHA-256 metadata recorded on finalization
 - no cross-tenant content deduplication
-- lifecycle/retention policy
-- optional original retention by entitlement
+- Evidence metadata remains command-owned; runtime direct INSERT/UPDATE/DELETE is denied
+- upload intent and finalization are idempotent and payload-bound
+- upload intent expires after 15 minutes
+- authenticated direct Storage upload re-evaluates the short-lived Storage INSERT policy at upload time
+- wrong authenticated subject, expired intent, wrong bucket/object path, UPDATE/DELETE, and public access fail closed
+- upload state remains `PENDING` verification after successful upload/finalization
+- Task completion remains fail-closed until matching Evidence is `VERIFIED`
+- Evidence intent/upload operations are audited
+- Demo illustrates the evidence pipeline without real media writes
+- public QR never exposes private evidence
 
-Original media is discarded after normalization unless policy/entitlement explicitly retains it.
+Still required before the evidence pipeline is production-complete:
+
+- trusted verification/processing worker boundary
+- optimized/compressed image output
+- normalized/transcoded video output
+- poster/thumbnail generation
+- processor-owned VERIFIED/REJECTED transition and reason
+- original-object disposal after successful normalization unless policy/entitlement retains it
+- short-lived signed operational reads after authorization
+- deployed end-to-end media processing/load certification
+
+Original media must be discarded after successful normalization unless policy/entitlement explicitly retains it.
 
 ---
 
@@ -590,7 +634,7 @@ Platform administration is separate from customer tenant roles. No frontend univ
 
 ## 17. Current Validated Test Baseline
 
-At commit `460a5c9e0c51b669dea039a05db76569d69ca8ef`:
+At commit `51d8e19c5bc417307cbecec18ca07153ed71238e`:
 
 ### Integration
 
@@ -605,12 +649,13 @@ At commit `460a5c9e0c51b669dea039a05db76569d69ca8ef`:
 - Occurrence Execution & Supersession: **7/7 PASS**
 - Occurrence Execution Security Hardening: **12/12 PASS**
 - Occurrence Task Execution & Completion + hardening: **14/14 PASS**
-- Total integration: **89/89 PASS**
+- Evidence Capture & Storage hardening: **10/10 PASS**
+- Total integration: **99/99 PASS**
 
 ### Full Vitest
 
-- Test files: **29/29 PASS**
-- Tests: **140/140 PASS**
+- Test files: **32/32 PASS**
+- Tests: **158/158 PASS**
 
 ### Build gates
 
@@ -638,7 +683,7 @@ Validated routes include:
 ### Playwright
 
 - **3/3 PASS**
-- Demo regression covers planning, My Work / claim / QR-start / supersession, sequential Task execution/completion, evidence gating, and fail-closed idempotency/security explanation
+- Demo regression covers planning, My Work / claim / QR-start / supersession, sequential Task execution/completion, Evidence upload/verification gating, expired-intent/wrong-object fail-closed behavior, and idempotency/security explanation
 
 ---
 
@@ -669,33 +714,29 @@ Data/Auth:
 
 Next increment:
 
-**Evidence Capture & Media Pipeline Foundation 01**
+**Evidence Verification & Media Normalization Foundation 02**
 
-Build on the validated Task evidence gate without weakening tenant, Site, assignment, Task-sequence, idempotency, or history guarantees.
+Build on the validated private-upload boundary without weakening tenant, Site, assignment, Task-sequence, idempotency, Storage isolation, or history guarantees.
 
 Target foundation:
 
-- private object-storage-backed evidence flow; no Base64/blob payloads in PostgreSQL
-- server-issued tenant/Occurrence/Task-scoped upload intent
-- only the assigned active USER executing the current IN_PROGRESS Task may initiate evidence capture
-- enforce the snapshotted required evidence type (PHOTO or VIDEO)
-- server-owned evidence metadata creation/finalization; no direct runtime table DML
-- object keys must be tenant-scoped and non-guessable
-- content-type and size validation before accepting upload/finalization
-- SHA-256 metadata and no cross-tenant content deduplication
-- PENDING → VERIFIED/REJECTED verification lifecycle
-- optimized/compressed image output
-- normalized/transcoded video output with poster/thumbnail where practical
-- originals discarded after normalization unless policy/entitlement explicitly retains them
-- idempotent upload/finalization commands and concurrency-safe retries
-- short-lived signed read URLs for authorized operational viewing only
-- public QR transparency must not expose private evidence
-- Task completion remains fail-closed until required evidence is VERIFIED
-- audit evidence initiation/finalization/verification
-- Demo parity using synthetic/read-only evidence states
-- regression coverage for cross-tenant/Site/assignment, wrong Task/type, stale/duplicate finalization, and unauthorized reads
+- trusted processor/worker command boundary without a universal runtime BYPASSRLS credential
+- transactional handoff from finalized PENDING evidence to processing, preferably through the existing outbox pattern
+- processor validates the uploaded object against expected bucket/key/content type/byte size/checksum before verification
+- optimized/compressed image derivative
+- normalized/transcoded video derivative plus poster/thumbnail where practical
+- processor-owned PENDING → VERIFIED/REJECTED transition with auditable reason
+- normalized/preview object keys remain tenant-scoped and non-guessable
+- discard original object after successful normalization unless policy/entitlement explicitly retains it
+- idempotent processing and safe retry/concurrency behavior
+- short-lived signed operational reads only after application authorization
+- ADMIN/SITE_MANAGER Site-scope and assigned USER read authorization
+- no evidence read path from public QR
+- Task completion continues to require matching VERIFIED evidence
+- Demo parity using synthetic processing/verification states
+- regression coverage for forged processing, wrong tenant/Site/object/checksum, stale/replayed worker commands, unauthorized reads, and retained-history behavior
 
-Keep mobile scanner/camera UX, claim expiry, priority ranking, and reported work separate unless required to define the API contract safely.
+Keep mobile camera UX, claim expiry, priority ranking, and reported work separate unless required for the processing/API contract.
 
 ---
 
@@ -706,7 +747,7 @@ Not yet production-complete:
 - working-hours management UI
 - multi-Site administration UI
 - Site assignment management UI/API
-- production evidence/media upload and normalization pipeline
+- production evidence verification/media normalization pipeline
 - rolling background generation worker
 - reported work
 - mobile field application
@@ -741,5 +782,7 @@ Key validated vNext commits:
 - `8536cd7` — Update vNext context after Occurrence Execution hardening
 - `5f05615` — Add Occurrence Task Execution and Completion Foundation
 - `460a5c9` — Harden Occurrence Task Execution security boundary
+- `776f392` — Add Evidence Capture and Media Pipeline Foundation
+- `51d8e19` — Harden Evidence Storage upload security
 
-`460a5c9e0c51b669dea039a05db76569d69ca8ef` is the current locked validated vNext baseline.
+`51d8e19c5bc417307cbecec18ca07153ed71238e` is the current locked validated vNext baseline.
