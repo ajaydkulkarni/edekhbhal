@@ -218,4 +218,56 @@ describe("Occurrence Task Execution & Completion database boundary",()=>{
   expect(actions).toContain("OCCURRENCE_COMPLETED");
   expect(actions).toContain("OCCURRENCE_PARTIALLY_COMPLETED");
  });
+
+ it("fails Task completion and partial completion closed without tenant context",async()=>{
+  await expect(runtime`select app_private.complete_occurrence_task(${crypto.randomUUID()},1,null,${crypto.randomUUID()},'API')`)
+   .rejects.toThrow(/Active tenant context/i);
+  await expect(runtime`select app_private.partially_complete_occurrence(${crypto.randomUUID()},1,'reason',${crypto.randomUUID()},'API')`)
+   .rejects.toThrow(/Active tenant context/i);
+ });
+
+ it("keeps evidence metadata UPDATE/DELETE and the internal Task audit helper unavailable to runtime",async()=>{
+  await expect(asA(tx=>tx`update schedule_occurrence_evidence set verification_status='VERIFIED' where organization_id=${ids.org}`))
+   .rejects.toThrow(/permission denied/i);
+  await expect(asA(tx=>tx`delete from schedule_occurrence_evidence where organization_id=${ids.org}`))
+   .rejects.toThrow(/permission denied/i);
+  await expect(asA(tx=>tx`select app_private.audit_occurrence_task_event(
+    'X',${crypto.randomUUID()},${crypto.randomUUID()},null,null,null,'API'
+  )`)).rejects.toThrow(/permission denied/i);
+ });
+
+ it("binds a Task-completion idempotency key to the full meaningful request",async()=>{
+  const item=await makeOccurrence("Task Idempotency Payload",1,false);
+  await claimAndStart(item.occurrenceId);
+  const task=(await migrator`select id,version from schedule_occurrence_task where occurrence_id=${item.occurrenceId}`)[0];
+  const key=crypto.randomUUID();
+  await asA(tx=>tx`select app_private.complete_occurrence_task(${task.id},${task.version},'first note',${key},'API')`);
+  await expect(asA(tx=>tx`select app_private.complete_occurrence_task(${task.id},${task.version},'different note',${key},'API')`))
+   .rejects.toThrow(/Idempotency key belongs to another Task completion request/i);
+  expect((await migrator`select execution_notes from schedule_occurrence_task where id=${task.id}`)[0].execution_notes).toBe("first note");
+ });
+
+ it("binds a partial-completion idempotency key to the reason and expected version",async()=>{
+  const item=await makeOccurrence("Partial Idempotency Payload",2,false);
+  await claimAndStart(item.occurrenceId);
+  const first=(await migrator`select id,version from schedule_occurrence_task where occurrence_id=${item.occurrenceId} and sequence=1`)[0];
+  await asA(tx=>tx`select app_private.complete_occurrence_task(${first.id},${first.version},null,${crypto.randomUUID()},'API')`);
+  const occ=(await migrator`select version from schedule_occurrence where id=${item.occurrenceId}`)[0];
+  const key=crypto.randomUUID();
+  await asA(tx=>tx`select app_private.partially_complete_occurrence(${item.occurrenceId},${occ.version},'first reason',${key},'API')`);
+  await expect(asA(tx=>tx`select app_private.partially_complete_occurrence(${item.occurrenceId},${occ.version},'different reason',${key},'API')`))
+   .rejects.toThrow(/Idempotency key belongs to another partial completion request/i);
+  expect((await migrator`select completion_reason from schedule_occurrence where id=${item.occurrenceId}`)[0].completion_reason).toBe("first reason");
+ });
+
+ it("rolls back Task completion when source channel is invalid",async()=>{
+  const item=await makeOccurrence("Invalid Source",1,false);
+  await claimAndStart(item.occurrenceId);
+  const task=(await migrator`select id,version from schedule_occurrence_task where occurrence_id=${item.occurrenceId}`)[0];
+  await expect(asA(tx=>tx`select app_private.complete_occurrence_task(${task.id},${task.version},null,${crypto.randomUUID()},'INVALID')`))
+   .rejects.toThrow(/Invalid source channel/i);
+  const row=(await migrator`select status,completed_at from schedule_occurrence_task where id=${task.id}`)[0];
+  expect(row.status).toBe("IN_PROGRESS");expect(row.completed_at).toBeNull();
+  await migrator`update schedule_occurrence set status='COMPLETED',completed_at=now() where id=${item.occurrenceId}`;
+ });
 });
