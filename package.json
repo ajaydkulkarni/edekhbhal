@@ -26,7 +26,8 @@
     "db:privileges:harden": "node scripts/db-apply-privilege-hardening-02.mjs",
     "db:onboarding:apply": "node scripts/db-apply-auth-onboarding-03.mjs",
     "db:work-area-qr:apply": "node scripts/db-apply-work-area-qr-04.mjs",
-    "db:work-area-qr:hotfix": "node scripts/db-apply-work-area-qr-token-hotfix-05.mjs"
+    "db:work-area-qr:hotfix": "node scripts/db-apply-work-area-qr-token-hotfix-05.mjs",
+    "db:work-area-qr:harden": "node scripts/db-apply-work-area-qr-hardening-06.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "0.12.5",
