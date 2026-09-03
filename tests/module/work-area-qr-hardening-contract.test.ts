@@ -24,9 +24,9 @@ describe("Work Area + QR hardening contract", () => {
   it("tracks the current concise continuity structure without stale section-number assumptions", () => {
     const context = fs.readFileSync("docs/VNEXT-PROJECT-CONTEXT.md", "utf8");
     const workArea = context.indexOf("## 6. Work Area + QR Lifecycle");
-    const audit = context.indexOf("## 10. Audit & Outbox");
-    const demo = context.indexOf("## 11. Demo Workspace Rule — Mandatory");
-    const baseline = context.indexOf("## 20. Baseline Commit Chain");
+    const audit = context.indexOf("## 11. Audit & Outbox");
+    const demo = context.indexOf("## 12. Demo Workspace Rule — Mandatory");
+    const baseline = context.indexOf("## 21. Baseline Commit Chain");
 
     expect(workArea).toBeGreaterThanOrEqual(0);
     expect(audit).toBeGreaterThan(workArea);

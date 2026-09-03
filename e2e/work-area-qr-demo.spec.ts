@@ -13,4 +13,5 @@ test("Demo explains planning and execution foundations safely",async({page})=>{
  await expect(page.getByText(/One per Organization Membership/i)).toBeVisible();
  await expect(page.getByText(/older due unstarted work becomes MISSED/i)).toBeVisible();
  await expect(page.getByText(/QR confirms the exact Work Area but never grants/i)).toBeVisible();
+ await expect(page.getByText(/wrong Site, stale QR, cross-tenant work/i)).toBeVisible();
 });
