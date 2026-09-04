@@ -8,7 +8,7 @@
 
 **Last updated:** 2026-09-04
 **Primary rebuild branch:** `vNext`
-**Latest validated vNext baseline:** `af22841cfad6dd83497bfbd34805e84e12942ece` — `Add Evidence Worker Transport Foundation 03B1`
+**Latest validated vNext baseline:** `948f14c85f359f740d17d0aeda1f5f647ae50ca8` — `feat: add real evidence media processing worker 03B2`
 **Validated database foundation:** `0109eb5`
 **Legacy behavioral reference branch:** `v2-rebuild`
 **Legacy validated Web/API E2E:** 46/46 PASS
@@ -481,7 +481,7 @@ Implemented:
 - internal Task audit helper remains non-executable by runtime
 - Demo illustrates sequential execution, explicit Task commands, evidence gating, server-derived completion, history preservation, and mismatched idempotent replay rejection
 
-Evidence capture, the processor control plane, the leased Evidence outbox queue, the NOLOGIN worker capability role, the application-authorized read boundary, and the 03B1 worker transport/Storage authorization boundary are implemented. The portable worker currently provides a verified transport probe only; the real queue-processing loop, media codecs/derivative generation, real object deletion execution, and deployed production worker remain deferred to 03B2.
+Evidence capture, the processor control plane, the leased Evidence outbox queue, the NOLOGIN worker capability role, the application-authorized read boundary, the 03B1 worker transport/Storage authorization boundary, and the 03B2 real media-processing worker are implemented. The remaining Evidence work is live authenticated Storage/media end-to-end certification and production worker deployment/operational certification.
 
 ---
 
@@ -704,18 +704,43 @@ Implemented and provisioned 03B1 boundary:
 - `worker:evidence:probe` validates DB role/capability inheritance, machine-principal mapping, and legacy-completion revocation without claiming queue work or touching Storage objects
 - Demo explains the 03B1 transport, heartbeat, least-privilege machine identity, server-owned path, and no-universal-secret boundaries
 
-Still required after 03B1 before the Evidence pipeline is production-complete:
 
-- implement the real leased queue-processing loop with retry/backoff, duplicate-delivery safety, and crash/restart recovery
-- independently fetch and validate actual source MIME, byte size, and SHA-256 inside the worker
-- generate optimized/compressed PHOTO derivatives and preview with a production-supported image codec
-- normalize VIDEO to MP4 and generate poster/preview with ffmpeg/ffprobe or another production-supported media processor
-- upload derivatives only to the server-owned keys selected by the 03B1 command boundary
-- execute real Storage deletion for `EVIDENCE_ORIGINAL_DELETE_REQUESTED`, then acknowledge `DELETED`
-- preserve the original on processing rejection/failure and clean up partial derivative writes safely
-- add live authenticated Storage signed-read transport E2E including expiry and unauthorized/cross-tenant denial
-- certify duplicate delivery, stale lease/token, restart recovery, deletion retry, object tampering, cross-tenant key, and derivative-upload-failure cases
-- deploy the actual worker runtime and complete real Storage/media processing end-to-end plus production load/SLO certification
+Evidence Processing Worker — Real Media Processing Foundation 03B2 commit:
+
+`948f14c85f359f740d17d0aeda1f5f647ae50ca8` — `feat: add real evidence media processing worker 03B2`
+
+Migration:
+
+- `0020_evidence_worker_media_execution_hardening.sql`
+
+Migration `0020` is already applied to the active vNext database. **Do not reapply it.**
+
+Validated 03B2 implementation:
+
+- real leased queue-processing loop for Evidence processing and original deletion
+- event-bound processing claims use the live event token and current Evidence version
+- terminal-state outbox acknowledgement prevents premature queue completion
+- independent source SHA-256, byte-size, and MIME observation
+- Sharp/libvips PHOTO normalization to WebP normalized/preview derivatives
+- ffprobe/FFmpeg VIDEO validation and MP4 normalization plus JPEG preview
+- bounded lease heartbeat and exponential retry/backoff
+- retry-safe processing-lease release
+- partial derivative cleanup with deterministic server-owned overwrite-safe paths
+- observation-based rejection preserves the original
+- successful verification queues exact original deletion
+- exact live deletion delivery removes and acknowledges the original
+- Node 22 production Docker image includes Sharp, FFmpeg, and ffprobe
+- media runtime check and least-privilege DB/Auth transport probe are validated
+- full Vitest baseline is 41/41 files and 207/207 tests
+- real authenticated Storage/media E2E and deployed continuous-worker certification remain for 03B3
+
+Still required after 03B2 before the Evidence pipeline is production-complete:
+
+- certify real authenticated PHOTO and VIDEO upload/Storage/media processing end-to-end
+- certify signed-read expiry, unauthorized denial, cross-tenant denial, and deleted-original denial
+- certify real Storage retry/restart behavior, derivative-write failure recovery, and deletion retry
+- deploy and certify the continuous worker runtime, health behavior, graceful shutdown, and restart recovery
+- complete production load/SLO certification separately from the functional 03B3 certification when appropriate
 
 Original media must be discarded after successful normalization unless policy/entitlement explicitly retains it.
 
@@ -735,7 +760,7 @@ Platform administration is separate from customer tenant roles. No frontend univ
 
 ## 17. Current Validated Test Baseline
 
-At commit `af22841cfad6dd83497bfbd34805e84e12942ece`:
+At commit `948f14c85f359f740d17d0aeda1f5f647ae50ca8`:
 
 ### Integration
 
@@ -754,12 +779,13 @@ At commit `af22841cfad6dd83497bfbd34805e84e12942ece`:
 - Evidence Verification & Media Normalization Foundation 02: **6/6 PASS**
 - Evidence Worker Queue & Authorized Reads Foundation 03A: **6/6 PASS**
 - Evidence Worker Transport & Storage Authorization Foundation 03B1: **5/5 PASS**
-- Total integration: **116/116 PASS**
+- Evidence Processing Worker Media Execution Hardening 03B2: **4/4 PASS**
+- Total integration: **120/120 PASS**
 
 ### Full Vitest
 
-- Test files: **38/38 PASS**
-- Tests: **193/193 PASS**
+- Test files: **41/41 PASS**
+- Tests: **207/207 PASS**
 
 ### Build gates
 
@@ -768,7 +794,8 @@ At commit `af22841cfad6dd83497bfbd34805e84e12942ece`:
 - Next.js production build: **PASS**
 - Generated routes: **17/17**
 - `git diff --check`: **PASS**
-- Evidence worker transport probe: **PASS**
+- Evidence worker media runtime check: **PASS**
+- Evidence worker transport/identity probe: **PASS**
 
 Validated routes include:
 
@@ -822,28 +849,25 @@ Data/Auth:
 
 Next increment:
 
-**Evidence Processing Worker — Real Media Processing Foundation 03B2**
+**Evidence Processing Worker — Live Storage & Deployment Certification 03B3**
 
-Build on validated 03B1 without weakening tenant isolation, the NOLOGIN capability-role boundary, the dedicated least-privilege LOGIN, the ordinary authenticated machine Storage principal, live-lease Storage authorization, server-owned derivative paths, outbox idempotency, Evidence history, signed-read authorization, or the VERIFIED Task gate.
+Build on validated 03B2 without weakening tenant isolation, the NOLOGIN capability-role boundary, the dedicated least-privilege LOGIN, the ordinary authenticated machine Storage principal, live-lease Storage authorization, server-owned derivative paths, terminal-state queue acknowledgement, Evidence history, signed-read authorization, or the VERIFIED Task gate.
 
-Target foundation:
+Target certification:
 
-- turn the portable worker transport into a real leased queue-processing loop for `EVIDENCE_PROCESS_REQUESTED`
-- renew outbox and processing leases during long media operations; stale/mismatched tokens remain fail-closed
-- independently download the exact private original and calculate/validate actual MIME, byte size, and SHA-256
-- PHOTO: use a production-supported image library such as `sharp` to normalize/compress to the server-owned WebP derivative and create the preview
-- VIDEO: use ffmpeg/ffprobe or another production-supported processor to normalize to MP4 and create the JPEG poster/preview
-- upload only the derivative objects returned by the 03B1 target command
-- complete VERIFIED/REJECTED only through the constrained 03B1 transport completion wrapper
-- preserve original media on rejection/failure
-- consume `EVIDENCE_ORIGINAL_DELETE_REQUESTED`, delete the exact original, and acknowledge `DELETED`
-- make partial derivative upload/processing failures retry-safe and cleanup-safe
-- certify duplicate queue delivery, worker restart/crash recovery, stale leases/tokens, cross-tenant object attempts, source tampering, derivative upload failure, and deletion retry
-- add live machine-authenticated Storage tests plus signed-read expiry/unauthorized/cross-tenant certification
-- provide Docker/runtime health and deployment configuration without committing machine secrets
-- retain Demo as synthetic/read-only; illustrate processing/retry/deletion behavior without real media writes
+- execute a real authenticated PHOTO upload through the application Storage-RLS boundary and finalize it transactionally
+- process the resulting `EVIDENCE_PROCESS_REQUESTED` delivery with the 03B2 worker and verify exact server-owned normalized/preview objects
+- verify Evidence reaches VERIFIED only after independent source observation and successful derivative creation
+- process `EVIDENCE_ORIGINAL_DELETE_REQUESTED`, verify the exact original is deleted, and verify `original_disposition=DELETED`
+- repeat the live path for VIDEO using ffprobe/FFmpeg normalization and JPEG poster generation
+- certify signed-read BEST/preview/normalized behavior, URL expiry, unauthorized denial, cross-tenant denial, and deleted-original denial
+- certify restart/retry behavior against real Storage, including derivative-write failure and deletion retry where practical
+- validate continuous `--run` container startup, health behavior, graceful shutdown, and restart recovery
+- define deployment configuration/secret requirements without committing machine credentials
+- retain Demo as synthetic/read-only; no Demo media writes
+- keep production load/SLO certification separable if it requires a materially different environment or workload
 
-Keep mobile camera UX, claim expiry, priority ranking, reported work, billing, and unrelated platform-control work separate unless the 03B2 worker contract requires them.
+Do not start unrelated mobile, reported-work, billing, priority, or platform-control work until this live Evidence path is either certified or explicitly deferred by the product owner.
 
 ---
 
@@ -854,7 +878,7 @@ Not yet production-complete:
 - working-hours management UI
 - multi-Site administration UI
 - Site assignment management UI/API
-- deployed Evidence processor runtime/queue loop, real media normalization codecs, real original-object deletion execution, derivative retry/cleanup, and live signed-read transport certification
+- live authenticated Evidence Storage/media end-to-end certification and deployed worker runtime/operational certification
 - rolling background generation worker
 - reported work
 - mobile field application
@@ -894,5 +918,6 @@ Key validated vNext commits:
 - `8563828` — Add Evidence Verification and Media Normalization Foundation
 - `64db7b1` — Add Evidence Worker Queue and Authorized Reads Foundation 03A
 - `af22841` — Add Evidence Worker Transport Foundation 03B1
+- `948f14c` — Add real Evidence media processing worker 03B2
 
-`af22841cfad6dd83497bfbd34805e84e12942ece` is the current locked validated vNext baseline.
+`948f14c85f359f740d17d0aeda1f5f647ae50ca8` is the current locked validated vNext baseline.
