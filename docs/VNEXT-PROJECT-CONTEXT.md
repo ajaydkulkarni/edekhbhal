@@ -6,9 +6,9 @@
 >
 > **Development rule:** Before every future code change, first read the latest `PROJECT-CONTEXT.md` from `v2-rebuild`, then inspect the current committed `vNext` implementation. Legacy remains the behavioral reference; deliberate vNext architecture takes precedence.
 
-**Last updated:** 2026-09-03
+**Last updated:** 2026-09-04
 **Primary rebuild branch:** `vNext`
-**Latest validated vNext baseline:** `64db7b13c53a7889ced755d7d7b4de929e4c8c57` — `Add Evidence Worker Queue and Authorized Reads Foundation 03A`
+**Latest validated vNext baseline:** `af22841cfad6dd83497bfbd34805e84e12942ece` — `Add Evidence Worker Transport Foundation 03B1`
 **Validated database foundation:** `0109eb5`
 **Legacy behavioral reference branch:** `v2-rebuild`
 **Legacy validated Web/API E2E:** 46/46 PASS
@@ -104,7 +104,7 @@ Database roles:
   - no direct sensitive-table privileges
   - `app_private` USAGE plus only exact Evidence worker command EXECUTE grants
   - cannot invoke application Evidence-read authorization/audit commands
-  - deployment-specific LOGIN principal/credential is still deferred
+  - deployment-specific LOGIN `vnext_evidence_worker_login` is provisioned, has no superuser/CREATEDB/CREATEROLE/REPLICATION/BYPASSRLS attributes, and inherits only `vnext_evidence_worker`
 
 Runtime PostgreSQL pooling uses `prepare: false`.
 
@@ -481,7 +481,7 @@ Implemented:
 - internal Task audit helper remains non-executable by runtime
 - Demo illustrates sequential execution, explicit Task commands, evidence gating, server-derived completion, history preservation, and mismatched idempotent replay rejection
 
-Evidence capture, the processor control plane, the leased Evidence outbox queue, the NOLOGIN worker capability role, and the application-authorized read boundary are implemented. A deployed LOGIN worker transport, real media codecs/derivative generation, Storage machine credential boundary, and real object deletion execution remain deferred.
+Evidence capture, the processor control plane, the leased Evidence outbox queue, the NOLOGIN worker capability role, the application-authorized read boundary, and the 03B1 worker transport/Storage authorization boundary are implemented. The portable worker currently provides a verified transport probe only; the real queue-processing loop, media codecs/derivative generation, real object deletion execution, and deployed production worker remain deferred to 03B2.
 
 ---
 
@@ -651,7 +651,7 @@ Migration:
 
 Migration `0018` is already applied to the active vNext database. **Do not reapply it.**
 
-Privileged worker capability setup is also already provisioned. **Do not recreate/regrant it unless a later migration explicitly changes the contract.**
+Privileged worker capability setup is already provisioned. Migration `0019` changed the worker command contract, so the capability grants were re-applied and verified once for 03B1. **Do not rerun the grant step unless a later migration explicitly changes the contract.**
 
 Implemented 03A boundary:
 
@@ -675,19 +675,47 @@ Implemented 03A boundary:
 - Demo illustrates worker leases, least privilege, authorized reads, deletion acknowledgement, and the public-QR boundary
 - global worker-queue regression fixtures are deterministic under parallel Vitest execution
 
-Still required before the evidence pipeline is production-complete:
+Evidence Processing Worker Transport & Storage Authorization Foundation 03B1 commit:
 
-- select and deploy the actual worker runtime
-- create a deployment-specific least-privilege LOGIN principal/secret bound to the worker capability role; never grant BYPASSRLS
-- define the isolated machine Storage credential/policy boundary for original download and normalized/preview upload/delete
-- independently fetch and validate actual source MIME/size/SHA-256 in the deployed worker
-- real optimized/compressed image derivative generation
-- real video normalization/transcoding and poster/thumbnail generation
-- upload normalized/preview objects to server-owned tenant-scoped keys
-- execute real Storage deletion for `EVIDENCE_ORIGINAL_DELETE_REQUESTED`, then call the acknowledgement command
-- live authenticated Storage signed-read transport E2E, including URL expiry
-- duplicate outbox delivery/restart/backoff certification against the deployed worker
-- real Storage/media processing end-to-end and production load/SLO certification
+`af22841cfad6dd83497bfbd34805e84e12942ece` — `Add Evidence Worker Transport Foundation 03B1`
+
+Migration:
+
+- `0019_evidence_worker_transport_foundation.sql`
+
+Migration `0019` is already applied to the active vNext database. **Do not reapply it.** Any future database correction must use migration `0020` or later.
+
+Implemented and provisioned 03B1 boundary:
+
+- portable Node 22 worker transport contract; media processing is not hidden inside a Next.js request
+- bounded outbox-event and Evidence-processing lease renewal/heartbeat commands
+- server-owned derivative targets: PHOTO → `normalized.webp` + `preview.webp`; VIDEO → `normalized.mp4` + `preview.jpg`
+- worker completion wrapper does not accept arbitrary derivative keys; the server selects exact Organization/Occurrence/Task/Evidence-scoped targets
+- the older free-form `complete_evidence_processing(...)` command is revoked from `vnext_evidence_worker`
+- dedicated NOLOGIN capability role remains non-BYPASSRLS with no direct sensitive-table grants
+- dedicated LOGIN `vnext_evidence_worker_login` is provisioned and inherits only the worker capability role
+- dedicated ordinary Supabase Auth machine principal is ACTIVE, has no application User or Organization membership, and is mapped to one exact worker id
+- worker Storage policies use ordinary authenticated sessions plus the publishable key; no service-role/secret API key or S3 static key is used
+- Storage SELECT/INSERT/UPDATE/DELETE worker policies are constrained by exact machine principal, worker id, object path, outbox lease, and processing lease
+- original deletion authorization is limited to the exact VERIFIED/DELETE_QUEUED Evidence and exact live deletion delivery
+- `supabase-storage/002_occurrence_evidence_worker_transport.sql` is deployed
+- worker capability re-grant after `0019` is applied and verified
+- server-only worker credentials are stored outside Git in `.env.worker.local`; that file remains ignored
+- `worker:evidence:probe` validates DB role/capability inheritance, machine-principal mapping, and legacy-completion revocation without claiming queue work or touching Storage objects
+- Demo explains the 03B1 transport, heartbeat, least-privilege machine identity, server-owned path, and no-universal-secret boundaries
+
+Still required after 03B1 before the Evidence pipeline is production-complete:
+
+- implement the real leased queue-processing loop with retry/backoff, duplicate-delivery safety, and crash/restart recovery
+- independently fetch and validate actual source MIME, byte size, and SHA-256 inside the worker
+- generate optimized/compressed PHOTO derivatives and preview with a production-supported image codec
+- normalize VIDEO to MP4 and generate poster/preview with ffmpeg/ffprobe or another production-supported media processor
+- upload derivatives only to the server-owned keys selected by the 03B1 command boundary
+- execute real Storage deletion for `EVIDENCE_ORIGINAL_DELETE_REQUESTED`, then acknowledge `DELETED`
+- preserve the original on processing rejection/failure and clean up partial derivative writes safely
+- add live authenticated Storage signed-read transport E2E including expiry and unauthorized/cross-tenant denial
+- certify duplicate delivery, stale lease/token, restart recovery, deletion retry, object tampering, cross-tenant key, and derivative-upload-failure cases
+- deploy the actual worker runtime and complete real Storage/media processing end-to-end plus production load/SLO certification
 
 Original media must be discarded after successful normalization unless policy/entitlement explicitly retains it.
 
@@ -707,7 +735,7 @@ Platform administration is separate from customer tenant roles. No frontend univ
 
 ## 17. Current Validated Test Baseline
 
-At commit `64db7b13c53a7889ced755d7d7b4de929e4c8c57`:
+At commit `af22841cfad6dd83497bfbd34805e84e12942ece`:
 
 ### Integration
 
@@ -725,12 +753,13 @@ At commit `64db7b13c53a7889ced755d7d7b4de929e4c8c57`:
 - Evidence Capture & Storage hardening: **10/10 PASS**
 - Evidence Verification & Media Normalization Foundation 02: **6/6 PASS**
 - Evidence Worker Queue & Authorized Reads Foundation 03A: **6/6 PASS**
-- Total integration: **111/111 PASS**
+- Evidence Worker Transport & Storage Authorization Foundation 03B1: **5/5 PASS**
+- Total integration: **116/116 PASS**
 
 ### Full Vitest
 
-- Test files: **36/36 PASS**
-- Tests: **181/181 PASS**
+- Test files: **38/38 PASS**
+- Tests: **193/193 PASS**
 
 ### Build gates
 
@@ -739,6 +768,7 @@ At commit `64db7b13c53a7889ced755d7d7b4de929e4c8c57`:
 - Next.js production build: **PASS**
 - Generated routes: **17/17**
 - `git diff --check`: **PASS**
+- Evidence worker transport probe: **PASS**
 
 Validated routes include:
 
@@ -792,28 +822,28 @@ Data/Auth:
 
 Next increment:
 
-**Evidence Processing Worker Transport & Media Normalization Foundation 03B**
+**Evidence Processing Worker — Real Media Processing Foundation 03B2**
 
-Build on validated 03A without weakening tenant isolation, the NOLOGIN capability-role contract, outbox lease/idempotency behavior, Storage isolation, Evidence history, signed-read authorization, or the VERIFIED Task gate.
+Build on validated 03B1 without weakening tenant isolation, the NOLOGIN capability-role boundary, the dedicated least-privilege LOGIN, the ordinary authenticated machine Storage principal, live-lease Storage authorization, server-owned derivative paths, outbox idempotency, Evidence history, signed-read authorization, or the VERIFIED Task gate.
 
 Target foundation:
 
-- choose a deployable worker runtime explicitly; do not hide long-running media processing inside a Next.js request
-- provision a deployment-specific LOGIN principal that inherits only `vnext_evidence_worker`; no superuser and no BYPASSRLS
-- define and isolate the machine Storage credential boundary separately from browser/runtime credentials
-- consume `EVIDENCE_PROCESS_REQUESTED` using the 03A leased queue with retry/backoff, duplicate-delivery safety, and crash recovery
-- fetch the exact private original object and independently validate actual MIME, byte size, and SHA-256
-- generate optimized PHOTO derivatives and preview using a production-supported image codec
-- generate normalized MP4 plus poster/preview for VIDEO using a production-supported media processor
-- upload only to server-owned Organization-scoped derivative keys
-- complete VERIFIED/REJECTED through the existing processor command boundary
-- consume `EVIDENCE_ORIGINAL_DELETE_REQUESTED`, delete the exact original from Storage, then acknowledge `DELETED`
-- preserve original on processing rejection/failure
-- add live authenticated signed-read transport tests including expiry and unauthorized/cross-tenant denial
-- add regressions for worker credential escape, cross-tenant object keys, object tampering, duplicate deliveries, stale leases/tokens, restart recovery, deletion retry, and derivative upload failure
-- Demo remains synthetic/read-only
+- turn the portable worker transport into a real leased queue-processing loop for `EVIDENCE_PROCESS_REQUESTED`
+- renew outbox and processing leases during long media operations; stale/mismatched tokens remain fail-closed
+- independently download the exact private original and calculate/validate actual MIME, byte size, and SHA-256
+- PHOTO: use a production-supported image library such as `sharp` to normalize/compress to the server-owned WebP derivative and create the preview
+- VIDEO: use ffmpeg/ffprobe or another production-supported processor to normalize to MP4 and create the JPEG poster/preview
+- upload only the derivative objects returned by the 03B1 target command
+- complete VERIFIED/REJECTED only through the constrained 03B1 transport completion wrapper
+- preserve original media on rejection/failure
+- consume `EVIDENCE_ORIGINAL_DELETE_REQUESTED`, delete the exact original, and acknowledge `DELETED`
+- make partial derivative upload/processing failures retry-safe and cleanup-safe
+- certify duplicate queue delivery, worker restart/crash recovery, stale leases/tokens, cross-tenant object attempts, source tampering, derivative upload failure, and deletion retry
+- add live machine-authenticated Storage tests plus signed-read expiry/unauthorized/cross-tenant certification
+- provide Docker/runtime health and deployment configuration without committing machine secrets
+- retain Demo as synthetic/read-only; illustrate processing/retry/deletion behavior without real media writes
 
-Keep mobile camera UX, claim expiry, priority ranking, reported work, billing, and unrelated platform-control work separate unless the worker transport contract requires them.
+Keep mobile camera UX, claim expiry, priority ranking, reported work, billing, and unrelated platform-control work separate unless the 03B2 worker contract requires them.
 
 ---
 
@@ -824,7 +854,7 @@ Not yet production-complete:
 - working-hours management UI
 - multi-Site administration UI
 - Site assignment management UI/API
-- deployed Evidence processor runtime, deployment-specific worker LOGIN/secret, real media normalization codecs, machine Storage credential boundary, real original-object deletion execution, and live signed-read transport certification
+- deployed Evidence processor runtime/queue loop, real media normalization codecs, real original-object deletion execution, derivative retry/cleanup, and live signed-read transport certification
 - rolling background generation worker
 - reported work
 - mobile field application
@@ -863,5 +893,6 @@ Key validated vNext commits:
 - `51d8e19` — Harden Evidence Storage upload security
 - `8563828` — Add Evidence Verification and Media Normalization Foundation
 - `64db7b1` — Add Evidence Worker Queue and Authorized Reads Foundation 03A
+- `af22841` — Add Evidence Worker Transport Foundation 03B1
 
-`64db7b13c53a7889ced755d7d7b4de929e4c8c57` is the current locked validated vNext baseline.
+`af22841cfad6dd83497bfbd34805e84e12942ece` is the current locked validated vNext baseline.
