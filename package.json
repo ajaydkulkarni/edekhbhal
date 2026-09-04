@@ -47,7 +47,8 @@
     "db:evidence-worker-media:apply": "node scripts/db-apply-evidence-worker-media-20.mjs",
     "worker:evidence:media-check": "node worker/evidence-worker.mjs --media-check",
     "worker:evidence:once": "node worker/evidence-worker.mjs --once",
-    "worker:evidence:run": "node worker/evidence-worker.mjs --run"
+    "worker:evidence:run": "node worker/evidence-worker.mjs --run",
+    "db:evidence-storage-delete-hardening:apply": "node scripts/db-apply-evidence-storage-delete-hardening-21.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "0.12.5",

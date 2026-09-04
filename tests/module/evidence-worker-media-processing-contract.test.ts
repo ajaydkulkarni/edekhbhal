@@ -2,6 +2,7 @@ import fs from "node:fs";
 import {describe,expect,it} from "vitest";
 
 const migration=fs.readFileSync("drizzle/0020_evidence_worker_media_execution_hardening.sql","utf8");
+const deletionHardening=fs.readFileSync("drizzle/0021_evidence_storage_delete_confirmation_hardening.sql","utf8");
 const grants=fs.readFileSync("scripts/db-apply-evidence-worker-capability-grants.mjs","utf8");
 const transport=fs.readFileSync("worker/lib/evidence-transport.mjs","utf8");
 const media=fs.readFileSync("worker/lib/evidence-media.mjs","utf8");
@@ -53,6 +54,16 @@ describe("Evidence Worker Real Media Processing Foundation 03B2 contract",()=>{
     expect(loop).toContain("releaseProcessingForRetry");
     expect(loop).toContain("computeRetrySeconds");
     expect(loop).toContain("bestEffortDerivativeCleanup");
+  });
+
+  it("requires worker SELECT visibility for original deletion and verifies physical removal",()=>{
+    expect(deletionHardening).toContain("e.original_disposition='DELETE_QUEUED'");
+    expect(deletionHardening).toContain("EVIDENCE_ORIGINAL_DELETE_REQUESTED");
+    expect(deletionHardening).toContain("p_object_name=e.object_key");
+    expect(deletionHardening).toContain("e.original_disposition<>'DELETED'");
+    expect(transport).toContain("Storage original is not SELECT-visible to the worker before delete.");
+    expect(transport).toContain("Storage delete returned success but the exact original object remains visible.");
+    expect(transport).toContain(".list(");
   });
 
   it("supports a separate production worker container without a universal Storage credential",()=>{

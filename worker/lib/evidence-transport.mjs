@@ -231,8 +231,40 @@ export async function openEvidenceWorkerTransport(){
       if(storageError)throw new Error(`Storage upload failed: ${storageError.message}`);
     },
     async deleteObject(bucket,objectKey){
-      const {error:storageError}=await supabase.storage.from(bucket).remove([objectKey]);
-      if(storageError)throw new Error(`Storage delete failed: ${storageError.message}`);
+      const slash=objectKey.lastIndexOf("/");
+      if(slash<1||slash===objectKey.length-1)
+        throw new Error("Storage delete object key must include a folder and filename.");
+
+      const folder=objectKey.slice(0,slash);
+      const filename=objectKey.slice(slash+1);
+
+      async function visible(){
+        const {data,error}=await supabase.storage.from(bucket).list(
+          folder,
+          {
+            limit:100,
+            search:filename,
+            sortBy:{column:"name",order:"asc"}
+          }
+        );
+        if(error)throw new Error(`Storage delete visibility check failed: ${error.message}`);
+        return (data??[]).some(item=>item?.name===filename);
+      }
+
+      if(!await visible())
+        throw new Error("Storage original is not SELECT-visible to the worker before delete.");
+
+      const {error:storageError}=await supabase.storage
+        .from(bucket)
+        .remove([objectKey]);
+
+      if(storageError)
+        throw new Error(`Storage delete failed: ${storageError.message}`);
+
+      if(await visible())
+        throw new Error(
+          "Storage delete returned success but the exact original object remains visible."
+        );
     },
     async close(){
       await db.end({timeout:5});
