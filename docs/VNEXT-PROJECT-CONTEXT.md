@@ -8,7 +8,7 @@
 
 **Last updated:** 2026-09-03
 **Primary rebuild branch:** `vNext`
-**Latest validated vNext baseline:** `856382812aac28b58df2eea0fad7f82d58f912d2` — `Add Evidence Verification and Media Normalization Foundation`
+**Latest validated vNext baseline:** `64db7b13c53a7889ced755d7d7b4de929e4c8c57` — `Add Evidence Worker Queue and Authorized Reads Foundation 03A`
 **Validated database foundation:** `0109eb5`
 **Legacy behavioral reference branch:** `v2-rebuild`
 **Legacy validated Web/API E2E:** 46/46 PASS
@@ -98,6 +98,13 @@ Database roles:
   - no `BYPASSRLS`
   - no database CREATE privilege
   - least-privilege grants only
+- `vnext_evidence_worker`
+  - NOLOGIN capability role
+  - no superuser / CREATEDB / CREATEROLE / REPLICATION / `BYPASSRLS`
+  - no direct sensitive-table privileges
+  - `app_private` USAGE plus only exact Evidence worker command EXECUTE grants
+  - cannot invoke application Evidence-read authorization/audit commands
+  - deployment-specific LOGIN principal/credential is still deferred
 
 Runtime PostgreSQL pooling uses `prepare: false`.
 
@@ -474,7 +481,7 @@ Implemented:
 - internal Task audit helper remains non-executable by runtime
 - Demo illustrates sequential execution, explicit Task commands, evidence gating, server-derived completion, history preservation, and mismatched idempotent replay rejection
 
-Evidence upload plus the processor control-plane foundation are implemented. A dedicated worker identity, real media codecs/derivative generation, object deletion execution, and authorized operational read delivery remain deferred.
+Evidence capture, the processor control plane, the leased Evidence outbox queue, the NOLOGIN worker capability role, and the application-authorized read boundary are implemented. A deployed LOGIN worker transport, real media codecs/derivative generation, Storage machine credential boundary, and real object deletion execution remain deferred.
 
 ---
 
@@ -486,7 +493,7 @@ Human-readable audit target:
 
 Machine audit preserves Organization, actor User/Membership, actor-name snapshot, module/action, entity, old/new JSON, source, correlation/request metadata, IP, and reason where applicable.
 
-Validated operational audit includes onboarding, Work Area/QR, Task, Schedule, occurrence claim/start, and supersession.
+Validated operational audit includes onboarding, Work Area/QR, Task, Schedule, occurrence claim/start/supersession, Evidence intent/upload, processor verification/rejection, original-deletion acknowledgement, and signed-read issuance.
 
 Audit remains append-only for runtime.
 
@@ -634,17 +641,53 @@ Implemented processing control plane:
 - My Work exposes processing/verification state
 - Demo illustrates queued, leased, verified/rejected processing without real media writes
 
+Evidence Worker Queue & Authorized Reads Foundation 03A commit:
+
+`64db7b13c53a7889ced755d7d7b4de929e4c8c57` — `Add Evidence Worker Queue and Authorized Reads Foundation 03A`
+
+Migration:
+
+- `0018_evidence_worker_authorized_reads.sql`
+
+Migration `0018` is already applied to the active vNext database. **Do not reapply it.**
+
+Privileged worker capability setup is also already provisioned. **Do not recreate/regrant it unless a later migration explicitly changes the contract.**
+
+Implemented 03A boundary:
+
+- Evidence-only transactional outbox claims use `FOR UPDATE SKIP LOCKED`
+- queue claims carry worker id, random claim token, bounded lease, attempt count, last-attempt timestamp, and retry delay
+- stale/mismatched worker event claims fail closed
+- normal `vnext_runtime` cannot execute worker queue/deletion commands
+- dedicated `vnext_evidence_worker` capability role is NOLOGIN and non-BYPASSRLS
+- the worker capability role has no direct sensitive-table grants
+- function ownership is deliberately split: Supabase project `postgres` creates/verifies the role; `vnext_migrator`, which owns `app_private`, grants exact command EXECUTE privileges
+- no worker password, frontend service-role key, or universal Storage credential was introduced
+- queued original deletion can be acknowledged only for the exact VERIFIED Evidence/version/object key and is idempotently audited
+- application command authorizes Evidence reads before Storage signing
+- ADMIN is Organization-wide; SITE_MANAGER remains Site-scoped; USER requires assigned Occurrence + Site scope
+- `BEST` read prefers preview, then normalized, then retained original
+- deleted originals cannot be requested
+- signed operational URLs are capped at 60 seconds
+- signed-read issuance is audited
+- public QR has no private Evidence route
+- My Work and Occurrences expose short-lived private Evidence view links
+- Demo illustrates worker leases, least privilege, authorized reads, deletion acknowledgement, and the public-QR boundary
+- global worker-queue regression fixtures are deterministic under parallel Vitest execution
+
 Still required before the evidence pipeline is production-complete:
 
-- provision a dedicated least-privilege processor identity
-- implement a deployed worker that consumes the outbox safely
+- select and deploy the actual worker runtime
+- create a deployment-specific least-privilege LOGIN principal/secret bound to the worker capability role; never grant BYPASSRLS
+- define the isolated machine Storage credential/policy boundary for original download and normalized/preview upload/delete
+- independently fetch and validate actual source MIME/size/SHA-256 in the deployed worker
 - real optimized/compressed image derivative generation
 - real video normalization/transcoding and poster/thumbnail generation
-- Storage write policy/credential boundary for normalized and preview objects
-- execute and confirm queued original-object deletion
-- short-lived signed operational reads after application authorization
-- ADMIN/SITE_MANAGER Site-scoped and assigned USER evidence-view UX
-- real Storage transport/media processing end-to-end and load certification
+- upload normalized/preview objects to server-owned tenant-scoped keys
+- execute real Storage deletion for `EVIDENCE_ORIGINAL_DELETE_REQUESTED`, then call the acknowledgement command
+- live authenticated Storage signed-read transport E2E, including URL expiry
+- duplicate outbox delivery/restart/backoff certification against the deployed worker
+- real Storage/media processing end-to-end and production load/SLO certification
 
 Original media must be discarded after successful normalization unless policy/entitlement explicitly retains it.
 
@@ -664,7 +707,7 @@ Platform administration is separate from customer tenant roles. No frontend univ
 
 ## 17. Current Validated Test Baseline
 
-At commit `856382812aac28b58df2eea0fad7f82d58f912d2`:
+At commit `64db7b13c53a7889ced755d7d7b4de929e4c8c57`:
 
 ### Integration
 
@@ -681,18 +724,21 @@ At commit `856382812aac28b58df2eea0fad7f82d58f912d2`:
 - Occurrence Task Execution & Completion + hardening: **14/14 PASS**
 - Evidence Capture & Storage hardening: **10/10 PASS**
 - Evidence Verification & Media Normalization Foundation 02: **6/6 PASS**
-- Total integration: **105/105 PASS**
+- Evidence Worker Queue & Authorized Reads Foundation 03A: **6/6 PASS**
+- Total integration: **111/111 PASS**
 
 ### Full Vitest
 
-- Test files: **34/34 PASS**
-- Tests: **169/169 PASS**
+- Test files: **36/36 PASS**
+- Tests: **181/181 PASS**
 
 ### Build gates
 
 - TypeScript: **PASS**
 - ESLint: **PASS**
 - Next.js production build: **PASS**
+- Generated routes: **17/17**
+- `git diff --check`: **PASS**
 
 Validated routes include:
 
@@ -707,6 +753,7 @@ Validated routes include:
 - `/workspace/tasks`
 - `/workspace/schedules`
 - `/workspace/occurrences`
+- `/workspace/evidence/[id]`
 - `/workspace/work-areas`
 - `/workspace/work-areas/[id]/qr`
 - `/q/[token]`
@@ -714,7 +761,7 @@ Validated routes include:
 ### Playwright
 
 - **3/3 PASS**
-- Demo regression covers planning, My Work / claim / QR-start / supersession, sequential Task execution/completion, Evidence upload/verification gating, expired-intent/wrong-object fail-closed behavior, queued/leased processor behavior, verification/normalization safety boundaries, and idempotency/security explanation
+- Demo regression covers planning, My Work / claim / QR-start / supersession, sequential Task execution/completion, Evidence upload/verification gating, expired-intent/wrong-object fail-closed behavior, queued/leased processor behavior, verification/normalization safety boundaries, worker least privilege, 60-second authorized reads, public-QR Evidence isolation, and idempotency/security explanation
 
 ---
 
@@ -745,28 +792,28 @@ Data/Auth:
 
 Next increment:
 
-**Evidence Processing Worker & Authorized Reads Foundation 03**
+**Evidence Processing Worker Transport & Media Normalization Foundation 03B**
 
-Build on the validated processor command/control-plane foundation without weakening tenant isolation, Site scope, Storage isolation, processor leases/idempotency, Evidence history, or the Task verification gate.
+Build on validated 03A without weakening tenant isolation, the NOLOGIN capability-role contract, outbox lease/idempotency behavior, Storage isolation, Evidence history, signed-read authorization, or the VERIFIED Task gate.
 
 Target foundation:
 
-- provision a dedicated least-privilege processor identity; never reuse `vnext_runtime` and never grant universal BYPASSRLS
-- define the processor's exact database and Storage privileges separately from browser/runtime credentials
-- consume `EVIDENCE_PROCESS_REQUESTED` safely from the transactional outbox with retry/backoff and claim-lease semantics
-- fetch the exact private original object and independently validate actual content type/size/SHA-256 before processing
-- generate optimized image derivatives and normalized video/poster derivatives using a deployed processor implementation
-- upload normalized/preview objects only to server-owned tenant-scoped keys
-- complete VERIFIED/REJECTED through the processor command boundary
-- execute `EVIDENCE_ORIGINAL_DELETE_REQUESTED` after successful normalization and persist final deletion disposition
-- authorize operational evidence reads in the application before issuing short-lived signed read URLs
-- ADMIN Organization-wide, SITE_MANAGER Site-scoped, USER assigned-occurrence/Site-scoped evidence reads only
-- public QR must have no private evidence read path
-- signed URLs must be short-lived and must not become durable bearer authorization
-- Demo parity remains synthetic/read-only
-- regression coverage includes worker privilege escape, cross-tenant object access, stale leases/tokens, object tampering, duplicate outbox delivery, unauthorized reads, signed-URL expiry, and deletion retry safety
+- choose a deployable worker runtime explicitly; do not hide long-running media processing inside a Next.js request
+- provision a deployment-specific LOGIN principal that inherits only `vnext_evidence_worker`; no superuser and no BYPASSRLS
+- define and isolate the machine Storage credential boundary separately from browser/runtime credentials
+- consume `EVIDENCE_PROCESS_REQUESTED` using the 03A leased queue with retry/backoff, duplicate-delivery safety, and crash recovery
+- fetch the exact private original object and independently validate actual MIME, byte size, and SHA-256
+- generate optimized PHOTO derivatives and preview using a production-supported image codec
+- generate normalized MP4 plus poster/preview for VIDEO using a production-supported media processor
+- upload only to server-owned Organization-scoped derivative keys
+- complete VERIFIED/REJECTED through the existing processor command boundary
+- consume `EVIDENCE_ORIGINAL_DELETE_REQUESTED`, delete the exact original from Storage, then acknowledge `DELETED`
+- preserve original on processing rejection/failure
+- add live authenticated signed-read transport tests including expiry and unauthorized/cross-tenant denial
+- add regressions for worker credential escape, cross-tenant object keys, object tampering, duplicate deliveries, stale leases/tokens, restart recovery, deletion retry, and derivative upload failure
+- Demo remains synthetic/read-only
 
-Keep mobile camera UX, claim expiry, priority ranking, and reported work separate unless required for the worker/read API contract.
+Keep mobile camera UX, claim expiry, priority ranking, reported work, billing, and unrelated platform-control work separate unless the worker transport contract requires them.
 
 ---
 
@@ -777,7 +824,7 @@ Not yet production-complete:
 - working-hours management UI
 - multi-Site administration UI
 - Site assignment management UI/API
-- deployed evidence processing worker, real media normalization codecs, original-object deletion execution, and authorized evidence-view delivery
+- deployed Evidence processor runtime, deployment-specific worker LOGIN/secret, real media normalization codecs, machine Storage credential boundary, real original-object deletion execution, and live signed-read transport certification
 - rolling background generation worker
 - reported work
 - mobile field application
@@ -815,5 +862,6 @@ Key validated vNext commits:
 - `776f392` — Add Evidence Capture and Media Pipeline Foundation
 - `51d8e19` — Harden Evidence Storage upload security
 - `8563828` — Add Evidence Verification and Media Normalization Foundation
+- `64db7b1` — Add Evidence Worker Queue and Authorized Reads Foundation 03A
 
-`856382812aac28b58df2eea0fad7f82d58f912d2` is the current locked validated vNext baseline.
+`64db7b13c53a7889ced755d7d7b4de929e4c8c57` is the current locked validated vNext baseline.
