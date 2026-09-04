@@ -7,6 +7,6 @@ RUN npm ci --omit=dev
 
 COPY worker ./worker
 
-# 03B1 is a transport/probe image only. Foundation 03B2 adds the production
-# processing loop plus image/video codecs.
+# Probe-only image retained for identity/capability verification. The production
+# 03B2 image is worker/Dockerfile and includes FFmpeg plus the real queue loop.
 CMD ["node","worker/evidence-worker.mjs","--probe"]

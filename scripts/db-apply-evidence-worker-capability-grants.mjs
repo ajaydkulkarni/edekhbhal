@@ -37,14 +37,16 @@ try{
 
     grant execute on function app_private.claim_evidence_worker_event(text,integer)
       to vnext_evidence_worker;
-    grant execute on function app_private.complete_evidence_worker_event(uuid,uuid,text)
-      to vnext_evidence_worker;
     grant execute on function app_private.fail_evidence_worker_event(uuid,uuid,text,text,integer)
       to vnext_evidence_worker;
     grant execute on function app_private.renew_evidence_worker_event_lease(uuid,uuid,text,integer)
       to vnext_evidence_worker;
+    grant execute on function app_private.complete_evidence_worker_event_if_terminal(uuid,uuid,text)
+      to vnext_evidence_worker;
 
-    grant execute on function app_private.claim_evidence_processing(uuid,bigint,text,text)
+    grant execute on function app_private.claim_evidence_processing_for_event(uuid,uuid,text,text)
+      to vnext_evidence_worker;
+    grant execute on function app_private.release_evidence_processing_lease_for_retry(uuid,bigint,uuid,text,text)
       to vnext_evidence_worker;
     grant execute on function app_private.renew_evidence_processing_lease(uuid,bigint,uuid,text,integer)
       to vnext_evidence_worker;
@@ -53,12 +55,21 @@ try{
     grant execute on function app_private.complete_evidence_processing_transport(
       uuid,bigint,uuid,text,text,text,bigint,text,bigint,boolean,text,text
     ) to vnext_evidence_worker;
+    grant execute on function app_private.reject_evidence_processing_observation(
+      uuid,bigint,uuid,text,text,bigint,text,text,text
+    ) to vnext_evidence_worker;
 
-    grant execute on function app_private.mark_evidence_original_deleted(uuid,bigint,text,text,text)
+    grant execute on function app_private.mark_evidence_original_deleted_for_event(uuid,uuid,text,text)
       to vnext_evidence_worker;
     grant execute on function app_private.assert_evidence_worker_storage_principal(uuid,text)
       to vnext_evidence_worker;
 
+    revoke execute on function app_private.complete_evidence_worker_event(uuid,uuid,text)
+      from vnext_evidence_worker;
+    revoke execute on function app_private.claim_evidence_processing(uuid,bigint,text,text)
+      from vnext_evidence_worker;
+    revoke execute on function app_private.mark_evidence_original_deleted(uuid,bigint,text,text,text)
+      from vnext_evidence_worker;
     revoke execute on function app_private.complete_evidence_processing(
       uuid,bigint,uuid,text,text,text,bigint,text,text,text,bigint,text,boolean,text,text
     ) from vnext_evidence_worker;
@@ -73,10 +84,13 @@ try{
     select
       has_schema_privilege('vnext_evidence_worker','app_private','USAGE') schema_usage,
       has_function_privilege('vnext_evidence_worker','app_private.claim_evidence_worker_event(text,integer)','EXECUTE') q_claim,
-      has_function_privilege('vnext_evidence_worker','app_private.complete_evidence_worker_event(uuid,uuid,text)','EXECUTE') q_complete,
       has_function_privilege('vnext_evidence_worker','app_private.fail_evidence_worker_event(uuid,uuid,text,text,integer)','EXECUTE') q_fail,
       has_function_privilege('vnext_evidence_worker','app_private.renew_evidence_worker_event_lease(uuid,uuid,text,integer)','EXECUTE') q_renew,
-      has_function_privilege('vnext_evidence_worker','app_private.claim_evidence_processing(uuid,bigint,text,text)','EXECUTE') p_claim,
+      has_function_privilege('vnext_evidence_worker','app_private.complete_evidence_worker_event_if_terminal(uuid,uuid,text)','EXECUTE') q_terminal,
+      has_function_privilege('vnext_evidence_worker','app_private.complete_evidence_worker_event(uuid,uuid,text)','EXECUTE') q_free_complete,
+      has_function_privilege('vnext_evidence_worker','app_private.claim_evidence_processing_for_event(uuid,uuid,text,text)','EXECUTE') p_claim_event,
+      has_function_privilege('vnext_evidence_worker','app_private.claim_evidence_processing(uuid,bigint,text,text)','EXECUTE') p_legacy_claim,
+      has_function_privilege('vnext_evidence_worker','app_private.release_evidence_processing_lease_for_retry(uuid,bigint,uuid,text,text)','EXECUTE') p_release,
       has_function_privilege('vnext_evidence_worker','app_private.renew_evidence_processing_lease(uuid,bigint,uuid,text,integer)','EXECUTE') p_renew,
       has_function_privilege('vnext_evidence_worker','app_private.get_evidence_processing_targets(uuid,bigint,uuid,text)','EXECUTE') targets,
       has_function_privilege(
@@ -86,14 +100,24 @@ try{
       ) transport_complete,
       has_function_privilege(
         'vnext_evidence_worker',
+        'app_private.reject_evidence_processing_observation(uuid,bigint,uuid,text,text,bigint,text,text,text)',
+        'EXECUTE'
+      ) reject_observation,
+      has_function_privilege(
+        'vnext_evidence_worker',
         'app_private.complete_evidence_processing(uuid,bigint,uuid,text,text,text,bigint,text,text,text,bigint,text,boolean,text,text)',
         'EXECUTE'
       ) legacy_complete,
       has_function_privilege(
         'vnext_evidence_worker',
+        'app_private.mark_evidence_original_deleted_for_event(uuid,uuid,text,text)',
+        'EXECUTE'
+      ) original_delete_event,
+      has_function_privilege(
+        'vnext_evidence_worker',
         'app_private.mark_evidence_original_deleted(uuid,bigint,text,text,text)',
         'EXECUTE'
-      ) original_delete,
+      ) free_original_delete,
       has_function_privilege(
         'vnext_evidence_worker',
         'app_private.assert_evidence_worker_storage_principal(uuid,text)',
@@ -111,11 +135,12 @@ try{
       ) app_read_audit
   `)[0];
 
-  if(!p.schema_usage||!p.q_claim||!p.q_complete||!p.q_fail||!p.q_renew||
-     !p.p_claim||!p.p_renew||!p.targets||!p.transport_complete||!p.original_delete||!p.principal_assert)
-    throw new Error("Worker 03B1 capability function grants are incomplete.");
-  if(p.legacy_complete)
-    throw new Error("Worker must not retain the legacy free-form Evidence completion command.");
+  if(!p.schema_usage||!p.q_claim||!p.q_fail||!p.q_renew||!p.q_terminal||
+     !p.p_claim_event||!p.p_release||!p.p_renew||!p.targets||!p.transport_complete||
+     !p.reject_observation||!p.original_delete_event||!p.principal_assert)
+    throw new Error("Worker 03B2 capability function grants are incomplete.");
+  if(p.q_free_complete||p.p_legacy_claim||p.free_original_delete||p.legacy_complete)
+    throw new Error("Worker must not retain free-form event completion, stale-version processing claim, free-form original deletion, or legacy free-form Evidence completion.");
   if(p.app_read||p.app_read_audit)
     throw new Error("Worker role must not receive application Evidence-read capabilities.");
 
@@ -137,10 +162,10 @@ try{
     throw new Error(`Worker role unexpectedly has direct sensitive-table privileges: ${JSON.stringify(tablePrivs)}`);
   }
 
-  console.log("Evidence worker 03B1 capability grants applied and verified.");
+  console.log("Evidence worker 03B2 capability grants applied and verified.");
   console.log("vnext_evidence_worker remains NOLOGIN and non-BYPASSRLS.");
-  console.log("Worker receives bounded lease/target/transport commands only; legacy free-form completion is revoked.");
-  console.log("No direct sensitive-table grants, application Evidence-read capability, or service-role secret was introduced.");
+  console.log("Processing claims are event-bound and queue acknowledgement is terminal-state-bound.");
+  console.log("No direct sensitive-table grants, application Evidence-read capability, service-role secret, or S3 credential was introduced.");
 }finally{
   await db.end({timeout:5});
 }

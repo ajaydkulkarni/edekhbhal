@@ -32,4 +32,9 @@ test("Demo explains planning and execution foundations safely",async({page})=>{
  await expect(page.getByText(/separate Node 22 container/i)).toBeVisible();
  await expect(page.getByText(/dedicated Supabase Auth machine account has no app_user or Organization Membership/i)).toBeVisible();
  await expect(page.getByText(/No service-role key, JWT signing secret, or S3 static credential/i)).toBeVisible();
+ await expect(page.getByText("EVIDENCE MEDIA PROCESSING 03B2 DEMO")).toBeVisible();
+ await expect(page.getByText(/processing claim is bound to the live outbox event token and current Evidence version/i)).toBeVisible();
+ await expect(page.getByText(/Sharp\/libvips auto-orients/i)).toBeVisible();
+ await expect(page.getByText(/FFmpeg creates H\.264\/AAC MP4/i)).toBeVisible();
+ await expect(page.getByText(/acknowledged only after Evidence is VERIFIED or REJECTED/i)).toBeVisible();
 });

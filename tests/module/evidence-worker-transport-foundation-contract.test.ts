@@ -45,7 +45,7 @@ describe("Evidence Worker Transport Foundation 03B1 contract",()=>{
   expect(grants).toMatch(/revoke execute on function app_private\.complete_evidence_processing\(/i);
   expect(grants).toContain("complete_evidence_processing_transport");
   expect(grants).toContain("legacy_complete");
-  expect(grants).toContain("Worker must not retain the legacy free-form Evidence completion command.");
+  expect(grants).toContain("free-form");
  });
  it("uses publishable-key Auth for Storage and never embeds a service credential",()=>{
   expect(worker).toContain("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY");
@@ -56,9 +56,11 @@ describe("Evidence Worker Transport Foundation 03B1 contract",()=>{
   expect(worker).not.toContain("MIGRATION_DATABASE_URL");
   expect(storage).not.toMatch(/service[_-]?role/i);
  });
- it("keeps 03B1 transport-only and defers codecs/queue loop to 03B2",()=>{
-  expect(main).toContain("queue-processing loop and real image/video codecs are intentionally disabled");
-  expect(pkg).not.toContain('"sharp"');
+ it("keeps the 03B1 database/Storage transport boundary while 03B2 adds codecs only in the separate worker runtime",()=>{
+  expect(migration).not.toMatch(/sharp/i);
+  expect(migration).not.toMatch(/ffmpeg/i);
+  expect(main).toContain("--probe");
+  expect(pkg).toContain('"sharp": "0.35.4"');
   expect(pkg).not.toContain("ffmpeg-static");
  });
 });

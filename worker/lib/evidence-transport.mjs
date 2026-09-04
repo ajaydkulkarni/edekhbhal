@@ -36,7 +36,7 @@ export async function openEvidenceWorkerTransport(){
 
   if(workerId.length>200)throw new Error("EVIDENCE_WORKER_ID cannot exceed 200 characters.");
 
-  const db=postgres(databaseUrl,{max:2,prepare:false,ssl:"require"});
+  const db=postgres(databaseUrl,{max:3,prepare:false,ssl:"require"});
   const identity=(await db`
     select
       current_user,
@@ -82,8 +82,13 @@ export async function openEvidenceWorkerTransport(){
   const capabilities=(await db`
     select
       has_function_privilege(current_user,'app_private.claim_evidence_worker_event(text,integer)','EXECUTE') q_claim,
+      has_function_privilege(current_user,'app_private.complete_evidence_worker_event(uuid,uuid,text)','EXECUTE') q_free_complete,
+      has_function_privilege(current_user,'app_private.fail_evidence_worker_event(uuid,uuid,text,text,integer)','EXECUTE') q_fail,
       has_function_privilege(current_user,'app_private.renew_evidence_worker_event_lease(uuid,uuid,text,integer)','EXECUTE') q_renew,
-      has_function_privilege(current_user,'app_private.claim_evidence_processing(uuid,bigint,text,text)','EXECUTE') p_claim,
+      has_function_privilege(current_user,'app_private.complete_evidence_worker_event_if_terminal(uuid,uuid,text)','EXECUTE') q_terminal,
+      has_function_privilege(current_user,'app_private.claim_evidence_processing(uuid,bigint,text,text)','EXECUTE') p_legacy_claim,
+      has_function_privilege(current_user,'app_private.claim_evidence_processing_for_event(uuid,uuid,text,text)','EXECUTE') p_claim_event,
+      has_function_privilege(current_user,'app_private.release_evidence_processing_lease_for_retry(uuid,bigint,uuid,text,text)','EXECUTE') p_release,
       has_function_privilege(current_user,'app_private.renew_evidence_processing_lease(uuid,bigint,uuid,text,integer)','EXECUTE') p_renew,
       has_function_privilege(current_user,'app_private.get_evidence_processing_targets(uuid,bigint,uuid,text)','EXECUTE') targets,
       has_function_privilege(
@@ -93,15 +98,33 @@ export async function openEvidenceWorkerTransport(){
       ) transport_complete,
       has_function_privilege(
         current_user,
+        'app_private.reject_evidence_processing_observation(uuid,bigint,uuid,text,text,bigint,text,text,text)',
+        'EXECUTE'
+      ) reject_observation,
+      has_function_privilege(
+        current_user,
         'app_private.complete_evidence_processing(uuid,bigint,uuid,text,text,text,bigint,text,text,text,bigint,text,boolean,text,text)',
         'EXECUTE'
-      ) legacy_complete
+      ) legacy_complete,
+      has_function_privilege(
+        current_user,
+        'app_private.mark_evidence_original_deleted_for_event(uuid,uuid,text,text)',
+        'EXECUTE'
+      ) original_delete_event,
+      has_function_privilege(
+        current_user,
+        'app_private.mark_evidence_original_deleted(uuid,bigint,text,text,text)',
+        'EXECUTE'
+      ) free_original_delete
   `)[0];
-  if(!capabilities.q_claim||!capabilities.q_renew||!capabilities.p_claim||
-     !capabilities.p_renew||!capabilities.targets||!capabilities.transport_complete)
-    throw new Error("Evidence worker database LOGIN is missing 03B1 capabilities.");
-  if(capabilities.legacy_complete)
-    throw new Error("Evidence worker database LOGIN must not inherit legacy free-form processing completion.");
+
+  if(!capabilities.q_claim||!capabilities.q_fail||!capabilities.q_renew||!capabilities.q_terminal||
+     !capabilities.p_claim_event||!capabilities.p_release||!capabilities.p_renew||
+     !capabilities.targets||!capabilities.transport_complete||!capabilities.reject_observation||
+     !capabilities.original_delete_event)
+    throw new Error("Evidence worker database LOGIN is missing 03B2 capabilities.");
+  if(capabilities.q_free_complete||capabilities.p_legacy_claim||capabilities.free_original_delete||capabilities.legacy_complete)
+    throw new Error("Evidence worker database LOGIN must not inherit free-form queue completion, stale-version processing claim, free-form original deletion, or legacy Evidence completion.");
 
   return {
     db,
@@ -109,24 +132,45 @@ export async function openEvidenceWorkerTransport(){
     workerId,
     storageAuthSubject,
     databaseRole:identity.current_user,
-    async claimEvent(leaseSeconds=90){
+    async claimEvent(leaseSeconds=120){
       return (await db`
         select * from app_private.claim_evidence_worker_event(${workerId},${leaseSeconds})
       `)[0]??null;
     },
-    async renewEventLease(eventId,claimToken,leaseSeconds=90){
+    async renewEventLease(eventId,claimToken,leaseSeconds=120){
       return (await db`
         select app_private.renew_evidence_worker_event_lease(
           ${eventId}::uuid,${claimToken}::uuid,${workerId},${leaseSeconds}
         ) as lease_until
       `)[0].lease_until;
     },
-    async claimProcessing(evidenceId,expectedVersion,idempotencyKey){
+    async completeEventIfTerminal(eventId,claimToken){
+      return Boolean((await db`
+        select app_private.complete_evidence_worker_event_if_terminal(
+          ${eventId}::uuid,${claimToken}::uuid,${workerId}
+        ) as completed
+      `)[0].completed);
+    },
+    async failEvent(eventId,claimToken,message,retryAfterSeconds=60){
       return (await db`
-        select * from app_private.claim_evidence_processing(
-          ${evidenceId}::uuid,${expectedVersion},${workerId},${idempotencyKey}
+        select app_private.fail_evidence_worker_event(
+          ${eventId}::uuid,${claimToken}::uuid,${workerId},${message},${retryAfterSeconds}
+        ) as event_id
+      `)[0].event_id;
+    },
+    async claimProcessingForEvent(eventId,eventClaimToken,idempotencyKey){
+      return (await db`
+        select * from app_private.claim_evidence_processing_for_event(
+          ${eventId}::uuid,${eventClaimToken}::uuid,${workerId},${idempotencyKey}
         )
       `)[0];
+    },
+    async releaseProcessingForRetry(evidenceId,expectedVersion,claimToken,reason){
+      return (await db`
+        select app_private.release_evidence_processing_lease_for_retry(
+          ${evidenceId}::uuid,${expectedVersion},${claimToken}::uuid,${workerId},${reason}
+        ) as evidence_id
+      `)[0].evidence_id;
     },
     async renewProcessingLease(evidenceId,expectedVersion,claimToken,leaseSeconds=300){
       return (await db`
@@ -155,24 +199,23 @@ export async function openEvidenceWorkerTransport(){
         ) as evidence_id
       `)[0].evidence_id;
     },
-    async completeEvent(eventId,claimToken){
+    async rejectProcessingObservation({
+      evidenceId,expectedVersion,claimToken,
+      observedContentType=null,observedByteSize=null,observedSha256Hex=null,
+      reason,idempotencyKey
+    }){
       return (await db`
-        select app_private.complete_evidence_worker_event(
-          ${eventId}::uuid,${claimToken}::uuid,${workerId}
-        ) as event_id
-      `)[0].event_id;
+        select app_private.reject_evidence_processing_observation(
+          ${evidenceId}::uuid,${expectedVersion},${claimToken}::uuid,${workerId},
+          ${observedContentType},${observedByteSize},${observedSha256Hex},
+          ${reason},${idempotencyKey}
+        ) as evidence_id
+      `)[0].evidence_id;
     },
-    async failEvent(eventId,claimToken,message,retryAfterSeconds=60){
+    async markOriginalDeletedForEvent(eventId,eventClaimToken,idempotencyKey){
       return (await db`
-        select app_private.fail_evidence_worker_event(
-          ${eventId}::uuid,${claimToken}::uuid,${workerId},${message},${retryAfterSeconds}
-        ) as event_id
-      `)[0].event_id;
-    },
-    async markOriginalDeleted(evidenceId,expectedVersion,objectKey,idempotencyKey){
-      return (await db`
-        select app_private.mark_evidence_original_deleted(
-          ${evidenceId}::uuid,${expectedVersion},${objectKey},${workerId},${idempotencyKey}
+        select app_private.mark_evidence_original_deleted_for_event(
+          ${eventId}::uuid,${eventClaimToken}::uuid,${workerId},${idempotencyKey}
         ) as evidence_id
       `)[0].evidence_id;
     },
@@ -193,6 +236,7 @@ export async function openEvidenceWorkerTransport(){
     },
     async close(){
       await db.end({timeout:5});
+      await supabase.auth.signOut().catch(()=>{});
     }
   };
 }
