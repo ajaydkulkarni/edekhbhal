@@ -8,7 +8,7 @@
 
 **Last updated:** 2026-09-04
 **Primary rebuild branch:** `vNext`
-**Latest validated vNext baseline:** `948f14c85f359f740d17d0aeda1f5f647ae50ca8` — `feat: add real evidence media processing worker 03B2`
+**Latest validated vNext baseline:** `032ed8c80db4892fc0cdeccd0bdcf689beafda06` — `fix: harden evidence original deletion confirmation 03B3`
 **Validated database foundation:** `0109eb5`
 **Legacy behavioral reference branch:** `v2-rebuild`
 **Legacy validated Web/API E2E:** 46/46 PASS
@@ -481,7 +481,7 @@ Implemented:
 - internal Task audit helper remains non-executable by runtime
 - Demo illustrates sequential execution, explicit Task commands, evidence gating, server-derived completion, history preservation, and mismatched idempotent replay rejection
 
-Evidence capture, the processor control plane, the leased Evidence outbox queue, the NOLOGIN worker capability role, the application-authorized read boundary, the 03B1 worker transport/Storage authorization boundary, and the 03B2 real media-processing worker are implemented. The remaining Evidence work is live authenticated Storage/media end-to-end certification and production worker deployment/operational certification.
+Evidence capture, the processor control plane, the leased Evidence outbox queue, the NOLOGIN worker capability role, the application-authorized read boundary, the real media-processing worker, and the 03B3 live Storage/deployment certification are implemented and validated. Functional Evidence processing is therefore certified end-to-end; production load/SLO and deliberate fault-injection remain separate hardening work.
 
 ---
 
@@ -731,16 +731,34 @@ Validated 03B2 implementation:
 - exact live deletion delivery removes and acknowledges the original
 - Node 22 production Docker image includes Sharp, FFmpeg, and ffprobe
 - media runtime check and least-privilege DB/Auth transport probe are validated
-- full Vitest baseline is 41/41 files and 207/207 tests
-- real authenticated Storage/media E2E and deployed continuous-worker certification remain for 03B3
+- 03B2 full Vitest baseline was 41/41 files and 207/207 tests
 
-Still required after 03B2 before the Evidence pipeline is production-complete:
+Evidence Processing Worker — Live Storage & Deployment Certification 03B3 hardening commit:
 
-- certify real authenticated PHOTO and VIDEO upload/Storage/media processing end-to-end
-- certify signed-read expiry, unauthorized denial, cross-tenant denial, and deleted-original denial
-- certify real Storage retry/restart behavior, derivative-write failure recovery, and deletion retry
-- deploy and certify the continuous worker runtime, health behavior, graceful shutdown, and restart recovery
-- complete production load/SLO certification separately from the functional 03B3 certification when appropriate
+`032ed8c80db4892fc0cdeccd0bdcf689beafda06` — `fix: harden evidence original deletion confirmation 03B3`
+
+Migration:
+
+- `0021_evidence_storage_delete_confirmation_hardening.sql`
+
+Migration `0021` is already applied to the active vNext database. **Do not reapply it.** Worker capability grants did not change and must not be rerun for 0021.
+
+Validated 03B3 certification:
+
+- a dedicated ordinary authenticated USER executed real PHOTO and VIDEO uploads through the private Supabase Storage RLS boundary; server-owned upload intents and transactionally queued processing remained authoritative
+- real PHOTO processing independently observed source MIME, byte size, and SHA-256, produced server-owned WebP normalized/preview derivatives, reached `VERIFIED / DONE / DELETE_QUEUED`, physically deleted the exact original, preserved derivatives, advanced to `DELETED`, and then allowed Task/Occurrence completion
+- real VIDEO processing used ffprobe/FFmpeg, produced H.264/yuv420p MP4 with AAC audio plus a 1280×720 JPEG poster, reached the same verified/delete lifecycle, physically deleted the exact original, preserved both derivatives, and allowed Task/Occurrence completion
+- 03B3 exposed and fixed a deletion-confirmation defect: Storage deletion needs worker SELECT visibility as well as DELETE visibility; 0021 adds the exact live `DELETE_QUEUED` original read capability, denies human original reads after `DELETED`, and transport now confirms exact object visibility both before and after `.remove()` before acknowledging database deletion
+- `BEST` authorized reads resolve to preview when available; explicit NORMALIZED/PREVIEW reads are authorized; explicit ORIGINAL is denied after deletion; cross-tenant authorization fails closed
+- 60-second signed URLs were created through the real private Storage path, signed-read issuance was audited, fresh access returned the normalized VIDEO, and access failed after expiry
+- production `--run` worker startup, media runtime check, graceful SIGTERM shutdown, clean restart, and transport close behavior are validated
+- lease-based crash/restart recovery is validated: an abandoned event claim blocks early takeover, replacement worker reclaims only after lease expiry, and terminal reconciliation clears the delivery without mutating terminal Evidence/version/derivative references
+- production Docker media runtime is validated with Sharp 0.35.4/libvips 8.18.6 and FFmpeg/ffprobe 5.1.9; the Codespace host itself intentionally does not need FFmpeg installed
+- least-privilege worker probe remains PASS for `vnext_evidence_worker_login`, machine-principal binding, event-bound commands, and revoked free-form capabilities
+- `.env.worker.local` and `.env.03b3.local` remain ignored; no machine credentials or service-role key are committed
+- final eligible Evidence worker queue was empty and the repository worktree was clean at the functional baseline
+
+Functional 03B3 Evidence certification is complete. Production load/SLO measurement and deliberate derivative-write fault-injection/chaos testing remain separate later hardening work and do not invalidate this functional baseline.
 
 Original media must be discarded after successful normalization unless policy/entitlement explicitly retains it.
 
@@ -760,7 +778,7 @@ Platform administration is separate from customer tenant roles. No frontend univ
 
 ## 17. Current Validated Test Baseline
 
-At commit `948f14c85f359f740d17d0aeda1f5f647ae50ca8`:
+At commit `032ed8c80db4892fc0cdeccd0bdcf689beafda06`:
 
 ### Integration
 
@@ -779,13 +797,13 @@ At commit `948f14c85f359f740d17d0aeda1f5f647ae50ca8`:
 - Evidence Verification & Media Normalization Foundation 02: **6/6 PASS**
 - Evidence Worker Queue & Authorized Reads Foundation 03A: **6/6 PASS**
 - Evidence Worker Transport & Storage Authorization Foundation 03B1: **5/5 PASS**
-- Evidence Processing Worker Media Execution Hardening 03B2: **4/4 PASS**
+- Evidence Processing Worker Media Execution Hardening 03B2/03B3 contract: **4/4 integration PASS**
 - Total integration: **120/120 PASS**
 
 ### Full Vitest
 
 - Test files: **41/41 PASS**
-- Tests: **207/207 PASS**
+- Tests: **208/208 PASS**
 
 ### Build gates
 
@@ -794,7 +812,7 @@ At commit `948f14c85f359f740d17d0aeda1f5f647ae50ca8`:
 - Next.js production build: **PASS**
 - Generated routes: **17/17**
 - `git diff --check`: **PASS**
-- Evidence worker media runtime check: **PASS**
+- Evidence worker production-Docker media runtime check: **PASS**
 - Evidence worker transport/identity probe: **PASS**
 
 Validated routes include:
@@ -820,6 +838,13 @@ Validated routes include:
 - **3/3 PASS**
 - Demo regression covers planning, My Work / claim / QR-start / supersession, sequential Task execution/completion, Evidence upload/verification gating, expired-intent/wrong-object fail-closed behavior, queued/leased processor behavior, verification/normalization safety boundaries, worker least privilege, 60-second authorized reads, public-QR Evidence isolation, and idempotency/security explanation
 
+### Live 03B3 certification
+
+- real authenticated PHOTO upload → process → derivative verification → hardened physical original deletion → Task/Occurrence completion: **PASS**
+- real authenticated VIDEO upload → FFmpeg normalization/poster → hardened physical original deletion → Task/Occurrence completion: **PASS**
+- signed read authorization, audit, cross-tenant/deleted-original denial, fresh access, and 60-second expiry: **PASS**
+- continuous worker startup/media runtime, graceful shutdown, and clean restart: **PASS**
+- lease-based crash/restart recovery and terminal reconciliation without Evidence mutation: **PASS**
 ---
 
 ## 18. Current Technology Baseline
@@ -849,26 +874,26 @@ Data/Auth:
 
 Next increment:
 
-**Evidence Processing Worker — Live Storage & Deployment Certification 03B3**
+**Occurrence Rolling-Horizon Generation Worker Foundation 04A**
 
-Build on validated 03B2 without weakening tenant isolation, the NOLOGIN capability-role boundary, the dedicated least-privilege LOGIN, the ordinary authenticated machine Storage principal, live-lease Storage authorization, server-owned derivative paths, terminal-state queue acknowledgement, Evidence history, signed-read authorization, or the VERIFIED Task gate.
+Build on the validated Schedule/Occurrence foundations without weakening tenant isolation, immutable historical snapshots, DST/working-hours rules, command ownership, or the normal 48-hour application horizon.
 
-Target certification:
+Target implementation:
 
-- execute a real authenticated PHOTO upload through the application Storage-RLS boundary and finalize it transactionally
-- process the resulting `EVIDENCE_PROCESS_REQUESTED` delivery with the 03B2 worker and verify exact server-owned normalized/preview objects
-- verify Evidence reaches VERIFIED only after independent source observation and successful derivative creation
-- process `EVIDENCE_ORIGINAL_DELETE_REQUESTED`, verify the exact original is deleted, and verify `original_disposition=DELETED`
-- repeat the live path for VIDEO using ffprobe/FFmpeg normalization and JPEG poster generation
-- certify signed-read BEST/preview/normalized behavior, URL expiry, unauthorized denial, cross-tenant denial, and deleted-original denial
-- certify restart/retry behavior against real Storage, including derivative-write failure and deletion retry where practical
-- validate continuous `--run` container startup, health behavior, graceful shutdown, and restart recovery
-- define deployment configuration/secret requirements without committing machine credentials
-- retain Demo as synthetic/read-only; no Demo media writes
-- keep production load/SLO certification separable if it requires a materially different environment or workload
+- add a portable background worker that continuously keeps ACTIVE Schedule masters reconciled through the canonical normal **48-hour** occurrence horizon even when no user edits or opens a Schedule
+- reuse one canonical database reconciliation command/path rather than duplicating recurrence, timezone, working-hours, RANDOM-evidence, or snapshot logic in the worker process
+- preserve the existing maximum 7-day bounded reconciliation contract; normal worker operation remains 48 hours unless explicitly configured later
+- generation must remain idempotent under retries/restarts and safe under multiple worker instances through deterministic locking/claiming; duplicate Schedule + UTC Occurrences must remain impossible
+- only future unstarted PENDING planning rows may be reconciled by planning changes; IN_PROGRESS/completed/partial/missed/canceled history must never be rewritten
+- inactive Organization/Site/Work Area/Schedule parents must fail closed for new generation while historical rows remain readable
+- retain validated DST-gap skip, DST-overlap canonical offset, Jan 31/Feb 29, local end-date, cross-midnight working-hours, and immutable timezone snapshot behavior
+- use a dedicated least-privilege worker capability/LOGIN rather than `vnext_runtime`, migrator, Evidence worker, service-role, or BYPASSRLS credentials
+- provide bounded batch/polling behavior, observable `--once`/continuous execution, health check, graceful shutdown, and restart-safe operation
+- add integration/module tests for idempotency, concurrent workers, inactive-parent behavior, historical immutability, timezone/working-hours edges, and least privilege
+- keep Demo synthetic/read-only; the background generator must never create Demo tenant data
+- retain Schedule create/edit/status immediate reconciliation so user-facing changes do not wait for the background worker
 
-Do not start unrelated mobile, reported-work, billing, priority, or platform-control work until this live Evidence path is either certified or explicitly deferred by the product owner.
-
+Complete 04A before starting the mobile field application, because mobile executable work depends on a reliable rolling occurrence supply.
 ---
 
 ## 20. Important Deferred Items
@@ -878,8 +903,6 @@ Not yet production-complete:
 - working-hours management UI
 - multi-Site administration UI
 - Site assignment management UI/API
-- live authenticated Evidence Storage/media end-to-end certification and deployed worker runtime/operational certification
-- rolling background generation worker
 - reported work
 - mobile field application
 - claim expiry policy/configuration
@@ -888,9 +911,8 @@ Not yet production-complete:
 - Razorpay adapter
 - platform control plane
 - deployed email/magic-link round-trip verification
-- production SLO/load certification
+- production SLO/load certification, including Evidence worker load measurement and optional deliberate derivative-write fault-injection/chaos testing
 - Task HTML sanitizer
-
 ---
 
 ## 21. Baseline Commit Chain
@@ -919,5 +941,6 @@ Key validated vNext commits:
 - `64db7b1` — Add Evidence Worker Queue and Authorized Reads Foundation 03A
 - `af22841` — Add Evidence Worker Transport Foundation 03B1
 - `948f14c` — Add real Evidence media processing worker 03B2
+- `032ed8c` — Harden Evidence original deletion confirmation 03B3
 
-`948f14c85f359f740d17d0aeda1f5f647ae50ca8` is the current locked validated vNext baseline.
+`032ed8c80db4892fc0cdeccd0bdcf689beafda06` is the current locked validated vNext functional baseline.
