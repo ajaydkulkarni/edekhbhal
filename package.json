@@ -40,7 +40,10 @@
     "db:evidence:apply": "node scripts/db-apply-evidence-capture-16.mjs",
     "db:evidence-processing:apply": "node scripts/db-apply-evidence-processing-17.mjs",
     "db:evidence-worker-read:apply": "node scripts/db-apply-evidence-worker-authorized-reads-18.mjs",
-    "db:evidence-worker-role:grant": "node scripts/db-apply-evidence-worker-capability-grants.mjs"
+    "db:evidence-worker-transport:apply": "node scripts/db-apply-evidence-worker-transport-19.mjs",
+    "db:evidence-worker-role:grant": "node scripts/db-apply-evidence-worker-capability-grants.mjs",
+    "db:evidence-worker-storage-principal:register": "node scripts/db-register-evidence-worker-storage-principal.mjs",
+    "worker:evidence:probe": "node worker/evidence-worker.mjs --probe"
   },
   "dependencies": {
     "@supabase/ssr": "0.12.5",

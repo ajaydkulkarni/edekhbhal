@@ -27,7 +27,7 @@ describe("Evidence Worker Queue & Authorized Reads Foundation 03A contract",()=>
   expect(grants).toContain("claim_evidence_worker_event");
   expect(grants).toContain("complete_evidence_processing");
   expect(grants).toContain("mark_evidence_original_deleted");
-  expect(grants).toContain("no direct sensitive-table grants");
+  expect(grants).toMatch(/no direct sensitive-table grants/i);
  });
  it("verifies worker role cannot use application Evidence-read commands",()=>{
   expect(grants).toContain("authorize_occurrence_evidence_read");
