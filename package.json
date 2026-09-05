@@ -48,7 +48,16 @@
     "worker:evidence:media-check": "node worker/evidence-worker.mjs --media-check",
     "worker:evidence:once": "node worker/evidence-worker.mjs --once",
     "worker:evidence:run": "node worker/evidence-worker.mjs --run",
-    "db:evidence-storage-delete-hardening:apply": "node scripts/db-apply-evidence-storage-delete-hardening-21.mjs"
+    "db:evidence-storage-delete-hardening:apply": "node scripts/db-apply-evidence-storage-delete-hardening-21.mjs",
+    "db:occurrence-worker:apply": "node scripts/db-apply-occurrence-generation-worker-22.mjs",
+    "db:occurrence-worker-role:grant": "node scripts/db-apply-occurrence-worker-capability-grants.mjs",
+    "db:app-private-functions:harden": "node scripts/db-apply-app-private-function-hardening-23.mjs",
+    "db:occurrence-worker-role:audit": "node scripts/db-audit-occurrence-worker-capabilities.mjs",
+    "worker:occurrence:probe": "node worker/occurrence-generation-worker.mjs --probe",
+    "worker:occurrence:health": "node worker/occurrence-generation-worker.mjs --health-check",
+    "worker:occurrence:once": "node worker/occurrence-generation-worker.mjs --once",
+    "worker:occurrence:run": "node worker/occurrence-generation-worker.mjs --run",
+    "db:apply:occurrence-generation-claim-eligibility-24": "node --env-file=.env.local scripts/db-apply-occurrence-generation-claim-eligibility-24.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "0.12.5",
