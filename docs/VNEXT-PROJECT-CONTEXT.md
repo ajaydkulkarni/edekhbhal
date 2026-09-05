@@ -8,7 +8,7 @@
 
 **Last updated:** 2026-09-04
 **Primary rebuild branch:** `vNext`
-**Latest validated vNext baseline:** `e079c6156586959a83140c16319ce7ddb167a510` — `feat: add occurrence rolling-horizon generation worker 04A`
+**Latest validated vNext baseline:** `342e8fca95710e978946a79d74ba8b538e4756ab` — `feat: add mobile field execution foundation 05A`
 **Validated database foundation:** `0109eb5`
 **Legacy behavioral reference branch:** `v2-rebuild`
 **Legacy validated Web/API E2E:** 46/46 PASS
@@ -546,7 +546,7 @@ Continuing regression areas:
 
 ## 14. Mobile & Work Execution Rules
 
-Mobile implementation follows after Schedule/Occurrence/QR execution contracts stabilize.
+Mobile Field Execution Foundation 05A is implemented on the stabilized Schedule/Occurrence/QR execution contracts. Real-device certification remains the next mobile increment.
 
 Canonical My Work ranking:
 
@@ -786,7 +786,7 @@ Platform administration is separate from customer tenant roles. No frontend univ
 
 ## 17. Current Validated Test Baseline
 
-At commit `e079c6156586959a83140c16319ce7ddb167a510`:
+At commit `342e8fca95710e978946a79d74ba8b538e4756ab`:
 
 ### Integration
 
@@ -810,8 +810,9 @@ At commit `e079c6156586959a83140c16319ce7ddb167a510`:
 
 ### Full Vitest
 
-- Test files: **52/52 PASS**
-- Tests: **276/276 PASS**
+- Test files: **57/57 PASS**
+- Tests: **316/316 PASS**
+- Mobile Field Execution 05A focused module additions: **40/40 PASS**
 
 ### Build gates
 
@@ -837,6 +838,7 @@ Validated routes include:
 - onboarding routes
 - `/workspace`
 - `/workspace/my-work`
+- `/workspace/my-work/[occurrenceId]`
 - `/workspace/tasks`
 - `/workspace/schedules`
 - `/workspace/occurrences`
@@ -880,6 +882,46 @@ Production scale/load/SLO certification remains deferred and is not claimed by 0
 The Demo remains synthetic/read-only; 04A introduces no Demo tenant write path.
 
 ---
+
+
+### 05A implementation validation
+
+Validated functional commit:
+
+`342e8fca95710e978946a79d74ba8b538e4756ab` — `feat: add mobile field execution foundation 05A`
+
+- exact release surface: **12 files**
+- focused authenticated USER route `/workspace/my-work/[occurrenceId]`: **PASS**
+- exact tenant-scoped focused occurrence reader remains read-only: **PASS**
+- server-selected `MOBILE` attribution for claim / QR start / Task completion / partial completion: **PASS**
+- server-selected `MOBILE` attribution for Evidence intent / finalization: **PASS**
+- camera QR implementation with rear-camera preference: **PASS**
+- canonical `/q/{token}` QR URL extraction plus manual token fallback: **PASS**
+- QR detection does not auto-submit or bypass server authorization: **PASS**
+- camera MediaStream cleanup on stop/unmount: **PASS**
+- authoritative current Task is independent from the Task selected for viewing: **PASS**
+- Previous/Next Task navigation is GET/read-only: **PASS**
+- completed/non-current/future Tasks expose no Task-completion or Evidence-capture mutation surface: **PASS**
+- refresh/re-entry returns to current server state: **PASS**
+- invalid `?task=` selection safely falls back to the actual active Task: **PASS**
+- PHOTO/VIDEO capture reuses the existing private Evidence Storage pipeline: **PASS**
+- `capture="environment"` mobile camera/camcorder hint: **PASS**
+- PHOTO 20 MB / VIDEO 200 MB and existing MIME contracts retained: **PASS**
+- client SHA-256 finalization retained: **PASS**
+- Evidence upload remains pending verification; Task completion remains blocked until required Evidence is `VERIFIED`: **PASS**
+- Demo source remains synthetic/read-only and was not changed by 05A: **PASS**
+- no database migration was required; migration `0026` was not created or applied
+- full repository Vitest: **57/57 files, 316/316 tests PASS**
+- TypeScript / ESLint / Next.js production build / `git diff --check`: **PASS**
+
+05A is **implementation complete**.
+
+Not claimed by 05A:
+
+- real-phone QR camera E2E
+- real-phone PHOTO/VIDEO camera/camcorder E2E
+- live field-user mutation certification through the new mobile route
+- production mobile-browser compatibility certification
 
 ## 18. Current Technology Baseline
 
@@ -957,29 +999,91 @@ Implemented and validated:
 - Evidence worker Docker/runtime remains independent and unchanged
 - production load/SLO remains deferred
 
-### Immediate next increment
+### 04A handoff
 
-**Mobile Field Execution Foundation 05A**
-
-Build the field-user experience on the now-stable Schedule → Occurrence → Occurrence Task supply and existing execution/evidence command boundaries.
-
-Initial target:
-
-- mobile-first authenticated USER My Work
-- QR-driven Work Area entry using the existing server-authoritative QR validation contract
-- claim/start against existing occurrence execution commands
-- sequential Occurrence Task execution
-- PHOTO/VIDEO evidence capture through the existing private Evidence pipeline
-- previous/next navigation that never changes Task state
-- resilient refresh/re-entry around already claimed or IN_PROGRESS work
-- preserve Site scope, active-work exclusivity, idempotency, evidence gating, and historical immutability
-- Demo remains synthetic/read-only
-
-Complete the field execution path before expanding into broader reporting/billing/platform-control work.
+Mobile Field Execution Foundation 05A has now been implemented and validated.
+See Section 20 for the locked implementation baseline and Section 20's immediate next increment.
 
 ---
 
-## 20. Important Deferred Items
+## 20. Mobile Field Execution Foundation 05A — IMPLEMENTATION COMPLETE
+
+Validated functional commit:
+
+`342e8fca95710e978946a79d74ba8b538e4756ab` — `feat: add mobile field execution foundation 05A`
+
+No database migration was required. Migration `0026` was not created or applied.
+
+Implemented:
+
+- mobile-first authenticated USER entry from `/workspace/my-work`
+- focused route `/workspace/my-work/[occurrenceId]`
+- exact tenant-scoped focused occurrence read path
+- focused reads do not invoke supersession or execution mutation commands
+- dedicated server-selected `MOBILE` wrappers for claim, QR start, Task completion, partial completion, Evidence intent, and Evidence finalization
+- existing WEB execution action boundaries remain intact
+- Work Area QR camera scanning when browser support is available
+- canonical QR URL token extraction with manual token fallback
+- QR capture never grants authorization and never auto-starts work
+- server remains authoritative for membership, Site scope, assignment, active-work exclusivity, lifecycle state, and exact active Work Area QR
+- sequential Occurrence Task execution
+- authoritative current `IN_PROGRESS` Task separated from the Task selected only for viewing
+- Previous/Next changes only the viewed Task
+- completed/non-current/future Tasks remain read-only
+- refresh/re-entry reflects current server state
+- invalid `?task=` values fall back to the active Task
+- PHOTO/VIDEO capture through the existing private Supabase Storage Evidence pipeline
+- mobile rear-camera/camcorder capture hint
+- existing Evidence MIME and size limits retained
+- client SHA-256 finalization retained
+- upload/finalization does not imply verification
+- Task completion remains fail-closed until required matching Evidence is `VERIFIED`
+- responsive mobile execution presentation
+- Demo remains synthetic/read-only and has no real mobile execution/media-write path
+
+Validation:
+
+- exact 05A release surface: **12 files**
+- focused 05A module contracts: **40/40 PASS**
+- full repository Vitest: **57/57 files, 316/316 tests PASS**
+- TypeScript: **PASS**
+- ESLint: **PASS**
+- Next.js production build: **PASS**
+- `git diff --check`: **PASS**
+- no secret/environment file in release surface: **PASS**
+- no 05A database migration: **PASS**
+
+Not claimed:
+
+- real-phone QR-camera E2E
+- real-phone PHOTO/VIDEO camera/camcorder E2E
+- live field-user claim/start/Task-completion certification through the new mobile route
+- production mobile-browser compatibility matrix
+
+### Immediate next increment
+
+**Mobile Field Execution Live Device Certification 05B**
+
+Use a controlled certification fixture and an ordinary authenticated USER to validate the implemented 05A field path on a real HTTPS-served mobile browser.
+
+Initial target:
+
+- real-phone camera permission and QR scanning against an actual Work Area QR
+- canonical QR URL extraction and manual fallback
+- controlled live claim and QR start through the existing server-authoritative commands
+- refresh/re-entry while claimed and while `IN_PROGRESS`
+- Previous/Next read-only behavior on a real mobile browser
+- real PHOTO and VIDEO capture/selection through the existing private Storage pipeline
+- verification/processing-state refresh and Evidence gating
+- sequential Task completion through terminal Occurrence state
+- camera denial / unsupported `BarcodeDetector` fallback
+- preserve Site scope, active-work exclusivity, idempotency, historical immutability, and Demo read-only boundaries
+
+Do not claim browser/device compatibility beyond devices and browsers actually certified.
+
+---
+
+## 21. Important Deferred Items
 
 Not yet production-complete:
 
@@ -997,7 +1101,7 @@ Not yet production-complete:
 - Task HTML sanitizer
 ---
 
-## 21. Baseline Commit Chain
+## 22. Baseline Commit Chain
 
 Key validated vNext commits:
 
@@ -1026,5 +1130,6 @@ Key validated vNext commits:
 - `032ed8c` — Harden Evidence original deletion confirmation 03B3
 
 - `e079c61` — Add Occurrence Rolling-Horizon Generation Worker Foundation 04A
+- `342e8fc` — Add Mobile Field Execution Foundation 05A
 
-`e079c6156586959a83140c16319ce7ddb167a510` is the current locked validated vNext functional baseline.
+`342e8fca95710e978946a79d74ba8b538e4756ab` is the current locked validated vNext functional baseline.
