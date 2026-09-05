@@ -8,7 +8,7 @@
 
 **Last updated:** 2026-09-04
 **Primary rebuild branch:** `vNext`
-**Latest validated vNext baseline:** `032ed8c80db4892fc0cdeccd0bdcf689beafda06` — `fix: harden evidence original deletion confirmation 03B3`
+**Latest validated vNext baseline:** `e079c6156586959a83140c16319ce7ddb167a510` — `feat: add occurrence rolling-horizon generation worker 04A`
 **Validated database foundation:** `0109eb5`
 **Legacy behavioral reference branch:** `v2-rebuild`
 **Legacy validated Web/API E2E:** 46/46 PASS
@@ -105,6 +105,14 @@ Database roles:
   - `app_private` USAGE plus only exact Evidence worker command EXECUTE grants
   - cannot invoke application Evidence-read authorization/audit commands
   - deployment-specific LOGIN `vnext_evidence_worker_login` is provisioned, has no superuser/CREATEDB/CREATEROLE/REPLICATION/BYPASSRLS attributes, and inherits only `vnext_evidence_worker`
+
+- `vnext_occurrence_worker`
+  - dedicated NOLOGIN rolling-horizon generation capability role
+  - no superuser / CREATEDB / CREATEROLE / REPLICATION / `BYPASSRLS`
+  - no direct sensitive-table privileges
+  - `app_private` USAGE plus exactly three generation commands: claim / complete / fail
+  - cannot inherit runtime or Evidence-worker capabilities
+  - deployment LOGIN `vnext_occurrence_worker_login` inherits only `vnext_occurrence_worker`, uses connection limit 3, and has no direct table grants
 
 Runtime PostgreSQL pooling uses `prepare: false`.
 
@@ -778,7 +786,7 @@ Platform administration is separate from customer tenant roles. No frontend univ
 
 ## 17. Current Validated Test Baseline
 
-At commit `032ed8c80db4892fc0cdeccd0bdcf689beafda06`:
+At commit `e079c6156586959a83140c16319ce7ddb167a510`:
 
 ### Integration
 
@@ -802,8 +810,8 @@ At commit `032ed8c80db4892fc0cdeccd0bdcf689beafda06`:
 
 ### Full Vitest
 
-- Test files: **41/41 PASS**
-- Tests: **208/208 PASS**
+- Test files: **52/52 PASS**
+- Tests: **276/276 PASS**
 
 ### Build gates
 
@@ -814,6 +822,10 @@ At commit `032ed8c80db4892fc0cdeccd0bdcf689beafda06`:
 - `git diff --check`: **PASS**
 - Evidence worker production-Docker media runtime check: **PASS**
 - Evidence worker transport/identity probe: **PASS**
+- Occurrence worker dedicated production-Docker build: **PASS**
+- Occurrence worker containerized non-mutating health check: **PASS**
+- Occurrence worker dedicated LOGIN / exact three-function probe: **PASS**
+- Occurrence worker exhaustive least-privilege audit: **PASS**
 
 Validated routes include:
 
@@ -845,6 +857,28 @@ Validated routes include:
 - signed read authorization, audit, cross-tenant/deleted-original denial, fresh access, and 60-second expiry: **PASS**
 - continuous worker startup/media runtime, graceful shutdown, and clean restart: **PASS**
 - lease-based crash/restart recovery and terminal reconciliation without Evidence mutation: **PASS**
+
+### Live 04A certification
+
+- real rolling-horizon worker generation through the canonical 48-hour horizon: **PASS**
+- natural rolling-horizon extension without rewriting existing Occurrences/Tasks: **PASS**
+- exact-horizon additive idempotency: **PASS**
+- multi-worker `FOR UPDATE ... SKIP LOCKED` concurrency behavior: **PASS**
+- natural lease expiry and reclaim by another dedicated worker session: **PASS**
+- failure acknowledgement, exact retry delay, and attempt-2 reclaim: **PASS**
+- WEEK recurrence / America-Denver DST gap / DST overlap canonical offset: **PASS**
+- working-hours acceptance/rejection and source/snapshot preservation: **PASS**
+- inactive Work Area fail-close for new generation: **PASS**
+- dedicated occurrence-worker container build and non-mutating health check: **PASS**
+- continuous `--run` startup, idle polling, SIGTERM shutdown, clean restart, and second graceful shutdown: **PASS**
+- lifecycle certification preserved the global generation-state hash and the certified rolling fixture: **PASS**
+- focused 04A module regression: **68/68 PASS**
+- full repository Vitest: **52/52 files, 276/276 tests PASS**
+- TypeScript / ESLint / Next.js production build / `git diff --check`: **PASS**
+
+Production scale/load/SLO certification remains deferred and is not claimed by 04A.
+The Demo remains synthetic/read-only; 04A introduces no Demo tenant write path.
+
 ---
 
 ## 18. Current Technology Baseline
@@ -870,30 +904,79 @@ Data/Auth:
 
 ---
 
-## 19. Immediate Next Development Target
+## 19. Occurrence Rolling-Horizon Generation Worker Foundation 04A — COMPLETE
 
-Next increment:
+Validated functional commit:
 
-**Occurrence Rolling-Horizon Generation Worker Foundation 04A**
+`e079c6156586959a83140c16319ce7ddb167a510` — `feat: add occurrence rolling-horizon generation worker 04A`
 
-Build on the validated Schedule/Occurrence foundations without weakening tenant isolation, immutable historical snapshots, DST/working-hours rules, command ownership, or the normal 48-hour application horizon.
+Migrations:
 
-Target implementation:
+- `0022_occurrence_generation_worker.sql`
+- `0023_app_private_function_privilege_hardening.sql`
+- `0024_occurrence_generation_claim_eligibility.sql`
+- `0025_occurrence_generation_claim_concurrency_hardening.sql`
 
-- add a portable background worker that continuously keeps ACTIVE Schedule masters reconciled through the canonical normal **48-hour** occurrence horizon even when no user edits or opens a Schedule
-- reuse one canonical database reconciliation command/path rather than duplicating recurrence, timezone, working-hours, RANDOM-evidence, or snapshot logic in the worker process
-- preserve the existing maximum 7-day bounded reconciliation contract; normal worker operation remains 48 hours unless explicitly configured later
-- generation must remain idempotent under retries/restarts and safe under multiple worker instances through deterministic locking/claiming; duplicate Schedule + UTC Occurrences must remain impossible
-- only future unstarted PENDING planning rows may be reconciled by planning changes; IN_PROGRESS/completed/partial/missed/canceled history must never be rewritten
-- inactive Organization/Site/Work Area/Schedule parents must fail closed for new generation while historical rows remain readable
-- retain validated DST-gap skip, DST-overlap canonical offset, Jan 31/Feb 29, local end-date, cross-midnight working-hours, and immutable timezone snapshot behavior
-- use a dedicated least-privilege worker capability/LOGIN rather than `vnext_runtime`, migrator, Evidence worker, service-role, or BYPASSRLS credentials
-- provide bounded batch/polling behavior, observable `--once`/continuous execution, health check, graceful shutdown, and restart-safe operation
-- add integration/module tests for idempotency, concurrent workers, inactive-parent behavior, historical immutability, timezone/working-hours edges, and least privilege
-- keep Demo synthetic/read-only; the background generator must never create Demo tenant data
-- retain Schedule create/edit/status immediate reconciliation so user-facing changes do not wait for the background worker
+Migrations `0022`, `0023`, `0024`, and `0025` are already applied to the active vNext database. **Do not reapply them.**
 
-Complete 04A before starting the mobile field application, because mobile executable work depends on a reliable rolling occurrence supply.
+Privileged role files:
+
+- `003_occurrence_worker_capability_role.sql`
+- `004_occurrence_worker_login_role.sql`
+
+The dedicated occurrence worker credential remains outside Git in `.env.occurrence-worker.local`. Never commit or print that secret.
+
+Implemented and validated:
+
+- portable Node background worker independent of Next.js request execution
+- canonical normal 48-hour rolling horizon
+- maximum database reconciliation bound remains 7 days
+- additive generation path inserts only missing Schedule + UTC Occurrences
+- existing Occurrence and Occurrence Task snapshots are not churned by routine worker passes
+- immediate Schedule create/edit/status reconciliation remains the application path for user-facing planning changes
+- inactive Organization/Site/Work Area/Schedule parents fail closed for new generation
+- recurrence, timezone, DST, effective working-hours, evidence decision, and snapshot logic remain database authoritative
+- deterministic due ordering
+- generation-state row per Schedule maintained independently by Schedule trigger
+- claim acquisition uses `FOR UPDATE OF gs SKIP LOCKED`
+- multiple worker instances do not block on claim-time state discovery
+- bounded 15–300 second claim leases
+- bounded retry acknowledgement with worker runtime minimum aligned to the database contract
+- natural lease expiry allows safe reclaim after worker crash/loss
+- claim token + worker id + live lease bind completion/failure acknowledgement
+- dedicated NOLOGIN capability role and dedicated LOGIN
+- exact worker function surface is only claim / complete / fail
+- no direct sensitive-table privileges
+- no `BYPASSRLS`, runtime-role inheritance, Evidence-worker inheritance, service-role key, or universal database credential
+- non-mutating `--probe` and `--health-check`
+- at-most-one `--once`
+- continuous `--run` polling loop
+- SIGTERM/SIGINT graceful shutdown
+- restart-safe execution
+- dedicated DB-only production Dockerfile using unprivileged `node` + `dumb-init`
+- Evidence worker Docker/runtime remains independent and unchanged
+- production load/SLO remains deferred
+
+### Immediate next increment
+
+**Mobile Field Execution Foundation 05A**
+
+Build the field-user experience on the now-stable Schedule → Occurrence → Occurrence Task supply and existing execution/evidence command boundaries.
+
+Initial target:
+
+- mobile-first authenticated USER My Work
+- QR-driven Work Area entry using the existing server-authoritative QR validation contract
+- claim/start against existing occurrence execution commands
+- sequential Occurrence Task execution
+- PHOTO/VIDEO evidence capture through the existing private Evidence pipeline
+- previous/next navigation that never changes Task state
+- resilient refresh/re-entry around already claimed or IN_PROGRESS work
+- preserve Site scope, active-work exclusivity, idempotency, evidence gating, and historical immutability
+- Demo remains synthetic/read-only
+
+Complete the field execution path before expanding into broader reporting/billing/platform-control work.
+
 ---
 
 ## 20. Important Deferred Items
@@ -904,7 +987,6 @@ Not yet production-complete:
 - multi-Site administration UI
 - Site assignment management UI/API
 - reported work
-- mobile field application
 - claim expiry policy/configuration
 - priority field/ranking
 - Stripe adapter
@@ -943,4 +1025,6 @@ Key validated vNext commits:
 - `948f14c` — Add real Evidence media processing worker 03B2
 - `032ed8c` — Harden Evidence original deletion confirmation 03B3
 
-`032ed8c80db4892fc0cdeccd0bdcf689beafda06` is the current locked validated vNext functional baseline.
+- `e079c61` — Add Occurrence Rolling-Horizon Generation Worker Foundation 04A
+
+`e079c6156586959a83140c16319ce7ddb167a510` is the current locked validated vNext functional baseline.
