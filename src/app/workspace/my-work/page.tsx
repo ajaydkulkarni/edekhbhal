@@ -78,6 +78,13 @@ export default async function MyWorkPage({searchParams}:{searchParams:Promise<{m
         <div><span>Tasks</span><strong>{item.task_count} · {item.evidence_task_count} evidence</strong></div>
         <div><span>Planned</span><strong>{item.planned_duration_minutes} min</strong></div>
        </div>
+       <p>
+        <Link
+         href={`/workspace/my-work/${item.id}`}
+        >
+         Open focused mobile view →
+        </Link>
+       </p>
        {item.status==="PENDING"&&!item.assigned_to_me?
         <form action={claimOccurrence}>
          <input type="hidden" name="occurrenceId" value={item.id}/>

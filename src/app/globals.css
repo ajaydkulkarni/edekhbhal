@@ -244,3 +244,349 @@
 .scheduleIntentNote{display:grid;gap:5px;border:1px solid var(--border);border-radius:14px;padding:14px;background:var(--soft)}.scheduleIntentNote span{color:var(--muted);line-height:1.5}
 .scheduleTaskPicker{display:grid;gap:12px}.scheduleTaskChoice{border:1px solid var(--border);border-radius:14px;padding:14px}.scheduleTaskSelect{display:flex!important;align-items:center;gap:10px!important}.scheduleTaskSelect input{width:auto!important}.scheduleTaskSettings{display:grid;grid-template-columns:90px 100px 1fr 120px 1fr;gap:10px;margin-top:12px}
 @media(max-width:900px){.scheduleGrid,.scheduleWhenGrid,.scheduleTaskSettings{grid-template-columns:1fr}.scheduleSummaryGrid{grid-template-columns:1fr 1fr}}@media(max-width:560px){.scheduleSummaryGrid{grid-template-columns:1fr}}
+
+/* Mobile Field Execution Foundation 05A */
+.mobileExecutionPage{
+  padding-bottom:72px;
+}
+
+.mobileExecutionHeader,
+.mobileExecutionSummary,
+.mobileExecutionNotice,
+.mobileExecutionAction,
+.mobileTaskProgress,
+.mobileTaskNavigator,
+.mobileCurrentTask,
+.mobilePartialCompletion{
+  max-width:760px;
+}
+
+.mobileExecutionStatusRow,
+.mobileTaskProgress{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+}
+
+.mobileExecutionAction h2,
+.mobileCurrentTask h2,
+.mobilePartialCompletion h2{
+  margin-top:8px;
+}
+
+.mobileExecutionForm{
+  display:grid;
+  gap:16px;
+  margin-top:18px;
+}
+
+.mobileExecutionForm label{
+  display:grid;
+  gap:8px;
+  font-weight:700;
+}
+
+.mobileExecutionForm input,
+.mobileExecutionForm textarea{
+  width:100%;
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:14px;
+  background:var(--surface);
+  color:var(--text);
+  font:inherit;
+}
+
+.mobileTaskNavigator{
+  display:grid;
+  grid-template-columns:1fr auto 1fr;
+  align-items:center;
+  gap:12px;
+}
+
+.mobileTaskNavigator>a:last-child,
+.mobileTaskNavigator>span:last-child{
+  justify-self:end;
+}
+
+.mobileTaskPosition{
+  font-weight:800;
+  text-align:center;
+}
+
+.mobileDisabledButton{
+  opacity:.42;
+  pointer-events:none;
+  box-shadow:none;
+}
+
+.mobileTaskInstructions{
+  white-space:pre-wrap;
+  line-height:1.65;
+  font-size:1.05rem;
+}
+
+.mobileTaskFacts{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:10px;
+  margin:18px 0;
+}
+
+.mobileTaskFacts>div{
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:12px;
+  background:var(--soft);
+}
+
+.mobileTaskFacts span,
+.mobileTaskFacts strong{
+  display:block;
+}
+
+.mobileTaskFacts span{
+  color:var(--muted);
+  font-size:.76rem;
+  margin-bottom:5px;
+}
+
+.mobileEvidenceState{
+  display:grid;
+  gap:10px;
+  margin:20px 0;
+}
+
+.mobileEvidenceRow{
+  display:grid;
+  gap:6px;
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:12px;
+}
+
+.mobileEvidenceRow span{
+  color:var(--muted);
+  font-size:.86rem;
+}
+
+.mobileEvidenceGate{
+  margin-top:18px;
+  padding:16px;
+  border:1px solid #fbbf24;
+  border-radius:14px;
+  background:#fffbeb;
+}
+
+.mobileEvidenceGate p{
+  margin-bottom:0;
+}
+
+.mobilePrimaryButton{
+  width:100%;
+  min-height:50px;
+}
+
+@media(max-width:620px){
+  .mobileExecutionPage{
+    padding:18px 12px 56px;
+  }
+
+  .mobileExecutionHeader{
+    gap:12px;
+    margin-bottom:18px;
+  }
+
+  .mobileExecutionHeader .button{
+    width:100%;
+  }
+
+  .mobileExecutionSummary,
+  .mobileExecutionNotice,
+  .mobileExecutionAction,
+  .mobileTaskProgress,
+  .mobileTaskNavigator,
+  .mobileCurrentTask,
+  .mobilePartialCompletion{
+    border-radius:16px;
+    padding:16px;
+  }
+
+  .mobileTaskNavigator{
+    grid-template-columns:1fr 1fr;
+  }
+
+  .mobileTaskPosition{
+    grid-column:1 / -1;
+    grid-row:1;
+  }
+
+  .mobileTaskNavigator>a,
+  .mobileTaskNavigator>span.button{
+    grid-row:2;
+    width:100%;
+  }
+
+  .mobileTaskFacts{
+    grid-template-columns:1fr;
+  }
+
+  .mobileExecutionStatusRow,
+  .mobileTaskProgress{
+    align-items:flex-start;
+  }
+}
+
+/* 05A camera QR scanner */
+.mobileQrScanner{
+  display:grid;
+  gap:14px;
+}
+
+.mobileQrScannerActions{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+}
+
+.mobileQrVideoWrap{
+  display:none;
+  position:relative;
+  width:100%;
+  overflow:hidden;
+  border-radius:18px;
+  background:#0f172a;
+  aspect-ratio:4 / 3;
+}
+
+.mobileQrVideoWrap.active{
+  display:block;
+}
+
+.mobileQrVideo{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+}
+
+.mobileQrTarget{
+  position:absolute;
+  width:min(68%,280px);
+  aspect-ratio:1;
+  left:50%;
+  top:50%;
+  transform:translate(-50%,-50%);
+  border:3px solid rgba(255,255,255,.92);
+  border-radius:20px;
+  box-shadow:
+   0 0 0 999px rgba(15,23,42,.28);
+  pointer-events:none;
+}
+
+.mobileQrMessage{
+  margin:0;
+  padding:12px 14px;
+  border-radius:12px;
+  background:#ecfdf5;
+  color:#047857;
+}
+
+.mobileQrError{
+  margin:0;
+  padding:12px 14px;
+  border-radius:12px;
+  background:#fff1f2;
+  color:#9f1239;
+}
+
+@media(max-width:620px){
+  .mobileQrScannerActions{
+    display:grid;
+    grid-template-columns:1fr;
+  }
+
+  .mobileQrScannerActions .button{
+    width:100%;
+  }
+
+  .mobileQrVideoWrap{
+    border-radius:14px;
+  }
+}
+
+/* 05A mobile Evidence capture */
+.mobileEvidenceCapture{
+  display:grid;
+  gap:14px;
+  margin-top:16px;
+  padding-top:16px;
+  border-top:1px solid rgba(146,64,14,.18);
+}
+
+.mobileEvidenceCapture input[type="file"]{
+  width:100%;
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:12px;
+  background:var(--surface);
+  color:var(--text);
+  font:inherit;
+}
+
+.mobileEvidenceSelection{
+  display:grid;
+  gap:4px;
+  padding:12px;
+  border:1px solid var(--border);
+  border-radius:12px;
+  background:var(--surface);
+  overflow-wrap:anywhere;
+}
+
+.mobileEvidenceSelection span,
+.mobileEvidenceSelection small{
+  color:var(--muted);
+}
+
+.mobileEvidenceUploadMessage{
+  display:grid;
+  gap:12px;
+  padding:14px;
+  border-radius:12px;
+  background:#ecfdf5;
+  color:#047857;
+}
+
+.mobileEvidenceUploadMessage .button{
+  width:max-content;
+  max-width:100%;
+}
+
+@media(max-width:620px){
+  .mobileEvidenceUploadMessage .button{
+    width:100%;
+  }
+}
+
+/* 05A sequential read-only Task navigation */
+.mobileReadOnlyTaskNotice{
+  display:grid;
+  gap:8px;
+  margin:16px 0;
+  padding:14px;
+  border:1px solid var(--border);
+  border-radius:12px;
+  background:var(--soft);
+}
+
+.mobileReadOnlyTaskNotice p{
+  margin:0;
+  color:var(--muted);
+}
+
+.mobileReadOnlyTaskNotice a{
+  width:max-content;
+  max-width:100%;
+  font-weight:700;
+}
